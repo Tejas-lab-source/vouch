@@ -37,3 +37,22 @@ All notable changes are recorded here, grouped by roadmap phase.
 - Boundary rule fixture tests (`packages/config/test/boundaries/`): a fixture tree that
   breaks every dependency-cruiser rule once, plus allowed imports that must stay clean.
   The test fails if any rule stops firing or starts firing on an allowed import.
+- Database v1 (`docs/data-model.md`): one schema per module (`platform`, `identity`, `profiles`,
+  `media`, `safety`, `matching`, `chat`, `notifications`, `admin`), 27 tables, 6 published
+  read-only views, and 11 `NOLOGIN` roles (one per module, `vouch_discovery` and the
+  `vouch_views` group).
+- `matching.swipes` and `chat.messages` are hash-partitioned (16 partitions each) from the first
+  migration.
+- Migration runner `apps/api/migrations/run.js` (node-pg-migrate, plain SQL, up and down) and
+  `pnpm db:migrate`, `pnpm db:migrate:down`.
+- Deterministic, idempotent seed `apps/api/scripts/seed.js` (`pnpm db:seed`): 2 colleges, 1
+  cluster, 2,000 users with profiles and photos.
+- Testcontainers tests for migrations (up, down, up), constraints, partition pruning, the role
+  privilege matrix and the seed.
+- ADRs 0003 (schema and role per module), 0004 (UUIDv7 keys with a public id), 0005 (hash
+  partitioning from the start) and 0006 (no cross-schema foreign keys).
+
+### Changed
+
+- The Docker image now includes `apps/api/migrations/`, so a deploy can run migrations from it.
+- `.prettierignore` excludes `docs/ARCHITECTURE.md` (owner-maintained, like the roadmap).

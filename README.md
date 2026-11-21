@@ -38,7 +38,14 @@ in [`docs/PROGRESS.md`](docs/PROGRESS.md), and decisions are in [`docs/adr/`](do
    docker compose up -d --wait
    ```
 
-5. Run the API in watch mode:
+5. Create the database schemas, roles and synthetic seed data (2,000 users). Both commands are
+   safe to re-run:
+
+   ```bash
+   pnpm db:migrate && pnpm db:seed
+   ```
+
+6. Run the API in watch mode:
 
    ```bash
    pnpm --filter @vouch/api dev
@@ -54,6 +61,9 @@ in [`docs/PROGRESS.md`](docs/PROGRESS.md), and decisions are in [`docs/adr/`](do
 | `pnpm format:check`     | Prettier check (`pnpm format` rewrites files)                    |
 | `pnpm check:boundaries` | dependency-cruiser layer and module boundary rules               |
 | `pnpm test`             | Vitest in every package, including Testcontainers (needs Docker) |
+| `pnpm typecheck`        | `tsc --checkJs --noEmit` over every `.js`/`.cjs` file            |
+| `pnpm db:migrate`       | Apply all migrations (`pnpm db:migrate:down --all` reverts them) |
+| `pnpm db:seed`          | Load deterministic synthetic data (refuses in production)        |
 | `pnpm build`            | No-op: no compile step; the Docker image is the build artifact   |
 | `pnpm dev`              | Runs every package's `dev` task                                  |
 
@@ -72,9 +82,9 @@ The image holds production dependencies only and runs as the non-root `node` use
 ## Repository layout
 
 ```
-apps/api/          Backend (Fastify). Phase 1: GET /health and graceful shutdown only.
+apps/api/          Backend (Fastify): GET /health, migrations (migrations/, src/modules/*/migrations/), seed.
 packages/config/   Shared ESLint, Prettier and Vitest config, plus the Testcontainers helper.
-docs/              Roadmap, progress, ADRs and phase reports.
+docs/              Roadmap, architecture, data model, progress, ADRs and phase reports.
 ```
 
 The full target layout is in `docs/ROADMAP.md` Part B.5.
