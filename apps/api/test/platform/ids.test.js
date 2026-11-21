@@ -1,7 +1,7 @@
 // @ts-check
 import { describe, expect, it } from 'vitest';
-import { createPrng } from '../../scripts/lib/prng.js';
-import { uuidv7, uuidv7From } from '../../scripts/lib/uuidv7.js';
+import { createIdGenerator, uuidv7, uuidv7From } from '../../src/platform/ids.js';
+import { fixedClock } from '../../src/platform/clock.js';
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -31,19 +31,19 @@ describe('uuidv7', () => {
   });
 });
 
-describe('createPrng', () => {
-  it('repeats the same sequence for the same seed', () => {
-    const a = createPrng(42);
-    const b = createPrng(42);
-    expect(Array.from({ length: 50 }, a.next)).toEqual(Array.from({ length: 50 }, b.next));
+describe('createIdGenerator (newId)', () => {
+  it('uses the injected clock for the timestamp part', () => {
+    const at = new Date('2026-11-21T10:00:00Z');
+    const newId = createIdGenerator({ clock: fixedClock(at) });
+    const id = newId();
+
+    expect(id).toMatch(UUID_V7);
+    expect(Number.parseInt(id.replaceAll('-', '').slice(0, 12), 16)).toBe(at.getTime());
   });
 
-  it('stays within the requested integer range', () => {
-    const prng = createPrng(7);
-    for (let i = 0; i < 1000; i += 1) {
-      const n = prng.int(3, 5);
-      expect(n).toBeGreaterThanOrEqual(3);
-      expect(n).toBeLessThanOrEqual(5);
-    }
+  it('returns a different id on every call, even at the same instant', () => {
+    const newId = createIdGenerator({ clock: fixedClock(new Date()) });
+    const ids = new Set(Array.from({ length: 1000 }, () => newId()));
+    expect(ids.size).toBe(1000);
   });
 });

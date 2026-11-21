@@ -51,23 +51,27 @@ in [`docs/PROGRESS.md`](docs/PROGRESS.md), and decisions are in [`docs/adr/`](do
    pnpm --filter @vouch/api dev
    ```
 
-   Then check it at <http://localhost:3000/health>. It returns `{"status":"ok"}`.
+   Then check <http://localhost:3000/health> (`{"status":"ok"}`) and
+   <http://localhost:3000/ready> (Postgres, Redis and migrations). Metrics are on
+   <http://localhost:9464/metrics>, and the API explorer is at <http://localhost:3000/docs>.
+   `ROLE` in `.env` picks `api`, `ws`, `worker` or `all` (default).
 
 ## Common commands
 
-| Command                   | What it does                                                     |
-| ------------------------- | ---------------------------------------------------------------- |
-| `pnpm lint`               | ESLint for every package and the root files; warnings fail       |
-| `pnpm format:check`       | Prettier check (`pnpm format` rewrites files)                    |
-| `pnpm check:boundaries`   | dependency-cruiser layer and module boundary rules               |
-| `pnpm test`               | Vitest in every package, including Testcontainers (needs Docker) |
-| `pnpm typecheck`          | `tsc --checkJs --noEmit` over every `.js`/`.cjs` file            |
-| `pnpm db:migrate`         | Apply all migrations (`pnpm db:migrate:down --all` reverts them) |
-| `pnpm db:seed`            | Load deterministic synthetic data (refuses in production)        |
-| `pnpm contracts:generate` | Regenerate `packages/contracts/openapi.json` and `schemas.json`  |
-| `pnpm contracts:diff`     | Fail on breaking contract changes against `origin/main`          |
-| `pnpm build`              | No-op: no compile step; the Docker image is the build artifact   |
-| `pnpm dev`                | Runs every package's `dev` task                                  |
+| Command                   | What it does                                                      |
+| ------------------------- | ----------------------------------------------------------------- |
+| `pnpm lint`               | ESLint for every package and the root files; warnings fail        |
+| `pnpm format:check`       | Prettier check (`pnpm format` rewrites files)                     |
+| `pnpm check:boundaries`   | dependency-cruiser layer and module boundary rules                |
+| `pnpm test`               | Vitest in every package, including Testcontainers (needs Docker)  |
+| `pnpm typecheck`          | `tsc --checkJs --noEmit` over every `.js`/`.cjs` file             |
+| `pnpm db:migrate`         | Apply all migrations (`pnpm db:migrate:down --all` reverts them)  |
+| `pnpm db:seed`            | Load deterministic synthetic data (refuses in production)         |
+| `pnpm contracts:generate` | Regenerate `packages/contracts/openapi.json` and `schemas.json`   |
+| `pnpm contracts:diff`     | Fail on breaking contract changes against `origin/main`           |
+| `pnpm new-module <name>`  | Scaffold a backend module (see `apps/api/src/platform/README.md`) |
+| `pnpm build`              | No-op: no compile step; the Docker image is the build artifact    |
+| `pnpm dev`                | Runs every package's `dev` task                                   |
 
 ## Docker image
 
@@ -84,7 +88,7 @@ The image holds production dependencies only and runs as the non-root `node` use
 ## Repository layout
 
 ```
-apps/api/          Backend (Fastify): GET /health, migrations (migrations/, src/modules/*/migrations/), seed.
+apps/api/          Backend: platform kernel (src/platform), modules (src/modules), migrations, seed.
 packages/config/   Shared ESLint, Prettier and Vitest config, plus the Testcontainers helper.
 packages/contracts/ zod contracts for every boundary, plus generated OpenAPI (see its README).
 docs/              Roadmap, architecture, data model, progress, ADRs and phase reports.

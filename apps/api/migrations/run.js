@@ -1,4 +1,5 @@
 // @ts-check
+import { readdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { runner } from 'node-pg-migrate';
@@ -32,6 +33,20 @@ const SOURCES = [
  */
 export function migrationDirs() {
   return SOURCES.map((source) => fileURLToPath(new URL(source, import.meta.url)));
+}
+
+/**
+ * Names of every migration on disk (file name without `.sql`), sorted as the runner applies them.
+ * @returns {string[]}
+ */
+export function listMigrationNames() {
+  return (
+    migrationDirs()
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed list of folders
+      .flatMap((dir) => readdirSync(dir).filter((file) => file.endsWith('.sql')))
+      .map((file) => file.slice(0, -'.sql'.length))
+      .sort()
+  );
 }
 
 /**

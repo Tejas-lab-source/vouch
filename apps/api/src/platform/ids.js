@@ -38,3 +38,13 @@ export function uuidv7From(timestampMs, random) {
 export function uuidv7(nowMs = Date.now()) {
   return uuidv7From(nowMs, randomBytes(10));
 }
+
+/**
+ * Creates the injected `newId` used everywhere in the backend. Time comes from the clock,
+ * so tests can pin it; randomness is always cryptographic.
+ * @param {{ clock: import('./clock.js').Clock }} deps
+ * @returns {() => string}
+ */
+export function createIdGenerator({ clock }) {
+  return () => uuidv7(clock.now().getTime());
+}

@@ -15,6 +15,7 @@ COPY packages/contracts/package.json packages/contracts/
 RUN pnpm install --frozen-lockfile --filter @vouch/api... --ignore-scripts
 COPY apps/api/src apps/api/src
 COPY apps/api/migrations apps/api/migrations
+COPY packages/contracts/src packages/contracts/src
 RUN pnpm --filter @vouch/api deploy --prod --legacy --ignore-scripts /out
 
 # ---- runtime: production dependencies only, non-root ------------------------------

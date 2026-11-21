@@ -14,6 +14,7 @@ const TEST_DB = { user: 'vouch_test', password: 'vouch_test', database: 'vouch_t
  * @typedef {object} TestContainers
  * @property {string} postgresUrl  Connection URL for the Postgres container.
  * @property {string} redisUrl     Connection URL for the Redis container.
+ * @property {string} redisContainerId  Docker id, for tests that pause Redis.
  * @property {() => Promise<void>} stop  Stops and removes both containers.
  */
 
@@ -88,6 +89,7 @@ export async function startTestContainers() {
   return {
     postgresUrl: postgresUrl(postgres),
     redisUrl: `redis://${redis.getHost()}:${redis.getMappedPort(6379)}`,
+    redisContainerId: redis.getId(),
     stop: async () => {
       await Promise.all([postgres.stop(), redis.stop()]);
     },
