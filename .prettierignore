@@ -1,5 +1,6 @@
 pnpm-lock.yaml
 CLAUDE.md
 docs/ROADMAP.md
+docs/ARCHITECTURE.md
 coverage/
 .turbo/

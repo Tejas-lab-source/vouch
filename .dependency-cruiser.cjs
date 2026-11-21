@@ -158,7 +158,7 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: NPM },
-    exclude: { path: ['/coverage/', '/\\.turbo/'] },
+    exclude: { path: ['/coverage/', '/\\.turbo/', '/test/boundaries/fixtures/'] },
     moduleSystems: ['es6', 'cjs'],
     combinedDependencies: false,
     enhancedResolveOptions: {

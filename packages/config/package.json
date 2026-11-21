@@ -29,6 +29,7 @@
     "vitest": "^5.1.0"
   },
   "devDependencies": {
+    "dependency-cruiser": "18.8.0",
     "eslint": "9.39.5",
     "ioredis": "6.0.0",
     "postgres": "4.1.1",
