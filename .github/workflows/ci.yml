@@ -50,6 +50,14 @@ jobs:
       - name: Boundary check
         run: pnpm check:boundaries
 
+      - name: Generated contracts are up to date
+        run: pnpm contracts:check
+
+      - name: No breaking contract changes against main
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          pnpm contracts:diff --base origin/main
+
       - name: Tests (includes Testcontainers smoke test)
         run: pnpm test
 
