@@ -80,9 +80,12 @@ jobs:
       - name: Build the API image
         run: docker build -t vouch-api:ci .
 
-      - name: Run the container and check GET /health
+      - name: Run migrations from the image
+        run: docker run --rm --network host --env-file .env vouch-api:ci node migrations/run.js up
+
+      - name: Run the container and check /health, /ready and /metrics
         run: |
-          docker run -d --name vouch-api -p 3000:3000 vouch-api:ci
+          docker run -d --name vouch-api --network host --env-file .env vouch-api:ci
           for attempt in $(seq 1 30); do
             if body=$(curl -fsS --max-time 2 http://127.0.0.1:3000/health); then
               break
@@ -91,10 +94,15 @@ jobs:
           done
           echo "GET /health -> ${body:-<no response>}"
           test "$body" = '{"status":"ok"}'
+          ready=$(curl -fsS --max-time 5 http://127.0.0.1:3000/ready)
+          echo "GET /ready -> $ready"
+          test "$(echo "$ready" | jq -r .status)" = 'ready'
+          curl -fsS --max-time 5 http://127.0.0.1:9464/metrics | grep -q '^process_cpu_user_seconds_total'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/metrics)" = '404'
 
-      - name: Stop the container gracefully
+      - name: Stop the container gracefully (drain within the 30 s kill)
         run: |
-          docker stop vouch-api
+          docker stop --time 30 vouch-api
           test "$(docker inspect -f '{{.State.ExitCode}}' vouch-api)" = "0"
 
       - name: Container logs
