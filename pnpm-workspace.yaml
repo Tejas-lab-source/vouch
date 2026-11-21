@@ -3,8 +3,9 @@ packages:
   - packages/*
 
 # Install scripts stay blocked (pnpm 10 default). These optional native helpers
-# of testcontainers' ssh2/grpc dependencies are not needed.
+# (testcontainers' ssh2/grpc, bullmq's msgpackr) are not needed.
 ignoredBuiltDependencies:
   - cpu-features
+  - msgpackr-extract
   - protobufjs
   - ssh2

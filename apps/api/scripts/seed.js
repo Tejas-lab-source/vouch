@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 import { z } from 'zod';
 import { createPrng } from './lib/prng.js';
-import { uuidv7From } from './lib/uuidv7.js';
+import { uuidv7From } from '../src/platform/ids.js';
 
 /** Fixed inputs: the same seed always produces byte-identical rows. */
 const SEED = 20261121;
