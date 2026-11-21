@@ -35,6 +35,7 @@ describe('scripts/new-module.js', () => {
     } finally {
       await rm(`${MODULES}${name}`, { recursive: true, force: true });
     }
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the fixed modules folder
     expect((await readdir(MODULES)).filter((entry) => entry.startsWith('zzgen'))).toEqual([]);
   });
 });

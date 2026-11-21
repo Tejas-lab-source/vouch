@@ -137,9 +137,10 @@ describe('boot', () => {
       task: 'messages',
       olderThan: new Date().toISOString(),
     });
+    // finishedOn and returnvalue are written together when the job completes.
     const done = await eventually(async () => {
       const job = await runtime.platform.jobs.queue('bulk').getJob(String(ignored.id));
-      return (await job?.getState()) === 'completed' ? job : null;
+      return job?.finishedOn ? job : null;
     }, 20_000);
     expect(done?.returnvalue).toEqual({ skipped: 'messages' });
     await runtime.stop(10_000);
