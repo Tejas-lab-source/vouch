@@ -1,6 +1,6 @@
 // @ts-check
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { uuidv7 } from '../../scripts/lib/uuidv7.js';
+import { uuidv7 } from '../../src/platform/ids.js';
 import {
   DB_HOOK_TIMEOUT_MS,
   MODULE_ROLES,
@@ -13,7 +13,11 @@ const PERMISSION_DENIED = '42501';
 const WRITE = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
 const DISCOVERY = 'vouch_discovery';
 
-/** Narrow access every module role has to the platform event tables (Phase 4 unit of work). */
+/**
+ * Narrow access every module role (including discovery since Phase 4) has to the platform event
+ * tables. Module roles also hold a column-level SELECT on outbox.id, which has_table_privilege
+ * does not count.
+ */
 const PLATFORM_GRANTS_FOR_MODULES = new Map([
   ['platform.outbox', ['INSERT']],
   ['platform.inbox', ['SELECT', 'INSERT']],
@@ -26,14 +30,12 @@ const APPEND_ONLY = new Set(['admin.audit_log']);
 
 /**
  * The privileges a role is expected to hold on a relation.
- * @param {string} role
  * @param {string} module  The role's own schema, or '' for discovery.
  * @param {string} relation  schema.name
  * @returns {string[]}
  */
-function expectedPrivileges(role, module, relation) {
+function expectedPrivileges(module, relation) {
   if (PUBLISHED_VIEWS.includes(relation)) return ['SELECT'];
-  if (role === DISCOVERY) return [];
   const [schema] = relation.split('.');
   if (schema === module) {
     return APPEND_ONLY.has(relation) ? WRITE.filter((p) => p !== 'UPDATE') : WRITE;
@@ -76,9 +78,21 @@ describe('per-module roles', () => {
         FROM unnest(${relations}::text[]) AS rel`;
       const actual = Object.fromEntries(rows.map((row) => [row.rel, row.privileges]));
       const expected = Object.fromEntries(
-        relations.map((rel) => [rel, expectedPrivileges(role, module, rel)]),
+        relations.map((rel) => [rel, expectedPrivileges(module, rel)]),
       );
       expect(actual, role).toEqual(expected);
+    }
+  });
+
+  it('module roles can read only the outbox id they insert, never payloads', async () => {
+    for (const role of [
+      ...Object.values(MODULE_ROLES).filter((r) => r !== 'vouch_platform'),
+      DISCOVERY,
+    ]) {
+      const [row] = await db.sql`
+        SELECT has_column_privilege(${role}, 'platform.outbox', 'id', 'SELECT') AS id,
+               has_column_privilege(${role}, 'platform.outbox', 'payload', 'SELECT') AS payload`;
+      expect(row, role).toEqual({ id: true, payload: false });
     }
   });
 

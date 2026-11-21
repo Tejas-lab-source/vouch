@@ -1,6 +1,6 @@
 // @ts-check
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { uuidv7 } from '../../scripts/lib/uuidv7.js';
+import { uuidv7 } from '../../src/platform/ids.js';
 import { DB_HOOK_TIMEOUT_MS, startDatabase } from './helpers.js';
 
 const PARTITIONS = 16;

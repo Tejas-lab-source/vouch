@@ -15,6 +15,7 @@ const EXPECTED_MIGRATIONS = [
   '20261121006000_chat_schema',
   '20261121007000_notifications_schema',
   '20261121008000_admin_schema',
+  '20261121009000_discovery_event_grants',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */
