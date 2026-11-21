@@ -13,7 +13,15 @@ const vouchPlugin = { rules: { 'require-ts-check': requireTsCheck } };
  * @type {import('eslint').Linter.Config[]}
  */
 export default [
-  { ignores: ['**/node_modules/**', '**/coverage/**', '**/dist/**', '**/.turbo/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/coverage/**',
+      '**/dist/**',
+      '**/.turbo/**',
+      '**/test/boundaries/fixtures/**',
+    ],
+  },
   js.configs.recommended,
   n.configs['flat/recommended-module'],
   security.configs.recommended,

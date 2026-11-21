@@ -1,0 +1,9 @@
+{
+  "name": "boundary-fixtures",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "ioredis": "*",
+    "postgres": "*"
+  }
+}

@@ -27,3 +27,13 @@ All notable changes are recorded here, grouped by roadmap phase.
   running container.
 - Docs: `docs/PROGRESS.md`, ADR 0001 (record architecture decisions), ADR 0002
   (session branch and phase pull requests), and `README.md`.
+
+## Phase 2 — Database architecture and migrations
+
+### Added
+
+- `pnpm typecheck`: TypeScript 5.9 (dev-only) runs `tsc --checkJs --noEmit` over every
+  `.js`/`.cjs` file using the root `tsconfig.json` (strict). It is a step in CI.
+- Boundary rule fixture tests (`packages/config/test/boundaries/`): a fixture tree that
+  breaks every dependency-cruiser rule once, plus allowed imports that must stay clean.
+  The test fails if any rule stops firing or starts firing on an allowed import.
