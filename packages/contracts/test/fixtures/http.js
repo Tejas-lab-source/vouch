@@ -1,0 +1,445 @@
+// @ts-check
+import * as s from './samples.js';
+
+/**
+ * Fixtures for every endpoint part, keyed `<endpointId>.<part>`.
+ * Each has at least one valid and one invalid example.
+ * @type {Record<string, { valid: unknown[], invalid: unknown[] }>}
+ */
+export const httpFixtures = {
+  // identity
+  'requestOtp.body': {
+    valid: [{ email: 'student@northfield.example.edu', turnstileToken: 'tok' }],
+    invalid: [{ email: 'not-an-email', turnstileToken: 'tok' }, { email: 'a@b.edu' }],
+  },
+  'requestOtp.response': {
+    valid: [{ sent: true }],
+    invalid: [{ sent: false }, { sent: true, exists: true }],
+  },
+  'verifyOtp.body': {
+    valid: [
+      { email: 'a@northfield.example.edu', code: '123456', device: { platform: 'ios' } },
+      {
+        email: 'a@northfield.example.edu',
+        code: '123456',
+        device: { platform: 'web', appVersion: '1.0.0' },
+        tokenTransport: 'cookie',
+        signup: {
+          birthDate: '2005-01-31',
+          gradYear: 2028,
+          consent: { noticeVersion: '2026-11', purposes: ['matching'] },
+        },
+      },
+    ],
+    invalid: [
+      { email: 'a@b.edu', code: '12345', device: { platform: 'ios' } },
+      {
+        email: 'a@b.edu',
+        code: '123456',
+        device: { platform: 'ios' },
+        signup: { birthDate: '2005-01-31' },
+      },
+    ],
+  },
+  'verifyOtp.response': {
+    valid: [{ tokens: s.tokens, user: { userId: s.PUBLIC_ID, status: 'active', newUser: false } }],
+    invalid: [{ tokens: s.tokens, user: { userId: s.ID, status: 'active', newUser: false } }],
+  },
+  'refreshTokens.body': {
+    valid: [{ refreshToken: 'rt_abc' }, { tokenTransport: 'cookie' }],
+    invalid: [{ refreshToken: '' }],
+  },
+  'refreshTokens.response': {
+    valid: [{ tokens: s.tokens }, { tokens: { ...s.tokens, refreshToken: undefined } }],
+    invalid: [{ tokens: { accessToken: 'x' } }],
+  },
+  'deleteAccount.response': {
+    valid: [{ deleted: true, erasureDueBy: s.TS }],
+    invalid: [{ deleted: true }],
+  },
+  'exportData.response': {
+    valid: [{ generatedAt: s.TS, data: { identity: { email_hmac_prefix: 'ab12' } } }],
+    invalid: [{ generatedAt: s.TS, data: { 'Not-A-Module': {} } }],
+  },
+  'registerDevice.body': {
+    valid: [{ pushToken: 'ExponentPushToken[abc]', platform: 'android' }],
+    invalid: [{ pushToken: 'ExponentPushToken[abc]', platform: 'windows' }],
+  },
+  'registerDevice.response': { valid: [{ registered: true }], invalid: [{}] },
+
+  // platform
+  'getConfig.response': {
+    valid: [s.config, { ...s.config, college: null }],
+    invalid: [{ ...s.config, minSupportedVersion: 'latest' }],
+  },
+
+  // profiles
+  'getMyProfile.response': {
+    valid: [s.ownProfile],
+    invalid: [{ ...s.ownProfile, birthDate: '2005-01-01' }],
+  },
+  'updateMyProfile.body': {
+    valid: [{ name: 'Aditi' }, { gender: 2, interestedIn: [0, 1, 2], minAge: 20, maxAge: 25 }],
+    invalid: [
+      {},
+      { minAge: 26, maxAge: 20 },
+      { interestedIn: [] },
+      { interestedIn: [0, 0] },
+      { gender: 3 },
+    ],
+  },
+  'updateMyProfile.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, age: 17 }] },
+  'putProfileSection.params': { valid: [{ type: 'prompts' }], invalid: [{ type: 'Prompts!' }] },
+  'putProfileSection.body': {
+    valid: [{ schemaVersion: 1, position: 0, data: { answer: 'x' } }],
+    invalid: [{ schemaVersion: 0, position: 0, data: {} }],
+  },
+  'putProfileSection.response': {
+    valid: [{ type: 'prompts', schemaVersion: 1, position: 0, data: {} }],
+    invalid: [{ type: 'prompts', schemaVersion: 1, position: -1, data: {} }],
+  },
+
+  // media
+  'createUpload.body': {
+    valid: [{ contentType: 'image/jpeg', sizeBytes: 2_000_000 }],
+    invalid: [
+      { contentType: 'image/gif', sizeBytes: 10 },
+      { contentType: 'image/png', sizeBytes: 10_485_761 },
+    ],
+  },
+  'createUpload.response': {
+    valid: [
+      {
+        uploadId: s.ID,
+        url: 'https://storage.example.com/uploads/raw/x?sig=1',
+        method: 'PUT',
+        headers: { 'content-type': 'image/jpeg' },
+        expiresAt: s.TS,
+      },
+    ],
+    invalid: [
+      {
+        uploadId: s.ID,
+        url: 'https://x.example.com',
+        method: 'POST',
+        headers: {},
+        expiresAt: s.TS,
+      },
+    ],
+  },
+  'confirmUpload.params': { valid: [{ id: s.ID }], invalid: [{ id: s.UUID4 }] },
+  'confirmUpload.body': { valid: [{}], invalid: [{ force: true }] },
+  'confirmUpload.response': {
+    valid: [{ uploadId: s.ID, status: 'processing' }],
+    invalid: [{ uploadId: s.ID, status: 'pending' }],
+  },
+
+  // discovery
+  'getDeck.response': {
+    valid: [{ cards: [s.card] }, { cards: [] }],
+    invalid: [
+      { cards: Array.from({ length: 11 }, () => s.card) },
+      { cards: [{ ...s.card, birthDate: '2005-01-01' }] },
+    ],
+  },
+
+  // matching
+  'swipe.body': {
+    valid: [{ swipeId: s.UUID4, targetId: s.PUBLIC_ID, direction: 'like' }],
+    invalid: [{ swipeId: s.UUID4, targetId: s.PUBLIC_ID, direction: 1 }],
+  },
+  'swipe.response': {
+    valid: [
+      { matched: true, matchId: s.ID },
+      { matched: false, matchId: null },
+    ],
+    invalid: [{ matched: true }],
+  },
+  'listMatches.query': {
+    valid: [{}, { cursor: s.CURSOR, limit: '10' }],
+    invalid: [{ limit: 0 }, { offset: 5 }],
+  },
+  'listMatches.response': {
+    valid: [
+      {
+        items: [{ matchId: s.ID, conversationId: null, user: s.card, createdAt: s.TS }],
+        nextCursor: null,
+      },
+    ],
+    invalid: [{ items: [] }],
+  },
+  'unmatch.params': { valid: [{ id: s.ID }], invalid: [{ id: 'abc' }] },
+  'unmatch.body': { valid: [{}], invalid: [{ reason: 'x' }] },
+  'unmatch.response': {
+    valid: [{ matchId: s.ID, unmatchedAt: s.TS }],
+    invalid: [{ matchId: s.ID }],
+  },
+
+  // chat
+  'listConversations.query': { valid: [{ limit: 5 }], invalid: [{ limit: 51 }] },
+  'listConversations.response': {
+    valid: [
+      {
+        items: [
+          {
+            conversationId: s.ID,
+            matchId: s.ID2,
+            user: s.card,
+            lastMessage: s.message,
+            lastReadSeq: 3,
+            closed: false,
+            updatedAt: s.TS,
+          },
+        ],
+        nextCursor: s.CURSOR,
+      },
+    ],
+    invalid: [{ items: [{ conversationId: s.ID }], nextCursor: null }],
+  },
+  'listMessages.params': { valid: [{ id: s.ID }], invalid: [{}] },
+  'listMessages.query': {
+    valid: [{}, { afterSeq: '12', limit: '100' }],
+    invalid: [{ afterSeq: -1 }],
+  },
+  'listMessages.response': {
+    valid: [
+      { items: [s.message], nextAfterSeq: 7 },
+      { items: [], nextAfterSeq: null },
+    ],
+    invalid: [{ items: [{ ...s.message, id: s.ID }], nextAfterSeq: null }],
+  },
+
+  // safety
+  'blockUser.body': { valid: [{ targetId: s.PUBLIC_ID }], invalid: [{ targetId: s.ID }] },
+  'blockUser.response': { valid: [{ blocked: true }], invalid: [{ blocked: 'yes' }] },
+  'reportUser.body': {
+    valid: [
+      { targetId: s.PUBLIC_ID, context: 'profile', reason: 'fake_profile' },
+      {
+        targetId: s.PUBLIC_ID,
+        context: 'chat',
+        reason: 'harassment',
+        conversationId: s.ID,
+        note: 'rude',
+      },
+    ],
+    invalid: [{ targetId: s.PUBLIC_ID, context: 'chat', reason: 'harassment' }],
+  },
+  'reportUser.response': {
+    valid: [{ reportId: s.ID, status: 'open' }],
+    invalid: [{ reportId: s.ID, status: 'closed' }],
+  },
+
+  // notifications
+  'putNotificationPrefs.body': {
+    valid: [
+      {
+        pushMatches: true,
+        pushMessages: true,
+        pushLikesDigest: false,
+        quietHours: { startMinute: 1380, endMinute: 420 },
+        timezone: 'Asia/Kolkata',
+      },
+      {
+        pushMatches: true,
+        pushMessages: false,
+        pushLikesDigest: true,
+        quietHours: null,
+        timezone: 'UTC',
+      },
+    ],
+    invalid: [
+      {
+        pushMatches: true,
+        pushMessages: true,
+        pushLikesDigest: true,
+        quietHours: { startMinute: 1440, endMinute: 0 },
+        timezone: 'UTC',
+      },
+    ],
+  },
+  'putNotificationPrefs.response': {
+    valid: [
+      {
+        pushMatches: true,
+        pushMessages: true,
+        pushLikesDigest: true,
+        quietHours: null,
+        timezone: 'UTC',
+      },
+    ],
+    invalid: [{ pushMatches: true }],
+  },
+
+  // admin
+  'adminListReports.query': {
+    valid: [{}, { status: 'actioned', limit: 50 }],
+    invalid: [{ status: 'closed' }],
+  },
+  'adminListReports.response': {
+    valid: [{ items: [s.reportSummary], nextCursor: null }],
+    invalid: [{ items: [{ ...s.reportSummary, reporterId: s.ID }], nextCursor: null }],
+  },
+  'adminGetReport.params': { valid: [{ id: s.ID }], invalid: [{ id: 1 }] },
+  'adminGetReport.response': {
+    valid: [s.reportDetail],
+    invalid: [
+      {
+        ...s.reportDetail,
+        evidence: { card: null, messages: Array.from({ length: 21 }, () => s.message), note: null },
+      },
+    ],
+  },
+  'adminActOnReport.params': { valid: [{ id: s.ID }], invalid: [{ id: '' }] },
+  'adminActOnReport.body': {
+    valid: [
+      { action: 'dismiss', note: 'not a violation' },
+      { action: 'ban', note: 'repeat', banExpiresAt: s.TS },
+    ],
+    invalid: [
+      { action: 'warn', note: 'x', banExpiresAt: s.TS },
+      { action: 'delete', note: 'x' },
+    ],
+  },
+  'adminActOnReport.response': { valid: [s.reportDetail], invalid: [{ reportId: s.ID }] },
+  'adminListPhotoReviews.query': { valid: [{}], invalid: [{ limit: 'many' }] },
+  'adminListPhotoReviews.response': {
+    valid: [
+      {
+        items: [
+          {
+            photoId: s.ID,
+            userId: s.PUBLIC_ID,
+            urls: s.photoUrls,
+            reasons: ['nudity'],
+            flaggedAt: s.TS,
+          },
+        ],
+        nextCursor: null,
+      },
+    ],
+    invalid: [{ items: [{ photoId: s.ID }], nextCursor: null }],
+  },
+  'adminDecidePhoto.params': { valid: [{ id: s.ID }], invalid: [{ id: 'x' }] },
+  'adminDecidePhoto.body': {
+    valid: [{ decision: 'reject', reason: 'nudity' }],
+    invalid: [{ decision: 'maybe' }],
+  },
+  'adminDecidePhoto.response': {
+    valid: [{ photoId: s.ID, status: 'approved' }],
+    invalid: [{ photoId: s.ID, status: 'pending' }],
+  },
+  'adminListVerificationReviews.query': {
+    valid: [{ status: 'pending' }],
+    invalid: [{ status: 'open' }],
+  },
+  'adminListVerificationReviews.response': {
+    valid: [{ items: [s.review], nextCursor: null }],
+    invalid: [
+      { items: [{ ...s.review, idImageUrl: 'http://insecure.example.com/x' }], nextCursor: null },
+    ],
+  },
+  'adminDecideVerification.params': { valid: [{ id: s.ID }], invalid: [{ id: null }] },
+  'adminDecideVerification.body': {
+    valid: [{ decision: 'approve' }],
+    invalid: [{ decision: 'approve', extra: 1 }],
+  },
+  'adminDecideVerification.response': {
+    valid: [{ ...s.review, status: 'approved', decidedAt: s.TS }],
+    invalid: [{ ...s.review, status: 'unknown' }],
+  },
+  'adminGetUser.params': { valid: [{ userId: s.PUBLIC_ID }], invalid: [{ userId: 'short' }] },
+  'adminGetUser.response': {
+    valid: [
+      {
+        userId: s.PUBLIC_ID,
+        status: 'active',
+        profileStatus: 'active',
+        collegeName: 'Riverside College',
+        createdAt: s.TS,
+        reportsReceived: 2,
+        activeBan: null,
+      },
+    ],
+    invalid: [
+      {
+        userId: s.PUBLIC_ID,
+        status: 'active',
+        profileStatus: null,
+        collegeName: 'R',
+        createdAt: s.TS,
+        reportsReceived: -1,
+        activeBan: null,
+      },
+    ],
+  },
+  'adminListBans.query': { valid: [{ active: 'false' }, {}], invalid: [{ active: 'sometimes' }] },
+  'adminListBans.response': {
+    valid: [{ items: [s.ban], nextCursor: null }],
+    invalid: [{ items: [{ ...s.ban, reason: '' }], nextCursor: null }],
+  },
+  'adminCreateBan.body': {
+    valid: [{ userId: s.PUBLIC_ID, reason: 'spam' }],
+    invalid: [{ userId: s.PUBLIC_ID }],
+  },
+  'adminCreateBan.response': { valid: [s.ban], invalid: [{ ...s.ban, banId: 'x' }] },
+  'adminLiftBan.params': { valid: [{ id: s.ID }], invalid: [{ id: s.PUBLIC_ID }] },
+  'adminLiftBan.body': { valid: [{}], invalid: [{ now: true }] },
+  'adminLiftBan.response': {
+    valid: [{ ...s.ban, liftedAt: s.TS }],
+    invalid: [{ ...s.ban, liftedAt: 'yesterday' }],
+  },
+  'adminListAuditLog.query': {
+    valid: [{ targetType: 'user', targetId: s.PUBLIC_ID }],
+    invalid: [{ actor: 'x' }],
+  },
+  'adminListAuditLog.response': {
+    valid: [
+      {
+        items: [
+          {
+            id: s.ID,
+            actorName: 'Mod One',
+            action: 'report.dismiss',
+            targetType: 'report',
+            targetId: s.ID,
+            details: {},
+            createdAt: s.TS,
+          },
+        ],
+        nextCursor: null,
+      },
+    ],
+    invalid: [
+      {
+        items: [
+          {
+            id: s.ID,
+            actorName: 'Mod',
+            action: 'Report Dismiss',
+            targetType: 'report',
+            targetId: s.ID,
+            details: {},
+            createdAt: s.TS,
+          },
+        ],
+        nextCursor: null,
+      },
+    ],
+  },
+  'adminListFlags.response': {
+    valid: [{ items: [s.flag] }],
+    invalid: [{ items: [{ ...s.flag, key: 'Bad Key' }] }],
+  },
+  'adminPutFlag.params': { valid: [{ key: 'chat.links' }], invalid: [{ key: '' }] },
+  'adminPutFlag.body': {
+    valid: [
+      { enabled: true, rules: [{ type: 'campus', collegeIds: [s.ID] }, { type: 'killSwitch' }] },
+    ],
+    invalid: [
+      { enabled: true, rules: [{ type: 'percentage', percent: 101 }] },
+      { enabled: true, rules: [{ type: 'region' }] },
+    ],
+  },
+  'adminPutFlag.response': { valid: [s.flag], invalid: [{ ...s.flag, updatedAt: 'now' }] },
+};

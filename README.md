@@ -55,17 +55,19 @@ in [`docs/PROGRESS.md`](docs/PROGRESS.md), and decisions are in [`docs/adr/`](do
 
 ## Common commands
 
-| Command                 | What it does                                                     |
-| ----------------------- | ---------------------------------------------------------------- |
-| `pnpm lint`             | ESLint for every package and the root files; warnings fail       |
-| `pnpm format:check`     | Prettier check (`pnpm format` rewrites files)                    |
-| `pnpm check:boundaries` | dependency-cruiser layer and module boundary rules               |
-| `pnpm test`             | Vitest in every package, including Testcontainers (needs Docker) |
-| `pnpm typecheck`        | `tsc --checkJs --noEmit` over every `.js`/`.cjs` file            |
-| `pnpm db:migrate`       | Apply all migrations (`pnpm db:migrate:down --all` reverts them) |
-| `pnpm db:seed`          | Load deterministic synthetic data (refuses in production)        |
-| `pnpm build`            | No-op: no compile step; the Docker image is the build artifact   |
-| `pnpm dev`              | Runs every package's `dev` task                                  |
+| Command                   | What it does                                                     |
+| ------------------------- | ---------------------------------------------------------------- |
+| `pnpm lint`               | ESLint for every package and the root files; warnings fail       |
+| `pnpm format:check`       | Prettier check (`pnpm format` rewrites files)                    |
+| `pnpm check:boundaries`   | dependency-cruiser layer and module boundary rules               |
+| `pnpm test`               | Vitest in every package, including Testcontainers (needs Docker) |
+| `pnpm typecheck`          | `tsc --checkJs --noEmit` over every `.js`/`.cjs` file            |
+| `pnpm db:migrate`         | Apply all migrations (`pnpm db:migrate:down --all` reverts them) |
+| `pnpm db:seed`            | Load deterministic synthetic data (refuses in production)        |
+| `pnpm contracts:generate` | Regenerate `packages/contracts/openapi.json` and `schemas.json`  |
+| `pnpm contracts:diff`     | Fail on breaking contract changes against `origin/main`          |
+| `pnpm build`              | No-op: no compile step; the Docker image is the build artifact   |
+| `pnpm dev`                | Runs every package's `dev` task                                  |
 
 ## Docker image
 
@@ -84,6 +86,7 @@ The image holds production dependencies only and runs as the non-root `node` use
 ```
 apps/api/          Backend (Fastify): GET /health, migrations (migrations/, src/modules/*/migrations/), seed.
 packages/config/   Shared ESLint, Prettier and Vitest config, plus the Testcontainers helper.
+packages/contracts/ zod contracts for every boundary, plus generated OpenAPI (see its README).
 docs/              Roadmap, architecture, data model, progress, ADRs and phase reports.
 ```
 

@@ -56,3 +56,31 @@ All notable changes are recorded here, grouped by roadmap phase.
 
 - The Docker image now includes `apps/api/migrations/`, so a deploy can run migrations from it.
 - `.prettierignore` excludes `docs/ARCHITECTURE.md` (owner-maintained, like the roadmap).
+
+## Phase 3 — API, event and socket contracts
+
+### Added
+
+- `packages/contracts` (zod 4 only) holds every v1 boundary:
+  - 35 REST endpoints, including 14 admin endpoints
+  - 4 client → server and 4 server → client socket events
+  - 13 domain events, with their envelope
+  - 7 job payloads and 5 pipeline step shapes
+  - the profile-section registry format, `GET /v1/config` and feature-flag rules
+  - the environment variable schema
+- The error envelope, `AppErrorCode` with fixed HTTP statuses, gender and `interestedIn` codes,
+  and cursor pagination.
+- Generated `packages/contracts/openapi.json` (OpenAPI 3.1, validated with swagger-parser) and
+  `schemas.json` (a JSON Schema snapshot), via `pnpm contracts:generate`.
+- `scripts/contracts-diff.js` (`pnpm contracts:diff`) fails on breaking contract changes against
+  `main`. CI runs it, plus `pnpm contracts:check`, which fails when the generated files are stale.
+- Fixture tests for every schema (valid and invalid examples), a strictness test for every
+  emitted object, OpenAPI validation, and contract-diff tests.
+- ADR 0007 (contract versioning, ids exposed to clients, contract tooling) and
+  `packages/contracts/README.md`.
+
+### Changed
+
+- `docs/data-model.md`: "interests" in v1 means `interested_in`; messages are identified by
+  `(conversation_id, seq)`; gender codes; the four proposed retention values are accepted for now.
+- The `contracts-zod-only` boundary rule now exempts the package's own tool config files.

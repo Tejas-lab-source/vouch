@@ -91,6 +91,14 @@ View `identity.active_users_v`: users who may appear to others (`id, public_id, 
 View `profiles.candidates_v`: active profiles with the fields discovery filters and scores on,
 plus `approved_photos`. No names, bios or photo keys.
 
+Codes and meaning (owner decisions, Phase 3; defined in `packages/contracts/src/common/codes.js`):
+
+- `gender` (`smallint`): `0` woman, `1` man, `2` non-binary. New codes are additive.
+- `interested_in` (`smallint[]`): a non-empty set of gender codes the user wants to see.
+- **"Interests" in v1 means `interested_in`.** Where roadmap Phase 6 lists "interests" in the
+  completeness rule, it means these preferences. Hobby interests are a later feature: there is no
+  column and no profile section for them in v1.
+
 ### `media`
 
 | Table     | Purpose                    | Key                    | Notable constraints and indexes                            |
@@ -126,6 +134,10 @@ Views: `matching.seen_v` (`swiper_id, target_id`) and `matching.likes_in_v` (`us
 | `messages`      | `PARTITION BY HASH (conversation_id)`, 16 partitions `messages_p0…p15` | `(conversation_id, seq)`     | Unique `(conversation_id, client_msg_id)`; `kind` is open-ended text; body or media key required; index on `sender_id` for erasure |
 | `read_cursors`  | One read/delivered cursor per user per conversation                    | `(conversation_id, user_id)` | FK `conversation_id` → `conversations`                                                                                             |
 
+**Message identity (owner decision, Phase 3):** a message is identified by
+`(conversation_id, seq)`. There is no separate message id column. The `message.send` ack is
+`{ ok: true, clientMsgId, seq, createdAt }` on success and `{ ok: false, error }` on failure.
+
 ### `notifications`
 
 | Table        | Purpose                                   | Key                       | Notable constraints and indexes                           |
@@ -143,8 +155,8 @@ Views: `matching.seen_v` (`swiper_id, target_id`) and `matching.likes_in_v` (`us
 ## Retention
 
 > ⚖️ **Every row below is marked for legal review in Phase 14** (DPDP Act and Rules; see
-> `docs/ARCHITECTURE.md` 11.4). Values marked _proposed_ were not in the approved list and
-> need the owner's confirmation. The jobs that enforce retention are built in the phase that
+> `docs/ARCHITECTURE.md` 11.4). Values marked _accepted for now_ were proposed in Phase 2
+> and accepted by the owner on 2026-11-21 pending that review. The jobs that enforce retention are built in the phase that
 > owns each table.
 
 | Data                                                              | Kept for                                                                    | Mechanism                                                      |
@@ -159,16 +171,16 @@ Views: `matching.seen_v` (`swiper_id, target_id`) and `matching.likes_in_v` (`us
 | Published outbox rows                                             | 7 days                                                                      | Nightly job (Phase 4)                                          |
 | Inbox rows                                                        | 30 days                                                                     | Nightly job (Phase 4)                                          |
 | Expired or revoked sessions                                       | 30 days after expiry or revocation                                          | Nightly job (Phase 5)                                          |
-| Revoked devices                                                   | 30 days after revocation (_proposed_)                                       | Nightly job (Phase 5)                                          |
-| Consent records                                                   | Account lifetime (_proposed_)                                               | Erased with the account                                        |
+| Revoked devices                                                   | 30 days after revocation (_accepted for now_)                               | Nightly job (Phase 5)                                          |
+| Consent records                                                   | Account lifetime (_accepted for now_)                                       | Erased with the account                                        |
 | Notification deliveries                                           | 90 days                                                                     | Nightly job (Phase 10)                                         |
 | ID-card images (`verification_reviews.id_image_key`)              | 30 days after the decision                                                  | R2 delete + key cleared (Phase 10)                             |
 | Upload rows (`media.uploads`)                                     | 7 days                                                                      | Nightly job (Phase 6)                                          |
 | Raw upload objects (R2 `uploads/raw/`)                            | 1 day                                                                       | R2 lifecycle rule (Phase 15)                                   |
 | OTP codes                                                         | 10 minutes                                                                  | Redis TTL (Phase 5)                                            |
 | Deleted accounts                                                  | Hard-deleted 30 days after soft delete                                      | `user.deleted.v1` drives every module's erase handler          |
-| Account deletion tasks                                            | 90 days after completion (_proposed_)                                       | Nightly job (Phase 10)                                         |
-| Disabled admin accounts                                           | 2 years, matching the audit log (_proposed_)                                | Manual (Phase 10)                                              |
+| Account deletion tasks                                            | 90 days after completion (_accepted for now_)                               | Nightly job (Phase 10)                                         |
+| Disabled admin accounts                                           | 2 years, matching the audit log (_accepted for now_)                        | Manual (Phase 10)                                              |
 | Profiles, photos, sections, prefs, blocks, verification decisions | Account lifetime                                                            | Erased on account deletion                                     |
 | Colleges, clusters, feature flags                                 | Indefinitely (not personal data)                                            | —                                                              |
 
