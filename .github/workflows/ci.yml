@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: '1'
+  DO_NOT_TRACK: '1'
+
+jobs:
+  verify:
+    name: Lint, format, boundaries, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Tool versions
+        run: node --version && pnpm --version
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Boundary check
+        run: pnpm check:boundaries
+
+      - name: Tests (includes Testcontainers smoke test)
+        run: pnpm test
+
+  docker:
+    name: Compose services and Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create .env from the example
+        run: cp .env.example .env
+
+      - name: Start Postgres and Redis and wait until healthy
+        run: docker compose up -d --wait --wait-timeout 120
+
+      - name: Show service health
+        run: docker compose ps
+
+      - name: Build the API image
+        run: docker build -t vouch-api:ci .
+
+      - name: Run the container and check GET /health
+        run: |
+          docker run -d --name vouch-api -p 3000:3000 vouch-api:ci
+          for attempt in $(seq 1 30); do
+            if body=$(curl -fsS --max-time 2 http://127.0.0.1:3000/health); then
+              break
+            fi
+            sleep 1
+          done
+          echo "GET /health -> ${body:-<no response>}"
+          test "$body" = '{"status":"ok"}'
+
+      - name: Stop the container gracefully
+        run: |
+          docker stop vouch-api
+          test "$(docker inspect -f '{{.State.ExitCode}}' vouch-api)" = "0"
+
+      - name: Container logs
+        if: always()
+        run: docker logs vouch-api || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down
