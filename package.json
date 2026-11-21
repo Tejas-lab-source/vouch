@@ -20,11 +20,15 @@
     "db:migrate": "pnpm --filter @vouch/api db:migrate",
     "db:migrate:down": "pnpm --filter @vouch/api db:migrate:down",
     "db:seed": "pnpm --filter @vouch/api db:seed",
+    "contracts:generate": "node scripts/contracts-generate.js",
+    "contracts:check": "node scripts/contracts-generate.js --check",
+    "contracts:diff": "node scripts/contracts-diff.js",
     "check:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
     "@vouch/config": "workspace:*",
+    "@vouch/contracts": "workspace:*",
     "dependency-cruiser": "18.8.0",
     "eslint": "9.39.5",
     "prettier": "3.10.1",
