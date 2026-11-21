@@ -44,6 +44,9 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Type check
+        run: pnpm typecheck
+
       - name: Boundary check
         run: pnpm check:boundaries
 

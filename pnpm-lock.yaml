@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
       '@vouch/config':
         specifier: workspace:*
         version: link:packages/config
@@ -23,6 +26,9 @@ importers:
       turbo:
         specifier: 2.11.13
         version: 2.11.13
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   apps/api:
     dependencies:
@@ -47,7 +53,7 @@ importers:
         version: 9.39.5
       eslint-plugin-n:
         specifier: 18.5.0
-        version: 18.5.0(eslint@9.39.5)
+        version: 18.5.0(eslint@9.39.5)(typescript@5.9.3)
       eslint-plugin-security:
         specifier: 4.2.1
         version: 4.2.1
@@ -58,6 +64,9 @@ importers:
         specifier: 12.2.2
         version: 12.2.2(bare-buffer@3.7.3)
     devDependencies:
+      dependency-cruiser:
+        specifier: 18.8.0
+        version: 18.8.0
       eslint:
         specifier: 9.39.5
         version: 9.39.5
@@ -402,6 +411,9 @@ packages:
 
   '@types/node@18.19.130':
     resolution: {integrity: sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==}
+
+  '@types/node@24.19.2':
+    resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
 
   '@types/node@26.6.6':
     resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
@@ -1584,8 +1596,16 @@ packages:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
 
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
+
+  undici-types@7.24.6:
+    resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
 
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
@@ -2030,6 +2050,10 @@ snapshots:
     dependencies:
       undici-types: 5.26.5
 
+  '@types/node@24.19.2':
+    dependencies:
+      undici-types: 7.24.6
+
   '@types/node@26.6.6':
     dependencies:
       undici-types: 8.9.0
@@ -2373,7 +2397,7 @@ snapshots:
       eslint: 9.39.5
       eslint-compat-utils: 0.5.1(eslint@9.39.5)
 
-  eslint-plugin-n@18.5.0(eslint@9.39.5):
+  eslint-plugin-n@18.5.0(eslint@9.39.5)(typescript@5.9.3):
     dependencies:
       '@eslint-community/eslint-utils': 4.10.1(eslint@9.39.5)
       enhanced-resolve: 5.27.0
@@ -2385,6 +2409,8 @@ snapshots:
       ignore: 5.3.2
       js-yaml: 5.5.0
       semver: 7.8.6
+    optionalDependencies:
+      typescript: 5.9.3
 
   eslint-plugin-security@4.2.1:
     dependencies:
@@ -3240,7 +3266,11 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
 
+  typescript@5.9.3: {}
+
   undici-types@5.26.5: {}
+
+  undici-types@7.24.6: {}
 
   undici-types@8.9.0: {}
 
