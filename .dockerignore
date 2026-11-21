@@ -1,0 +1,11 @@
+**/node_modules
+**/.turbo
+**/coverage
+**/test
+**/*.test.js
+.git
+.github
+.env
+.env.*
+docs
+*.md

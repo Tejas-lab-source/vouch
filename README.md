@@ -1,0 +1,80 @@
+# Vouch
+
+Dating app and website for verified college students.
+
+The build follows [`docs/ROADMAP.md`](docs/ROADMAP.md) phase by phase. Current status is
+in [`docs/PROGRESS.md`](docs/PROGRESS.md), and decisions are in [`docs/adr/`](docs/adr/).
+
+## Requirements
+
+- Node.js 24 (see `.nvmrc`)
+- pnpm 10, through Corepack (the exact version is pinned in `package.json` → `packageManager`)
+- Docker with Docker Compose v2, for local services and integration tests
+
+## Setup
+
+1. Use Node 24 and enable Corepack, which provides the pinned pnpm:
+
+   ```bash
+   nvm use
+   corepack enable
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+3. Create your local environment file. It holds placeholder values only and is git-ignored:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Start Postgres 17 and Redis 7. Persistence is off, so data is lost on `docker compose down`:
+
+   ```bash
+   docker compose up -d --wait
+   ```
+
+5. Run the API in watch mode:
+
+   ```bash
+   pnpm --filter @vouch/api dev
+   ```
+
+   Then check it at <http://localhost:3000/health>. It returns `{"status":"ok"}`.
+
+## Common commands
+
+| Command                 | What it does                                                     |
+| ----------------------- | ---------------------------------------------------------------- |
+| `pnpm lint`             | ESLint for every package and the root files; warnings fail       |
+| `pnpm format:check`     | Prettier check (`pnpm format` rewrites files)                    |
+| `pnpm check:boundaries` | dependency-cruiser layer and module boundary rules               |
+| `pnpm test`             | Vitest in every package, including Testcontainers (needs Docker) |
+| `pnpm build`            | No-op: no compile step; the Docker image is the build artifact   |
+| `pnpm dev`              | Runs every package's `dev` task                                  |
+
+## Docker image
+
+```bash
+docker build -t vouch-api .
+```
+
+```bash
+docker run --rm -p 3000:3000 vouch-api
+```
+
+The image holds production dependencies only and runs as the non-root `node` user.
+
+## Repository layout
+
+```
+apps/api/          Backend (Fastify). Phase 1: GET /health and graceful shutdown only.
+packages/config/   Shared ESLint, Prettier and Vitest config, plus the Testcontainers helper.
+docs/              Roadmap, progress, ADRs and phase reports.
+```
+
+The full target layout is in `docs/ROADMAP.md` Part B.5.

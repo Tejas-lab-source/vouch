@@ -1,0 +1,28 @@
+{
+  "name": "vouch",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dating app and website for verified college students.",
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint lint:root",
+    "lint:root": "eslint . --max-warnings 0",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs"
+  },
+  "devDependencies": {
+    "@vouch/config": "workspace:*",
+    "dependency-cruiser": "18.8.0",
+    "eslint": "9.39.5",
+    "prettier": "3.10.1",
+    "turbo": "2.11.13"
+  }
+}
