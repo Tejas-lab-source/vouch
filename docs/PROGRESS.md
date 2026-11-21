@@ -5,8 +5,8 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 
 | #   | Phase                                                                   | Status      | Start approved | Completed approved | Report             |
 | --- | ----------------------------------------------------------------------- | ----------- | -------------- | ------------------ | ------------------ |
-| 1   | Repository foundation and tooling                                       | Report sent | 2026-11-21     | —                  | phases/PHASE-01.md |
-| 2   | Database architecture and migrations                                    | Not started | —              | —                  | —                  |
+| 1   | Repository foundation and tooling                                       | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-01.md |
+| 2   | Database architecture and migrations                                    | Plan sent   | —              | —                  | —                  |
 | 3   | API, event and socket contracts                                         | Not started | —              | —                  | —                  |
 | 4   | Backend platform kernel                                                 | Not started | —              | —                  | —                  |
 | 5   | Identity and authentication                                             | Not started | —              | —                  | —                  |
