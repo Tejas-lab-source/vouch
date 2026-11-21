@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Install scripts stay blocked (pnpm 10 default). These optional native helpers
+# of testcontainers' ssh2/grpc dependencies are not needed.
+ignoredBuiltDependencies:
+  - cpu-features
+  - protobufjs
+  - ssh2
