@@ -49,15 +49,44 @@ function startRedis() {
 }
 
 /**
+ * Connection URL for a started Postgres container.
+ * @param {import('testcontainers').StartedTestContainer} container
+ * @returns {string}
+ */
+function postgresUrl(container) {
+  const { user, password, database } = TEST_DB;
+  return `postgres://${user}:${password}@${container.getHost()}:${container.getMappedPort(5432)}/${database}`;
+}
+
+/**
+ * @typedef {object} TestPostgres
+ * @property {string} url  Connection URL of the container's superuser.
+ * @property {() => Promise<void>} stop  Stops and removes the container.
+ */
+
+/**
+ * Starts only a Postgres 17 container, for database integration tests.
+ * @returns {Promise<TestPostgres>}
+ */
+export async function startTestPostgres() {
+  const container = await startPostgres();
+  return {
+    url: postgresUrl(container),
+    stop: async () => {
+      await container.stop();
+    },
+  };
+}
+
+/**
  * Starts Postgres and Redis containers for integration tests.
  * Call `stop()` in `afterAll` to remove them.
  * @returns {Promise<TestContainers>}
  */
 export async function startTestContainers() {
   const [postgres, redis] = await Promise.all([startPostgres(), startRedis()]);
-  const { user, password, database } = TEST_DB;
   return {
-    postgresUrl: `postgres://${user}:${password}@${postgres.getHost()}:${postgres.getMappedPort(5432)}/${database}`,
+    postgresUrl: postgresUrl(postgres),
     redisUrl: `redis://${redis.getHost()}:${redis.getMappedPort(6379)}`,
     stop: async () => {
       await Promise.all([postgres.stop(), redis.stop()]);
