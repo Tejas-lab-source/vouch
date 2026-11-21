@@ -17,6 +17,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json",
+    "db:migrate": "pnpm --filter @vouch/api db:migrate",
+    "db:migrate:down": "pnpm --filter @vouch/api db:migrate:down",
+    "db:seed": "pnpm --filter @vouch/api db:seed",
     "check:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
