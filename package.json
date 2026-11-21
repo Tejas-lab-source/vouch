@@ -23,6 +23,7 @@
     "contracts:generate": "node scripts/contracts-generate.js",
     "contracts:check": "node scripts/contracts-generate.js --check",
     "contracts:diff": "node scripts/contracts-diff.js",
+    "new-module": "node scripts/new-module.js",
     "check:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
