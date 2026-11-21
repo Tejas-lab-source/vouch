@@ -8,7 +8,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 1   | Repository foundation and tooling                                       | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-01.md |
 | 2   | Database architecture and migrations                                    | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-02.md |
 | 3   | API, event and socket contracts                                         | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-03.md |
-| 4   | Backend platform kernel                                                 | Plan sent   | —              | —                  | —                  |
+| 4   | Backend platform kernel                                                 | In progress | 2026-11-21     | —                  | —                  |
 | 5   | Identity and authentication                                             | Not started | —              | —                  | —                  |
 | 6   | Profiles, media and photo pipeline                                      | Not started | —              | —                  | —                  |
 | 7   | Safety core and discovery engine                                        | Not started | —              | —                  | —                  |

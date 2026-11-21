@@ -84,3 +84,44 @@ All notable changes are recorded here, grouped by roadmap phase.
 - `docs/data-model.md`: "interests" in v1 means `interested_in`; messages are identified by
   `(conversation_id, seq)`; gender codes; the four proposed retention values are accepted for now.
 - The `contracts-zod-only` boundary rule now exempts the package's own tool config files.
+
+## Phase 4 — Backend platform kernel
+
+### Added
+
+- `apps/api/src/platform/**`, the backend kernel (see its README):
+  - config, the logger with redaction, and the database layer with `SET LOCAL ROLE` per
+    transaction (ADR 0010)
+  - Redis clients, the unit of work with outbox `emit`, and advisory pair locks
+  - the event bus: relay, inbox consumers, dead-letter queues and nightly retention (ADR 0008)
+  - the BullMQ job runner, the module registry and pipelines
+  - the use-case pipeline (ADR 0009) and the Redis idempotency store
+  - the error envelope, EdDSA token verification, feature flags, the HTTP root, `/health` and
+    `/ready`, Prometheus metrics, and OpenTelemetry and Sentry hooks
+  - role-aware boot with a graceful drain
+- `ROLE=api|ws|worker|all`. `/metrics` is served only on `METRICS_PORT` (default 9464).
+- The graceful drain is 25 s by default and configurable with `SHUTDOWN_DRAIN_MS` (max 29 s).
+- `/health` and `/ready` produce no request logs; readiness logs only when it changes.
+- Migration `20261121009000_discovery_event_grants.sql`:
+  - `vouch_discovery` gets the same outbox, inbox, flags and deletion-task grants as other
+    module roles
+  - module roles get a column-level `SELECT (id)` on `platform.outbox` (for `RETURNING id`)
+  - `vouch_platform` can read `public.pgmigrations`
+- The test-only `_example` module proves HTTP → use case → outbox → relay → consumer → inbox,
+  with the trace id carried through.
+- `pnpm new-module <name>` (`scripts/new-module.js`) scaffolds a module.
+- Contracts env: `METRICS_PORT` and `SHUTDOWN_DRAIN_MS` (additive).
+- Tests: unit tests per kernel component, and Testcontainers integration tests for the database
+  kernel, event bus, Redis features, boot of every role and the example module end to end.
+  Coverage of `src/platform` is enforced at 90% lines.
+
+### Changed
+
+- The UUIDv7 helper moved from `scripts/lib/uuidv7.js` to `src/platform/ids.js`, as the
+  injected `newId`; the seed reuses it and its output is unchanged.
+- `src/app.js` was replaced by the kernel HTTP root. The Phase 1 process tests moved into
+  `test/platform/boot.test.js` (serve, SIGTERM exit 0, invalid `PORT`).
+- The Docker image includes the contracts sources. The CI Docker job runs migrations from the
+  image, checks `/health`, `/ready` and `/metrics`, and stops with a 30 s limit.
+- `.env.example` lists every required variable, with placeholder secrets and a public-only
+  development JWT key.
