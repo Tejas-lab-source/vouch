@@ -37,6 +37,20 @@ export const EnvSchema = z
       .regex(/^\d+\.\d+\.\d+$/)
       .default('0.0.0'),
     PRIVACY_NOTICE_VERSION: z.string().min(1).max(40).default('draft'),
+    METRICS_PORT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(65535)
+      .default(9464)
+      .describe('Internal port for /metrics; never the public port.'),
+    SHUTDOWN_DRAIN_MS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .max(29000)
+      .default(25000)
+      .describe('Graceful drain on SIGTERM; finishes before the host 30 s kill.'),
 
     // Postgres (one login per module role is configured in Phase 15)
     DATABASE_URL: postgresUrl,
