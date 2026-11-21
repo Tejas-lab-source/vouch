@@ -1,0 +1,32 @@
+{
+  "name": "@vouch/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Vouch v1 boundary contracts: REST, socket, domain events, jobs, pipelines, config and env, as zod schemas.",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./tooling": "./tooling/index.js"
+  },
+  "files": [
+    "src",
+    "openapi.json",
+    "schemas.json"
+  ],
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0",
+    "@vouch/config": "workspace:*",
+    "eslint": "9.39.5",
+    "vitest": "5.1.1"
+  }
+}

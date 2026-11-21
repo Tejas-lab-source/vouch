@@ -103,9 +103,13 @@ module.exports = {
     },
     {
       name: 'contracts-zod-only',
-      comment: 'packages/contracts may import only zod and its own files.',
+      comment:
+        'packages/contracts may import only zod and its own files (tests and tool config files excepted).',
       severity: 'error',
-      from: { path: '^packages/contracts/', pathNot: '^packages/contracts/test/' },
+      from: {
+        path: '^packages/contracts/',
+        pathNot: ['^packages/contracts/test/', '^packages/contracts/[^/]+\\.config\\.js$'],
+      },
       to: {
         pathNot: [
           '^packages/contracts/',
