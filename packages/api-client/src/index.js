@@ -15,6 +15,7 @@ export const keys = Object.freeze({
   me: () => /** @type {const} */ (['vouch', 'me']),
   deck: () => /** @type {const} */ (['vouch', 'deck']),
   matches: () => /** @type {const} */ (['vouch', 'matches']),
+  likesCount: () => /** @type {const} */ (['vouch', 'likes-count']),
   conversations: () => /** @type {const} */ (['vouch', 'conversations']),
   /** @param {string} conversationId */
   messages: (conversationId) => /** @type {const} */ (['vouch', 'messages', conversationId]),

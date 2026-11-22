@@ -1,7 +1,15 @@
 // @ts-check
 import { getConfig, keys } from '@vouch/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { createContext, Fragment, useContext, useMemo, useSyncExternalStore } from 'react';
+import {
+  createContext,
+  Fragment,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 
 /**
  * @typedef {object} AppServices  What every screen may use, provided once at the app root.
@@ -9,6 +17,12 @@ import { createContext, Fragment, useContext, useMemo, useSyncExternalStore } fr
  * @property {import('@vouch/api-client').Session} session
  * @property {import('./registry.js').FeatureRegistry} registry
  * @property {ReturnType<typeof import('./auth.js').createAuthFlow>} auth
+ * @property {import('./analytics/index.js').Analytics} [analytics]  Defaults to no-op.
+ * @property {import('./events/index.js').EventHub} [events]  Realtime server events.
+ * @property {import('./onboarding/index.js').Prefs} [prefs]  Small non-personal key-value
+ *   storage (web: localStorage; mobile: secure store). Defaults to memory.
+ * @property {import('./photos/index.js').PhotoIo} [photoIo]  Platform image resize and upload.
+ * @property {() => string} [newId]  Random UUIDs (mobile: expo-crypto).
  */
 
 const ServicesContext = createContext(/** @type {AppServices | null} */ (null));
@@ -89,4 +103,22 @@ export function Slot({ name, render, fallback = null }) {
 export function useSlotItems(/** @type {(typeof import('./registry.js').SLOTS)[number]} */ name) {
   const { registry } = useServices();
   return registry.itemsFor(name, useFlags());
+}
+
+/**
+ * Calls `handler` for one realtime server event (for example `match.new` for the match
+ * screen). The latest handler is used without re-subscribing.
+ * @param {string} event
+ * @param {(payload: any) => void} handler
+ */
+export function useRealtimeEvent(event, handler) {
+  const { events } = useServices();
+  const latest = useRef(handler);
+  latest.current = handler;
+  useEffect(() => {
+    if (!events) return undefined;
+    return events.subscribe((name, payload) => {
+      if (name === event) latest.current(payload);
+    });
+  }, [events, event]);
 }
