@@ -24,6 +24,7 @@
  * @property {(id: string, at: Date) => Promise<void>} markUploaded
  * @property {(id: string, photoKey: string) => Promise<string>} startProcessing
  *   Sets `processing` and keeps an existing photo key (retries reuse it); returns the key.
+ * @property {(id: string) => Promise<void>} markInReview
  * @property {(id: string, at: Date) => Promise<void>} markApproved
  * @property {(id: string, reason: string, at: Date) => Promise<void>} markRejected
  * @property {(id: string) => Promise<void>} remove
@@ -63,7 +64,7 @@
  * Moderation for one processed photo. Phase 7 replaces the development adapter with the
  * `safety.contentChecks` pipeline.
  * @typedef {object} ContentCheck
- * @property {(input: { userId: string, kind: 'photo', objectKey: string, contentType: 'image/webp' }) => Promise<{ verdict: 'approve' | 'reject' | 'review', reasons: string[], provider: string }>} check
+ * @property {(input: { userId: string, kind: 'photo', objectKey: string, contentType: 'image/webp', image: Uint8Array }) => Promise<{ verdict: 'approve' | 'reject' | 'review', reasons: string[], provider: string }>} check
  */
 
 /**

@@ -27,6 +27,8 @@ export const keys = Object.freeze({
   raw: (uploadId) => `uploads/raw/${uploadId}`,
   /** @param {string} uploadId @param {VariantName} variant */
   staging: (uploadId, variant) => `uploads/processed/${uploadId}_${widthOf(variant)}.webp`,
+  /** @param {string} uploadId @param {VariantName} variant  Held for human review (Phase 7). */
+  review: (uploadId, variant) => `review/${uploadId}_${widthOf(variant)}.webp`,
   /** @param {string} photoKey @param {string} photoId @param {VariantName} variant */
   photo: (photoKey, photoId, variant) => `photos/${photoKey}/${photoId}_${widthOf(variant)}.webp`,
 });
@@ -37,12 +39,12 @@ export const keys = Object.freeze({
  * @returns {string[]}
  */
 export function objectsOf(upload) {
-  const variants = /** @type {VariantName[]} */ (Object.keys(VARIANTS));
   return [
     keys.raw(upload.id),
-    ...variants.map((v) => keys.staging(upload.id, v)),
+    ...VARIANT_NAMES.map((v) => keys.staging(upload.id, v)),
+    ...VARIANT_NAMES.map((v) => keys.review(upload.id, v)),
     ...(upload.photoKey
-      ? variants.map((v) => keys.photo(upload.photoKey ?? '', upload.id, v))
+      ? VARIANT_NAMES.map((v) => keys.photo(upload.photoKey ?? '', upload.id, v))
       : []),
   ];
 }
@@ -55,7 +57,7 @@ export function objectsOf(upload) {
 export const UPLOAD_ROW_RETENTION_MS = 7 * 24 * 3600 * 1000;
 
 /** Only these prefixes may be deleted through the public API. */
-export const DELETABLE_PREFIXES = Object.freeze(['photos/', 'uploads/']);
+export const DELETABLE_PREFIXES = Object.freeze(['photos/', 'uploads/', 'review/']);
 
 /**
  * The image type a file really is, from its first bytes (magic numbers), regardless of its
@@ -74,7 +76,7 @@ export function sniffImageType(head) {
 }
 
 /**
- * @typedef {'pending' | 'uploaded' | 'processing' | 'approved' | 'rejected' | 'expired'} UploadStatus
+ * @typedef {'pending' | 'uploaded' | 'processing' | 'in_review' | 'approved' | 'rejected' | 'expired'} UploadStatus
  */
 
 /**
@@ -86,9 +88,7 @@ export function sniffImageType(head) {
  */
 export function countsTowardLimit(upload, now, urlTtlMs) {
   if (upload.status === 'pending') return now.getTime() - upload.createdAt.getTime() < urlTtlMs;
-  return (
-    upload.status === 'uploaded' || upload.status === 'processing' || upload.status === 'approved'
-  );
+  return ['uploaded', 'processing', 'in_review', 'approved'].includes(upload.status);
 }
 
 /**
@@ -98,7 +98,7 @@ export function countsTowardLimit(upload, now, urlTtlMs) {
  * @returns {'confirm' | 'not_uploaded' | { already: 'processing' | 'approved' | 'rejected' }}
  */
 export function judgeConfirm(upload, object) {
-  if (upload.status === 'uploaded' || upload.status === 'processing') {
+  if (['uploaded', 'processing', 'in_review'].includes(upload.status)) {
     return { already: 'processing' };
   }
   if (upload.status === 'approved' || upload.status === 'rejected') {

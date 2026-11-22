@@ -36,6 +36,9 @@ export function createMediaStores(tx) {
             WHERE id = ${id} RETURNING photo_key`;
         return /** @type {any} */ (row).photoKey;
       },
+      markInReview: async (id) => {
+        await tx`UPDATE media.uploads SET status = 'in_review' WHERE id = ${id}`;
+      },
       markApproved: async (id, at) => {
         await tx`UPDATE media.uploads SET status = 'approved', photo_id = id, processed_at = ${at} WHERE id = ${id}`;
       },

@@ -18,6 +18,7 @@ const EXPECTED_MIGRATIONS = [
   '20261121009000_discovery_event_grants',
   '20261122002100_photo_tombstones',
   '20261122003100_upload_photo_key',
+  '20261122003200_upload_in_review',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */

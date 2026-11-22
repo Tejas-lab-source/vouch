@@ -38,6 +38,8 @@ export function fakeMediaDeps({ verdict = 'approve', onCheck } = {}) {
         u.photoKey ??= photoKey;
         return u.photoKey;
       },
+      markInReview: async (id) =>
+        void Object.assign(state.uploads.get(id), { status: 'in_review' }),
       markApproved: async (id) => void Object.assign(state.uploads.get(id), { status: 'approved' }),
       markRejected: async (id, reason) =>
         void Object.assign(state.uploads.get(id), { status: 'rejected', errorCode: reason }),
