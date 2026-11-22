@@ -271,5 +271,5 @@ Then follow the Phase 5 sign-up, `PATCH /v1/me/profile`, and for each photo:
 3. `POST /v1/media/uploads/{uploadId}/confirm`.
 4. Poll `GET /v1/me/profile`.
 
-**Pull request:** see the PR "Phase 6 — Profiles, media and photo pipeline" · Branch:
+**Pull request:** [Tejas-lab-source/vouch#6](https://github.com/Tejas-lab-source/vouch/pull/6) · Branch:
 `claude/lucid-rubin-foq2uj` (ADR 0002)
