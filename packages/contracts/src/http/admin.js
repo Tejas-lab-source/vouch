@@ -140,11 +140,16 @@ export const VerificationReview = z.strictObject({
   userId: PublicUserId,
   status: ReviewStatus,
   idImageUrl: z
-    .url({ protocol: /^https$/ })
+    .url({ protocol: /^https?$/ })
     .nullable()
     .describe(
       'Short-lived signed URL; null after the image is deleted (30 days after the decision).',
     ),
+  selfieImageUrl: z
+    .url({ protocol: /^https?$/ })
+    .nullable()
+    .optional()
+    .describe('Phase 10: the selfie, compared with the ID photo; same lifetime as idImageUrl.'),
   submittedAt: Timestamp,
   decidedAt: Timestamp.nullable(),
 });

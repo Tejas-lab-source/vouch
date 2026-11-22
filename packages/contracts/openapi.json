@@ -8425,6 +8425,18 @@
                             ],
                             "description": "Short-lived signed URL; null after the image is deleted (30 days after the decision)."
                           },
+                          "selfieImageUrl": {
+                            "description": "Phase 10: the selfie, compared with the ID photo; same lifetime as idImageUrl.",
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uri"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "submittedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -8663,6 +8675,18 @@
                         }
                       ],
                       "description": "Short-lived signed URL; null after the image is deleted (30 days after the decision)."
+                    },
+                    "selfieImageUrl": {
+                      "description": "Phase 10: the selfie, compared with the ID photo; same lifetime as idImageUrl.",
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "submittedAt": {
                       "type": "string",

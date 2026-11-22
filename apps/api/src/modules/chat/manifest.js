@@ -25,6 +25,10 @@ export default defineModule({
   dependsOn: ['identity', 'profiles', 'safety', 'matching'],
   api: async (/** @type {any} */ ctx) => createChatApi(await handlersOf(ctx)),
   exports: async (/** @type {any} */ ctx) => (await handlersOf(ctx)).exportFor,
+  contribute: {
+    'safety.reportEvidence': async (/** @type {any} */ ctx) =>
+      (await handlersOf(ctx)).reportEvidence,
+  },
   http: {
     routes: async (/** @type {any} */ ctx) => {
       const { chatRoutes } = await import('./adapters/http/routes.js');

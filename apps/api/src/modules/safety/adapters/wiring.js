@@ -2,6 +2,7 @@
 import { PIPELINES } from '@vouch/contracts';
 import { makeBans, makeBlocks } from '../application/blocks.js';
 import { CONTENT_CHECKS, imageModerationStep } from '../application/content-checks.js';
+import { makeModeration, REPORT_EVIDENCE } from '../application/moderation.js';
 import { createDevModeration } from './moderation/dev.js';
 import { createRekognitionModeration } from './moderation/rekognition.js';
 import { createSafetyStores } from './pg/stores.js';
@@ -36,12 +37,14 @@ function moderationProvider(config) {
 export function buildSafetyDeps(ctx) {
   const { config, db, redis, clock, logger, pipelines } = ctx;
   if (!definedOn.has(pipelines)) {
-    const definition = new Map(Object.entries(PIPELINES)).get(CONTENT_CHECKS);
-    if (!definition) throw new Error(`pipeline ${CONTENT_CHECKS} is not in the contracts`);
-    pipelines.define(CONTENT_CHECKS, {
-      failClosed: definition.failClosed,
-      stepTimeoutMs: definition.stepTimeoutMs,
-    });
+    for (const name of [CONTENT_CHECKS, REPORT_EVIDENCE]) {
+      const definition = new Map(Object.entries(PIPELINES)).get(name);
+      if (!definition) throw new Error(`pipeline ${name} is not in the contracts`);
+      pipelines.define(name, {
+        failClosed: definition.failClosed,
+        stepTimeoutMs: definition.stepTimeoutMs,
+      });
+    }
     definedOn.add(pipelines);
   }
   return {
@@ -51,6 +54,19 @@ export function buildSafetyDeps(ctx) {
     storesFor: createSafetyStores,
     blockCache: createBlockCache({ redis: redis.command }),
     identity: ctx.deps.identity,
+    profiles: ctx.deps.profiles,
+    media: ctx.deps.media,
+    pipelines,
+    rateLimiter: ctx.rateLimiter,
+    redis: redis.command,
+    newId: ctx.newId,
+    settings: {
+      autohideReporters: config.REPORT_AUTOHIDE_REPORTERS,
+      autohideDays: config.REPORT_AUTOHIDE_DAYS,
+      reportsPerDay: config.REPORTS_PER_DAY,
+      rejectionsForReview: config.PHOTO_REJECTIONS_FOR_REVIEW,
+      uploadMaxBytes: config.UPLOAD_MAX_BYTES,
+    },
     moderation: ctx.overrides?.safety?.moderation ?? moderationProvider(config),
     thresholds: {
       rejectConfidence: config.MODERATION_REJECT_CONFIDENCE,
@@ -64,9 +80,23 @@ export function buildSafetyDeps(ctx) {
 
 /** @param {import('../ports.js').SafetyDeps} deps */
 export function buildSafetyHandlers(deps) {
+  const blocks = makeBlocks(deps);
   return {
-    ...makeBlocks(deps),
+    ...blocks,
     bans: makeBans(deps),
     contentStep: imageModerationStep(deps),
+    ...makeModeration(/** @type {any} */ (deps)),
+    /**
+     * `user.deleted.v1`: erases the user's blocks, ID-card reviews and images, and offence
+     * counts. Reports stay as moderation records (1 year after close); an active ban stays so
+     * the account cannot come back.
+     * @param {{ userId: string }} payload
+     * @param {{ tx: import('postgres').TransactionSql }} context
+     */
+    eraseUser: async ({ userId }, { tx }) => {
+      const { others, imageKeys } = await deps.storesFor(tx).erasure.eraseUser(userId);
+      await /** @type {any} */ (deps).media.privateObjects.remove(imageKeys);
+      for (const other of others) await deps.blockCache.forget(userId, other).catch(() => {});
+    },
   };
 }

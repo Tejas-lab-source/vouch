@@ -21,6 +21,7 @@ const EXPECTED_MIGRATIONS = [
   '20261122003200_upload_in_review',
   '20261122100000_identity_banned_emails',
   '20261122100100_upload_review_queue',
+  '20261122100200_safety_moderation',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */
@@ -51,6 +52,7 @@ const EXPECTED_TABLES = [
   'profiles.profiles',
   'safety.bans',
   'safety.blocks',
+  'safety.photo_rejections',
   'safety.reports',
   'safety.verification_reviews',
 ];

@@ -12,5 +12,6 @@ export function matchingEventHandlers(consumers) {
   return new Map([
     ['user.blocked.v1', (payload, context) => consumers.onUserBlocked(payload, scopeOf(context))],
     ['user.deleted.v1', (payload, context) => consumers.onUserDeleted(payload, scopeOf(context))],
+    ['user.banned.v1', (payload, context) => consumers.onUserBanned(payload, scopeOf(context))],
   ]);
 }

@@ -1,5 +1,6 @@
 // @ts-check
 import { PIPELINES } from '@vouch/contracts';
+import { reportEvidenceStep } from '../application/evidence.js';
 import { makeChatConsumers } from '../application/consumers.js';
 import { makeConversations } from '../application/conversations.js';
 import { makeChatExport } from '../application/export.js';
@@ -83,5 +84,6 @@ export function buildChatHandlers(deps) {
     purgeClosed: makeChatRetention(deps),
     exportFor: makeChatExport(deps),
     presence: deps.presence,
+    reportEvidence: reportEvidenceStep(helpers),
   };
 }
