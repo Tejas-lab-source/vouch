@@ -28,10 +28,20 @@ const serverEvents = new Map(Object.entries(SERVER_EVENTS));
 /**
  * Sends server events to users' rooms through Redis, from any role (ADR 0017). The payload is
  * validated against the socket contract first, so a malformed event never reaches a client.
- * @param {{ redis: import('ioredis').Redis }} deps
+ * Live delivery is best-effort (clients replay with `sync`), so a failed publish is logged,
+ * never thrown at the caller and never left as an unhandled rejection.
+ * @param {{ redis: import('ioredis').Redis, logger?: import('pino').Logger }} deps
  */
-export function createSocketEmitter({ redis }) {
-  const emitter = new Emitter(redis);
+export function createSocketEmitter({ redis, logger }) {
+  const client = {
+    /** @param {string} channel @param {Buffer | string} message */
+    publish: (channel, message) =>
+      redis.publish(channel, message).catch((err) => {
+        logger?.warn({ err }, 'socket emit failed');
+        return 0;
+      }),
+  };
+  const emitter = new Emitter(/** @type {any} */ (client));
   return {
     /**
      * @param {string} userId
@@ -63,7 +73,7 @@ export function createSocketEmitter({ redis }) {
  * @property {(ctx: SocketContext) => Promise<void> | void} [onConnect]
  * @property {(ctx: SocketContext) => Promise<void> | void} [onHeartbeat]  On every pong.
  * @property {(ctx: SocketContext, remaining: number) => Promise<void> | void} [onDisconnect]
- *   `remaining`: the user's sockets still connected anywhere.
+ *   `remaining`: the user's sockets still connected to this process.
  */
 
 /**
@@ -252,12 +262,9 @@ export function createSocketGateway({ server, config, logger, verifier, redis, c
 
     socket.on('disconnect', async () => {
       clearTimeout(expiryTimer);
-      let remaining = 0;
-      try {
-        remaining = (await io.in(userRoom(user.userId)).fetchSockets()).length;
-      } catch {
-        remaining = 0;
-      }
+      // This process's sockets only (no cluster round trip): a user connected through another
+      // gateway refreshes their presence there within one heartbeat.
+      const remaining = (await io.in(userRoom(user.userId)).local.fetchSockets()).length;
       for (const { module, handlers: set } of modules) {
         try {
           await set.onDisconnect?.(ctx, remaining);

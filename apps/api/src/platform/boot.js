@@ -79,7 +79,7 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
     useCase,
     verifier,
     /** Server events to users' rooms, from any role (`emitToUser`). */
-    sockets: createSocketEmitter({ redis: redis.command }),
+    sockets: createSocketEmitter({ redis: redis.command, logger }),
     /**
      * A unit of work for one module (its role, its stores).
      * @template S
