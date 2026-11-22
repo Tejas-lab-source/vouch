@@ -1,11 +1,13 @@
 // @ts-check
 import { createSession, createSessionClient, keys } from '@vouch/api-client';
-import { createAuthFlow } from '@vouch/features-core';
+import { createAuthFlow, createEventHub, createLogAnalytics } from '@vouch/features-core';
 import { createRealtime, memoryCursors, queryCacheAdapter } from '@vouch/realtime';
 import { QueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { API_BASE, APP_VERSION } from '../shared/config/index.js';
 import { captchaToken } from '../shared/lib/captcha.js';
+import { webPhotoIo } from '../shared/lib/photo-io.js';
+import { createLocalPrefs } from '../shared/lib/prefs.js';
 import { createWebRegistry } from './features.js';
 
 /**
@@ -21,13 +23,17 @@ export function createServices({ fetch, baseUrl = API_BASE || globalThis.locatio
     defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
   });
   const cache = queryCacheAdapter(queryClient, keys);
+  const events = createEventHub();
   const realtime = createRealtime({
     url: baseUrl,
     connect: io,
     session,
     cursors: memoryCursors(),
     onMessage: cache.onMessage,
-    onEvent: cache.onEvent,
+    onEvent: (event, payload) => {
+      cache.onEvent(event);
+      events.emit(event, payload);
+    },
   });
   session.subscribe((signedIn) => {
     if (signedIn) realtime.start();
@@ -43,7 +49,24 @@ export function createServices({ fetch, baseUrl = API_BASE || globalThis.locatio
     appVersion: APP_VERSION,
     captchaToken,
   });
-  return { session, client, queryClient, realtime, registry: createWebRegistry(), auth };
+  // Analytics only logs in v1 (development builds), never personal data (docs/analytics.md).
+  const dev = Boolean(/** @type {any} */ (import.meta).env?.DEV);
+  const analytics = createLogAnalytics((line) => {
+    // eslint-disable-next-line no-console -- the v1 analytics adapter is a development log
+    if (dev) console.debug(line);
+  });
+  return {
+    session,
+    client,
+    queryClient,
+    realtime,
+    registry: createWebRegistry(),
+    auth,
+    events,
+    analytics,
+    prefs: createLocalPrefs(),
+    photoIo: webPhotoIo,
+  };
 }
 
 /** @typedef {ReturnType<typeof createServices>} WebServices */

@@ -1,17 +1,9 @@
 // @ts-check
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { lastCode } from './stack.js';
+import { seriousViolations } from './axe.js';
 
 const SHOTS = new URL('../../../docs/phases/assets/', import.meta.url);
-
-/** @param {import('@playwright/test').Page} page */
-async function seriousViolations(page) {
-  const { violations } = await new AxeBuilder({ page }).analyze();
-  return violations
-    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-    .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
-}
 
 test.beforeEach(({ page }) => {
   page.on('pageerror', (error) => {
@@ -19,7 +11,7 @@ test.beforeEach(({ page }) => {
   });
 });
 
-test('a new student signs in with the emailed code and lands on the home shell', async ({
+test('a new student signs in with the emailed code and lands in onboarding', async ({
   browser,
 }) => {
   const baseURL = /** @type {string} */ (process.env.E2E_BASE_URL);
@@ -50,20 +42,12 @@ test('a new student signs in with the emailed code and lands on the home shell',
   await page.getByLabel(/I agree to the privacy notice/).check();
   await page.getByRole('button', { name: 'Create my account' }).click();
 
-  await expect(page).toHaveURL(/\/$/);
-  const tabs = page.getByRole('navigation', { name: 'Main' }).getByRole('link');
-  await expect(tabs).toHaveText(['Discover', 'Matches', 'Chats', 'Profile']);
-  await expect(page.getByRole('heading', { name: 'Coming soon' })).toBeVisible();
-  expect(await seriousViolations(page)).toEqual([]);
-  await page.screenshot({ path: new URL('phase11-web-home.png', SHOTS).pathname });
-
-  // A reload keeps the session (the httpOnly refresh cookie), and sign-out ends it.
+  // The home shell waits until onboarding is done (Phase 12); a reload keeps the session (the
+  // httpOnly refresh cookie) and resumes onboarding.
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page.getByRole('heading', { name: 'About you' })).toBeVisible();
   await page.reload();
-  await expect(tabs).toHaveCount(4);
-  await page.getByRole('link', { name: 'Chats' }).click();
-  await expect(page).toHaveURL(/\/chats$/);
-  await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole('heading', { name: 'About you' })).toBeVisible();
   await context.close();
 });
 

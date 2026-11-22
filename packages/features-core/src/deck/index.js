@@ -11,7 +11,8 @@ export const PREFETCH_AT = 3;
 const REMEMBER = 200;
 
 /**
- * @typedef {Awaited<ReturnType<typeof getDeck>>['cards'][number]} ProfileCard
+ * @typedef {{ userId: string, name: string, age: number, gender: 0 | 1 | 2, collegeName: string, bio: string | null, photos: import('../profile/index.js').PhotoUrls[], sections: unknown[] }} ProfileCard
+ *   The `ProfileCard` contract.
  * @typedef {{ cards: ProfileCard[], removed: string[], exhausted: boolean }} DeckState
  *   `exhausted`: the last fetch brought nothing new; cleared by the next swipe or refetch.
  */

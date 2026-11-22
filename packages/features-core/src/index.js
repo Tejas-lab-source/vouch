@@ -40,3 +40,15 @@ export {
 export { createFeatureRegistry, defineClientFeature, SLOTS } from './registry.js';
 export { useBlock, useReport } from './safety/index.js';
 export { isRetryable, useSwipe } from './swipe/index.js';
+
+/**
+ * @typedef {import('./photos/index.js').PhotoIo} PhotoIo
+ * @typedef {import('./photos/index.js').PreparedImage} PreparedImage
+ * @typedef {import('./photos/index.js').UploadState} UploadState
+ * @typedef {import('./onboarding/index.js').Prefs} Prefs
+ * @typedef {import('./onboarding/index.js').OnboardingStep} OnboardingStep
+ * @typedef {import('./deck/index.js').ProfileCard} ProfileCard
+ * @typedef {import('./matches/index.js').MatchSummary} MatchSummary
+ * @typedef {import('./profile/index.js').OwnProfile} OwnProfile
+ * @typedef {import('./analytics/index.js').Analytics} Analytics
+ */

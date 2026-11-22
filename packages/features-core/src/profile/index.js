@@ -4,14 +4,33 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServices } from '../react.jsx';
 
 /**
- * @typedef {Awaited<ReturnType<typeof getMyProfile>>} OwnProfile
- * @typedef {OwnProfile['photos'][number]} OwnPhoto
+ * The client-side shapes of the profile contracts (`OwnProfile`, `OwnPhoto` in
+ * `packages/contracts/src/common/entities.js`), spelled out so screens are type-checked.
+ * @typedef {{ w400: string, w1080: string }} PhotoUrls
+ * @typedef {{ id: string, position: number, status: 'pending' | 'approved' | 'rejected', urls: PhotoUrls | null }} OwnPhoto
+ * @typedef {{
+ *   userId: string,
+ *   status: 'pending' | 'active' | 'hidden',
+ *   name: string | null,
+ *   gender: 0 | 1 | 2 | null,
+ *   interestedIn: Array<0 | 1 | 2>,
+ *   bio: string | null,
+ *   age: number,
+ *   minAge: number,
+ *   maxAge: number,
+ *   photos: OwnPhoto[],
+ *   sections: unknown[],
+ *   missing: Array<'name' | 'gender' | 'interestedIn' | 'photos'>,
+ * }} OwnProfile
  */
 
 /** The signed-in user's own profile (`keys.me()`). */
 export function useMyProfile() {
   const { client } = useServices();
-  return useQuery({ queryKey: keys.me(), queryFn: () => getMyProfile(client) });
+  return useQuery({
+    queryKey: keys.me(),
+    queryFn: async () => /** @type {OwnProfile} */ (await getMyProfile(client)),
+  });
 }
 
 /**

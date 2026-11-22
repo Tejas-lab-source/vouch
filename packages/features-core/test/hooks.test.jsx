@@ -40,6 +40,7 @@ const photo = (/** @type {number} */ n, status = 'approved', position = n) => ({
   status,
   urls: status === 'approved' ? { w400: 'http://cdn/x', w1080: 'http://cdn/y' } : null,
 });
+/** @returns {any} */
 const profile = (/** @type {Partial<any>} */ over = {}) => ({
   userId: ID(900),
   status: 'pending',

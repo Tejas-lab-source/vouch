@@ -4,6 +4,7 @@ import { t } from '@vouch/i18n';
 import { Button, Toast } from '@vouch/ui-web';
 import { useSyncExternalStore } from 'react';
 import { NavLink, Outlet } from 'react-router';
+import { MatchMomentProvider } from '../../features/match-moment/MatchMoment.jsx';
 
 /**
  * The signed-in shell: the header, the tab bar (from the `home.tabs` slot, flag-filtered) and
@@ -23,7 +24,9 @@ export function AppShell() {
       </header>
       {online ? null : <Toast message={t('common.offline')} />}
       <main className="w-main" id="main">
-        <Outlet />
+        <MatchMomentProvider>
+          <Outlet />
+        </MatchMomentProvider>
       </main>
       <nav className="w-tabs" aria-label="Main">
         {tabs.map((tab) => (

@@ -4,7 +4,7 @@ import { createWriteStream } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { startTestContainers } from '@vouch/config/test/containers';
+import { startTestContainers, startTestStorage, TEST_STORAGE } from '@vouch/config/test/containers';
 
 const ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const WEB = fileURLToPath(new URL('..', import.meta.url));
@@ -39,7 +39,7 @@ async function waitFor(url, ms) {
  * built web app served by `vite preview`, which proxies `/v1` and `/socket.io` to the API.
  */
 export async function startStack() {
-  const containers = await startTestContainers();
+  const [containers, storage] = await Promise.all([startTestContainers(), startTestStorage()]);
   const keys = spawnSync(process.execPath, ['scripts/dev-keys.js'], {
     cwd: ROOT,
     encoding: 'utf8',
@@ -63,11 +63,14 @@ export async function startStack() {
     REDIS_URL: containers.redisUrl,
     EMAIL_HMAC_SECRET: 'e2e-email-hmac-secret-0123456789abcdef',
     COOKIE_SECRET: 'e2e-cookie-secret-0123456789abcdef0123',
-    R2_ENDPOINT: 'http://127.0.0.1:1',
-    R2_ACCESS_KEY_ID: 'unused',
-    R2_SECRET_ACCESS_KEY: 'unused',
-    R2_BUCKET: 'unused',
-    CDN_BASE_URL: 'http://127.0.0.1:1/cdn',
+    // SeaweedFS stands in for R2 and the CDN; the browser uploads to it directly (CORS).
+    R2_ENDPOINT: storage.endpoint,
+    R2_ACCESS_KEY_ID: TEST_STORAGE.accessKeyId,
+    R2_SECRET_ACCESS_KEY: TEST_STORAGE.secretAccessKey,
+    R2_BUCKET: TEST_STORAGE.bucket,
+    CDN_BASE_URL: storage.publicBaseUrl,
+    CORS_ORIGINS: `http://127.0.0.1:${webPort}`,
+    MODERATION_PROVIDER: 'dev',
     ...keyEnv,
   };
   /** @param {string[]} args */
@@ -81,6 +84,16 @@ export async function startStack() {
   };
   runApi(['migrations/run.js', 'up']);
   runApi(['scripts/seed.js']);
+  // The bucket and its upload CORS rule; SeaweedFS needs a moment before it accepts buckets.
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      runApi(['scripts/storage-init.js']);
+      break;
+    } catch (error) {
+      if (attempt >= 20) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
 
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- this run's API log
   const log = createWriteStream(API_LOG);
@@ -115,15 +128,29 @@ export async function startStack() {
       web.kill('SIGTERM');
       api.kill('SIGTERM');
       await new Promise((resolve) => api.once('exit', resolve));
-      await containers.stop();
+      await Promise.all([containers.stop(), storage.stop()]);
     },
   };
 }
 
-/** The most recent development sign-in code the API logged. */
-export async function lastCode() {
+/** Every development sign-in code the API logged, oldest first (the log has no emails). */
+async function codes() {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- the API log of this run
   const text = await readFile(API_LOG, 'utf8');
-  const codes = [...text.matchAll(/"devOtp":"(\d{6})"/g)].map((m) => m[1]);
-  return codes.at(-1) ?? null;
+  return [...text.matchAll(/"devOtp":"(\d{6})"/g)].map((m) => /** @type {string} */ (m[1]));
+}
+
+/** The most recent development sign-in code the API logged. */
+export async function lastCode() {
+  return (await codes()).at(-1) ?? null;
+}
+
+/** How many codes have been logged (call before requesting one, then `codeAfter(n)`). */
+export async function codeCount() {
+  return (await codes()).length;
+}
+
+/** The first code logged after `count` codes, or null while it has not arrived. @param {number} count */
+export async function codeAfter(count) {
+  return (await codes()).at(count) ?? null;
 }

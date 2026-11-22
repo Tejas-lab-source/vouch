@@ -1,12 +1,14 @@
 // @ts-check
-import { AppServicesProvider, useSession, useServices } from '@vouch/features-core';
+import { AppServicesProvider, useOnboarding, useSession, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { Button, EmptyState, Skeleton } from '@vouch/ui-web';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Component, lazy, Suspense, useEffect, useState } from 'react';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router';
 import { HomeTab } from './HomeTab.jsx';
+import { ChatPlaceholderPage } from '../pages/chat/ChatPlaceholderPage.jsx';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage.jsx';
+import { OnboardingPage } from '../pages/onboarding/OnboardingPage.jsx';
 import { SignInPage } from '../pages/sign-in/SignInPage.jsx';
 import { AppShell } from '../widgets/app-shell/AppShell.jsx';
 
@@ -67,7 +69,30 @@ function SessionRestore({ children }) {
 /** Signed-in routes. */
 function RequireSession() {
   const { signedIn } = useSession();
-  return signedIn ? <AppShell /> : <Navigate to="/sign-in" replace />;
+  return signedIn ? <Outlet /> : <Navigate to="/sign-in" replace />;
+}
+
+/** The home shell, once onboarding is done (otherwise onboarding resumes). */
+function RequireOnboarded() {
+  const onboarding = useOnboarding();
+  if (onboarding.isLoading || (!onboarding.step && !onboarding.isError)) {
+    return (
+      <main className="w-page" aria-busy="true" aria-label={t('common.loading')}>
+        <Skeleton height={32} />
+      </main>
+    );
+  }
+  if (onboarding.isError) {
+    return (
+      <main className="w-page">
+        <EmptyState
+          title={t('common.error')}
+          action={<Button onClick={() => globalThis.location.reload()}>{t('common.retry')}</Button>}
+        />
+      </main>
+    );
+  }
+  return onboarding.step === 'done' ? <AppShell /> : <Navigate to="/onboarding" replace />;
 }
 
 /** The sign-in route (signed-in users go home). */
@@ -95,10 +120,19 @@ export function createRouter(services) {
         },
         {
           element: <RequireSession />,
-          children: tabs.map((tab) => ({
-            path: /** @type {string} */ (tab.props?.path),
-            element: <HomeTab item={tab} />,
-          })),
+          children: [
+            { path: '/onboarding', element: <OnboardingPage /> },
+            {
+              element: <RequireOnboarded />,
+              children: [
+                ...tabs.map((tab) => ({
+                  path: /** @type {string} */ (tab.props?.path),
+                  element: <HomeTab item={tab} />,
+                })),
+                { path: '/chats/:conversationId', element: <ChatPlaceholderPage /> },
+              ],
+            },
+          ],
         },
         { path: '*', element: <NotFoundPage /> },
       ],

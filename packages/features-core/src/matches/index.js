@@ -3,7 +3,7 @@ import { getLikesCount, keys, listMatches, unmatch } from '@vouch/api-client';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServices } from '../react.jsx';
 
-/** @typedef {Awaited<ReturnType<typeof listMatches>>['items'][number]} MatchSummary */
+/** @typedef {{ matchId: string, conversationId: string | null, user: import('../deck/index.js').ProfileCard, createdAt: string }} MatchSummary */
 
 /** The caller's matches, newest first, as an infinite list (`fetchNextPage`). */
 export function useMatches({ pageSize = 20 } = {}) {
