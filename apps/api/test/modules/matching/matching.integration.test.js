@@ -277,7 +277,7 @@ describe('matching (ROLE=all, the 2,000-user seed)', () => {
     expect(left.every((r) => r.direction === 1 || !r.old)).toBe(true);
   });
 
-  it('likesIn counts unanswered likes only, and exports list swipes and matches by public id', async () => {
+  it('likesIn and GET /v1/me/likes/count count unanswered likes only, and exports list swipes and matches by public id', async () => {
     const [me, x, y] = [fresh(), fresh(), fresh()];
     for (const liker of [x, y]) {
       await serve(liker, me);
@@ -288,6 +288,16 @@ describe('matching (ROLE=all, the 2,000-user seed)', () => {
     await serve(me, x);
     await swipe(me, x, 'like'); // answered: now a match
     expect(await api.likesIn(me.id)).toBe(1);
+    // GET /v1/me/likes/count: the caller's own count, and nothing that identifies a liker.
+    const counted = await app.http.inject({ url: '/v1/me/likes/count', headers: await auth(me) });
+    expect(counted.statusCode).toBe(200);
+    expect(counted.json()).toEqual({ count: 1 });
+    const theirs = await app.http.inject({ url: '/v1/me/likes/count', headers: await auth(y) });
+    expect(theirs.json()).toEqual({ count: 0 });
+    expect(
+      (await app.http.inject({ url: '/v1/me/likes/count', headers: { 'x-app-version': '1.0.0' } }))
+        .statusCode,
+    ).toBe(401);
     const exported = (
       await app.http.inject({ url: '/v1/me/export', headers: await auth(me) })
     ).json();

@@ -147,6 +147,11 @@ export const httpFixtures = {
   'updateMyProfile.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, age: 17 }] },
   'deleteMyPhoto.params': { valid: [{ id: s.ID }], invalid: [{ id: 'photo-1' }] },
   'deleteMyPhoto.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, photos: null }] },
+  'reorderMyPhotos.body': {
+    valid: [{ photoIds: [s.ID] }],
+    invalid: [{ photoIds: [] }, { photoIds: ['photo-1'] }, { photoIds: Array(7).fill(s.ID) }],
+  },
+  'reorderMyPhotos.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, age: 17 }] },
   'putProfileSection.params': { valid: [{ type: 'prompts' }], invalid: [{ type: 'Prompts!' }] },
   'putProfileSection.body': {
     valid: [{ schemaVersion: 1, position: 0, data: { answer: 'x' } }],
@@ -231,6 +236,10 @@ export const httpFixtures = {
   'unmatch.response': {
     valid: [{ matchId: s.ID, unmatchedAt: s.TS }],
     invalid: [{ matchId: s.ID }],
+  },
+  'getLikesCount.response': {
+    valid: [{ count: 0 }, { count: 12 }],
+    invalid: [{ count: -1 }, { count: 1.5 }, { count: 3, userIds: [] }],
   },
 
   // chat

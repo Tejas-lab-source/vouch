@@ -1,5 +1,5 @@
 // @ts-check
-import { listMatches, swipe, unmatch } from '@vouch/contracts';
+import { getLikesCount, listMatches, swipe, unmatch } from '@vouch/contracts';
 import { clientIpOf } from '../../../../platform/client-ip.js';
 import { contractRoute } from '../../../../platform/routes.js';
 
@@ -16,7 +16,7 @@ const contextOf = (request, idempotencyKey) => ({
 
 /**
  * HTTP adapter for matching.
- * @param {{ swipe: any, listMatches: any, unmatch: any }} handlers
+ * @param {{ swipe: any, listMatches: any, unmatch: any, getLikesCount: any }} handlers
  */
 export function matchingRoutes(handlers) {
   /** @param {import('fastify').FastifyInstance} app */
@@ -36,6 +36,11 @@ export function matchingRoutes(handlers) {
     app.route(
       contractRoute(unmatch, async (request) =>
         handlers.unmatch(request.params, contextOf(request)),
+      ),
+    );
+    app.route(
+      contractRoute(getLikesCount, async (request) =>
+        handlers.getLikesCount({}, contextOf(request)),
       ),
     );
   };

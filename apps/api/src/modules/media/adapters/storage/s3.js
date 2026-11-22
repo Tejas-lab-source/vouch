@@ -5,6 +5,7 @@ import {
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  PutBucketCorsCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -15,6 +16,20 @@ const CONNECT_TIMEOUT_MS = 3_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 /** S3 deletes at most 1,000 keys per request. */
 const DELETE_BATCH = 1000;
+
+/**
+ * The only cross-origin access the bucket allows: browsers on the web origins may `PUT` a
+ * presigned upload with the signed `content-type` (`content-length` is set by the browser).
+ * Reads need no CORS rule (photos are plain `<img>` loads). The same rule is applied to R2 in
+ * production (media README).
+ * @param {readonly string[]} origins
+ */
+export const uploadCorsRule = (origins) => ({
+  AllowedOrigins: [...origins],
+  AllowedMethods: ['PUT'],
+  AllowedHeaders: ['content-type'],
+  MaxAgeSeconds: 3600,
+});
 
 /** @param {unknown} error */
 const isNotFound = (error) =>
@@ -32,7 +47,7 @@ const isNotFound = (error) =>
  *   secretAccessKey: string,
  *   bucket: string,
  * }} options
- * @returns {import('../../ports.js').StorageProvider}
+ * @returns {import('../../ports.js').StorageProvider & { applyUploadCors: (origins: readonly string[]) => Promise<void> }}
  */
 export function createS3Storage({ endpoint, accountId, accessKeyId, secretAccessKey, bucket }) {
   const client = new S3Client({
@@ -118,6 +133,14 @@ export function createS3Storage({ endpoint, accountId, accessKeyId, secretAccess
         if (!isNotFound(error)) throw error;
         await client.send(new CreateBucketCommand({ Bucket: bucket }));
       }
+    },
+    applyUploadCors: async (origins) => {
+      await client.send(
+        new PutBucketCorsCommand({
+          Bucket: bucket,
+          CORSConfiguration: { CORSRules: [uploadCorsRule(origins)] },
+        }),
+      );
     },
   };
 }

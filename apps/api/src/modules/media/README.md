@@ -82,6 +82,38 @@ in_review → approved | rejected`; `in_review` since Phase 7), the signed size 
 `photoKey` is 16 random bytes (base64url) per photo, so a URL never contains an internal user
 id and cannot be linked to the account or to the user's other photos.
 
+## Browser uploads (CORS)
+
+The web app `PUT`s photos straight to the presigned URL, so the bucket needs one CORS rule
+(`uploadCorsRule` in `adapters/storage/s3.js`):
+
+| Field          | Value                                                                    |
+| -------------- | ------------------------------------------------------------------------ |
+| AllowedOrigins | the web origins only (`CORS_ORIGINS`; locally the Vite dev/preview ones) |
+| AllowedMethods | `PUT`                                                                    |
+| AllowedHeaders | `content-type` (the browser sets `content-length`)                       |
+| MaxAgeSeconds  | 3600                                                                     |
+
+- **Locally:** `pnpm storage:init` applies the rule to SeaweedFS. Without a rule SeaweedFS
+  allows every origin. With the rule, other origins and methods are refused (tested in
+  `photos.integration.test.js`).
+- **Production (R2, Phase 15):** apply the same rule by hand in the Cloudflare dashboard (R2 →
+  bucket → Settings → CORS policy), or with any S3 client's `PutBucketCors`:
+
+  ```json
+  [
+    {
+      "AllowedOrigins": ["https://app.vouch.example"],
+      "AllowedMethods": ["PUT"],
+      "AllowedHeaders": ["content-type"],
+      "MaxAgeSeconds": 3600
+    }
+  ]
+  ```
+
+  Reads need no rule (photos load as plain images from the CDN). Mobile apps are not browsers
+  and need none.
+
 ## Settings (env, defaults)
 
 `PHOTOS_MAX` 6, `UPLOAD_MAX_BYTES` 10 MB, `UPLOAD_URL_TTL_SECONDS` 600,

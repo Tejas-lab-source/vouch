@@ -49,6 +49,14 @@ export function createProfilesStores(tx) {
         ),
       findForUpdate: async (id) =>
         first(await tx`SELECT ${PHOTO} FROM profiles.photos WHERE id = ${id} FOR UPDATE`),
+      listForUserForUpdate: async (userId) =>
+        /** @type {any} */ (
+          await tx`SELECT ${PHOTO} FROM profiles.photos WHERE user_id = ${userId}
+            ORDER BY position, created_at FOR UPDATE`
+        ),
+      setPosition: async (id, position, at) => {
+        await tx`UPDATE profiles.photos SET position = ${position}, updated_at = ${at} WHERE id = ${id}`;
+      },
       insert: async (p) => {
         await tx`INSERT INTO profiles.photos (id, user_id, upload_id, status, position, key_1080, key_400, created_at, updated_at)
           VALUES (${p.id}, ${p.userId}, ${p.id}, ${p.status}, ${p.position}, ${p.key1080}, ${p.key400}, ${p.at}, ${p.at})

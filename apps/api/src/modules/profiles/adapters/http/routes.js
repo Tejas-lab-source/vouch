@@ -1,5 +1,11 @@
 // @ts-check
-import { deleteMyPhoto, getMyProfile, putProfileSection, updateMyProfile } from '@vouch/contracts';
+import {
+  deleteMyPhoto,
+  getMyProfile,
+  putProfileSection,
+  reorderMyPhotos,
+  updateMyProfile,
+} from '@vouch/contracts';
 import { contractRoute } from '../../../../platform/routes.js';
 import { clientIpOf } from '../../../../platform/client-ip.js';
 
@@ -41,6 +47,11 @@ export function profilesRoutes(handlers) {
     app.route(
       contractRoute(deleteMyPhoto, async (request) =>
         handlers.deleteMyPhoto(request.params, contextOf(request)),
+      ),
+    );
+    app.route(
+      contractRoute(reorderMyPhotos, async (request) =>
+        handlers.reorderMyPhotos(request.body, contextOf(request)),
       ),
     );
   };

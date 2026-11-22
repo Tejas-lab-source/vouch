@@ -74,4 +74,24 @@ export const deleteMyPhoto = defineEndpoint({
   response: { status: 200, schema: OwnProfile },
 });
 
-export const profilesEndpoints = [getMyProfile, updateMyProfile, putProfileSection, deleteMyPhoto];
+export const reorderMyPhotos = defineEndpoint({
+  id: 'reorderMyPhotos',
+  module: 'profiles',
+  method: 'PUT',
+  path: '/v1/me/photos/order',
+  auth: 'user',
+  summary: 'Set the order of your photos; the first is the main photo.',
+  description:
+    'List every current photo (pending, approved or rejected) exactly once. Repeating the same ' +
+    'order returns the same profile. A missing, unknown or repeated id is VALIDATION_FAILED.',
+  body: z.strictObject({ photoIds: z.array(PhotoId).min(1).max(6) }),
+  response: { status: 200, schema: OwnProfile },
+});
+
+export const profilesEndpoints = [
+  getMyProfile,
+  updateMyProfile,
+  putProfileSection,
+  deleteMyPhoto,
+  reorderMyPhotos,
+];

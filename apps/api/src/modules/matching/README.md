@@ -22,6 +22,7 @@ arrives in Phase 12.
 | `POST /v1/swipes`               | user | `swipe`: idempotent on `swipeId`; like or pass a served card                                                  |
 | `GET /v1/matches`               | user | `listMatches`: active matches, newest first, cursor-paginated (`conversationId` equals the match id, Phase 9) |
 | `POST /v1/matches/{id}/unmatch` | user | `unmatch`: permanent and idempotent; members only (`NOT_FOUND`)                                               |
+| `GET /v1/me/likes/count`        | user | `getLikesCount`: unanswered likes as a number only; never who liked you; blocked users excluded               |
 
 ### Swipe rules
 

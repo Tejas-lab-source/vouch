@@ -26,6 +26,7 @@ only when the status changes), `statusOf(userId)` and `minApprovedPhotos` (clien
 | `PATCH /v1/me/profile`               | user | `updateMyProfile`: name, gender, interests, bio, age range              |
 | `PUT /v1/me/profile/sections/{type}` | user | `putSection`: validated against the `sections` registry (empty in v1)   |
 | `DELETE /v1/me/photos/{id}`          | user | `deleteMyPhoto`: idempotent; files are released through media           |
+| `PUT /v1/me/photos/order`            | user | `reorderMyPhotos`: every current photo exactly once; the first is main  |
 
 ## Events
 

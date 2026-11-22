@@ -104,5 +104,13 @@ export function makeMatches(deps) {
    */
   const pendingLikes = ({ afterId, limit }) =>
     read((stores) => stores.swipes.pendingLikesBatch(afterId, limit));
-  return { unmatch, listMatches, likesIn, pendingLikes, areMatched, getMatch };
+  /** `GET /v1/me/likes/count`: the caller's own count, never identities. */
+  const getLikesCount = useCase(
+    'matching.getLikesCount',
+    async (/** @type {unknown} */ _input, ctx) => ({
+      count: await likesIn(/** @type {string} */ (ctx.actor?.userId)),
+    }),
+  );
+
+  return { unmatch, listMatches, likesIn, getLikesCount, pendingLikes, areMatched, getMatch };
 }

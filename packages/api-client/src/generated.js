@@ -249,6 +249,15 @@ export const getDeck = (client, input = {}) =>
   client.call(ENDPOINTS.getDeck, /** @type {CallInput} */ (input));
 
 /**
+ * GET /v1/me/likes/count — How many people liked you and are still waiting for your swipe.
+ * @param {ApiClient} client
+ * @param {{ signal?: AbortSignal }} [input]
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').getLikesCount.response.schema>>}
+ */
+export const getLikesCount = (client, input = {}) =>
+  client.call(ENDPOINTS.getLikesCount, /** @type {CallInput} */ (input));
+
+/**
  * GET /v1/me/profile — Read the signed-in user’s own profile.
  * @param {ApiClient} client
  * @param {{ signal?: AbortSignal }} [input]
@@ -337,6 +346,15 @@ export const refreshTokens = (client, input) =>
  */
 export const registerDevice = (client, input) =>
   client.call(ENDPOINTS.registerDevice, /** @type {CallInput} */ (input));
+
+/**
+ * PUT /v1/me/photos/order — Set the order of your photos; the first is the main photo.
+ * @param {ApiClient} client
+ * @param {{ body: import('zod').input<typeof import('@vouch/contracts').reorderMyPhotos.body>, signal?: AbortSignal }} input
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').reorderMyPhotos.response.schema>>}
+ */
+export const reorderMyPhotos = (client, input) =>
+  client.call(ENDPOINTS.reorderMyPhotos, /** @type {CallInput} */ (input));
 
 /**
  * POST /v1/reports — Report a user. An evidence snapshot is taken at report time.
@@ -595,6 +613,13 @@ export const ENDPOINTS = Object.freeze({
     idempotency: 'none',
   },
   getDeck: { id: 'getDeck', method: 'GET', path: '/v1/deck', auth: 'user', idempotency: 'none' },
+  getLikesCount: {
+    id: 'getLikesCount',
+    method: 'GET',
+    path: '/v1/me/likes/count',
+    auth: 'user',
+    idempotency: 'none',
+  },
   getMyProfile: {
     id: 'getMyProfile',
     method: 'GET',
@@ -664,6 +689,13 @@ export const ENDPOINTS = Object.freeze({
     path: '/v1/devices',
     auth: 'user',
     idempotency: 'header',
+  },
+  reorderMyPhotos: {
+    id: 'reorderMyPhotos',
+    method: 'PUT',
+    path: '/v1/me/photos/order',
+    auth: 'user',
+    idempotency: 'none',
   },
   reportUser: {
     id: 'reportUser',
