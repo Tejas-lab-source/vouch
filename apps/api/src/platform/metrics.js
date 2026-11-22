@@ -1,6 +1,6 @@
 // @ts-check
 import Fastify from 'fastify';
-import { collectDefaultMetrics, Counter, Histogram, Registry } from 'prom-client';
+import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
 
 /**
  * Creates the metrics registry: process and event-loop metrics, HTTP RED metrics and
@@ -31,8 +31,28 @@ export function createMetrics() {
     registers: [registry],
   });
 
+  /** @type {Map<string, Gauge>} */
+  const gauges = new Map();
+
   return {
     registry,
+    /**
+     * Sets a gauge, creating it on first use (modules' alert metrics, Phase 10). Names must
+     * start with `vouch_`; one name always has the same help text and label names.
+     * @param {string} name
+     * @param {string} help
+     * @param {Record<string, string>} labels
+     * @param {number} value
+     */
+    setGauge(name, help, labels, value) {
+      if (!/^vouch_[a-z_]+$/.test(name)) throw new Error(`bad gauge name ${name}`);
+      let gauge = gauges.get(name);
+      if (!gauge) {
+        gauge = new Gauge({ name, help, labelNames: Object.keys(labels), registers: [registry] });
+        gauges.set(name, gauge);
+      }
+      gauge.set(labels, value);
+    },
     /**
      * @param {{ method: string, route: string, statusCode: number, seconds: number }} sample
      */

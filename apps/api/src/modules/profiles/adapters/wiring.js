@@ -2,6 +2,7 @@
 import { PIPELINES } from '@vouch/contracts';
 import { makeCardQueries, CARD_FIELDS_PIPELINE } from '../application/cards.js';
 import { makeProfileConsumers } from '../application/events.js';
+import { makeProfileModeration } from '../application/moderation.js';
 import { makeProfileUseCases } from '../application/profile.js';
 import { createProfilesStores } from './pg/stores.js';
 import { createCardCache } from './redis/card-cache.js';
@@ -45,7 +46,7 @@ export function buildProfilesHandlers(deps) {
   const useCases = makeProfileUseCases(deps);
   return {
     useCases,
-    queries: makeCardQueries(deps),
+    queries: { ...makeCardQueries(deps), ...makeProfileModeration(deps) },
     consumers: makeProfileConsumers({ ...deps, createEmptyProfile: useCases.createEmptyProfile }),
   };
 }

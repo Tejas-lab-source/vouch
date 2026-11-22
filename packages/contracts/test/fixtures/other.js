@@ -386,6 +386,20 @@ export const pipelineFixtures = {
     valid: [{ verdict: 'review', reasons: ['suggestive'], provider: 'dev' }],
     invalid: [{ verdict: 'unsure', reasons: [], provider: 'dev' }],
   },
+  'pipeline.safety.reportEvidence.input': {
+    valid: [
+      { reporterId: s.ID, targetId: s.ID2, context: 'chat', conversationId: s.ID },
+      { reporterId: s.ID, targetId: s.ID2, context: 'profile', conversationId: null },
+    ],
+    invalid: [{ reporterId: s.ID, targetId: s.ID2, context: 'feed', conversationId: null }],
+  },
+  'pipeline.safety.reportEvidence.output': {
+    valid: [
+      { messages: [s.message], refuse: null },
+      { messages: [], refuse: 'NOT_A_MEMBER' },
+    ],
+    invalid: [{ messages: [], refuse: 'BLOCKED' }],
+  },
   'pipeline.profiles.cardFields.input': { valid: [s.card], invalid: [{ ...s.card, photos: [] }] },
   'pipeline.profiles.cardFields.output': { valid: [s.card], invalid: [{ ...s.card, extra: true }] },
 };

@@ -62,6 +62,11 @@ export function createS3Storage({ endpoint, accountId, accessKeyId, secretAccess
         },
       ),
 
+    presignGet: ({ key, expiresInSeconds }) =>
+      getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+        expiresIn: expiresInSeconds,
+      }),
+
     head: async (key) => {
       try {
         const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));

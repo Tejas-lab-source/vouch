@@ -1,5 +1,5 @@
 // @ts-check
-import { defineSection } from '@vouch/contracts';
+import { defineSection, JOBS } from '@vouch/contracts';
 import { z } from 'zod';
 
 /** Any function (loaders, factories). */
@@ -199,7 +199,9 @@ export async function bootModules({ modules, role, platform, pipelines }) {
       for (const [name, load] of Object.entries(module.jobs?.handlers ?? {})) {
         result.jobs.push({
           module: module.name,
-          queue: module.jobs?.queue ?? 'fast',
+          // The contract names each job's queue (enqueue uses it too); the module's queue is
+          // the fallback for jobs outside the contracts (tests).
+          queue: new Map(Object.entries(JOBS)).get(name)?.queue ?? module.jobs?.queue ?? 'fast',
           name,
           handler: await load(ctx),
         });

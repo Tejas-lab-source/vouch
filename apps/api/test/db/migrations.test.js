@@ -20,6 +20,7 @@ const EXPECTED_MIGRATIONS = [
   '20261122003100_upload_photo_key',
   '20261122003200_upload_in_review',
   '20261122100000_identity_banned_emails',
+  '20261122100100_upload_review_queue',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */

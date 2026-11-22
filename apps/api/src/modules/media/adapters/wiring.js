@@ -54,6 +54,7 @@ export function buildMediaDeps(ctx) {
     randomKey: () => randomBytes(16).toString('base64url'),
     lockKey,
     logger: logger.child({ module: 'media' }),
+    metrics: ctx.metrics,
   };
 }
 

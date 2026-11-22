@@ -1,7 +1,7 @@
 // @ts-check
 import { z } from 'zod';
 import { AGE, Gender, ImageContentType, InterestedIn, MessageKind } from '../common/codes.js';
-import { ProfileCard } from '../common/entities.js';
+import { Message, ProfileCard } from '../common/entities.js';
 import { AppErrorCode } from '../common/errors.js';
 import { Timestamp, Uuidv7 } from '../common/ids.js';
 
@@ -104,6 +104,27 @@ export const PIPELINES = Object.freeze(
           reasons: z.array(z.string().max(100)).max(20),
           provider: z.string().min(1).max(40),
         }),
+      },
+      {
+        name: 'safety.reportEvidence',
+        owner: 'safety',
+        failClosed: true,
+        stepTimeoutMs: 2000,
+        input: z.strictObject({
+          reporterId: Uuidv7,
+          targetId: Uuidv7,
+          context: z.enum(['profile', 'chat']),
+          conversationId: Uuidv7.nullable(),
+        }),
+        output: z
+          .strictObject({
+            messages: z.array(Message).max(20),
+            refuse: z.enum(['NOT_A_MEMBER']).nullable(),
+          })
+          .describe(
+            'Phase 10: chat contributes the last 20 messages of a chat report, or refuses ' +
+              'when the reporter and target are not that conversation’s members.',
+          ),
       },
       {
         name: 'profiles.cardFields',
