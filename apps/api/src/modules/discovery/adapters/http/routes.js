@@ -1,6 +1,7 @@
 // @ts-check
 import { getDeck } from '@vouch/contracts';
 import { contractRoute } from '../../../../platform/routes.js';
+import { clientIpOf } from '../../../../platform/client-ip.js';
 
 /**
  * HTTP adapter for discovery.
@@ -11,7 +12,10 @@ export function discoveryRoutes(handlers) {
   return async (app) => {
     app.route(
       contractRoute(getDeck, async (request) =>
-        handlers.getDeck({}, { actor: /** @type {any} */ (request).user ?? null, ip: request.ip }),
+        handlers.getDeck(
+          {},
+          { actor: /** @type {any} */ (request).user ?? null, ip: clientIpOf(request) },
+        ),
       ),
     );
   };

@@ -7229,6 +7229,22 @@
         "additionalProperties": false
       }
     },
+    "matching.flushPasses": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "matching.retentionTick": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
     "matching.purgePasses": {
       "queue": "bulk",
       "payload": {

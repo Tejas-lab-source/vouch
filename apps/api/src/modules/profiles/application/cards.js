@@ -91,5 +91,9 @@ export function makeCardQueries({ read, identity, media, cards, pipelines, clock
     return { profile: { ...view, birthDate: data.profile.birthDate } };
   }
 
-  return { getCards, exportFor };
+  /** @param {string} userId */
+  const isActive = async (userId) =>
+    (await read((stores) => stores.profiles.find(userId)))?.status === 'active';
+
+  return { getCards, exportFor, isActive };
 }

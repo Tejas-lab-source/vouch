@@ -49,6 +49,19 @@ export const JOBS = Object.freeze(
         }),
       }),
       defineJob({
+        name: 'matching.flushPasses',
+        queue: 'bulk',
+        description:
+          'Every 5 s (or at 500 buffered): move buffered passes into writePasses batches.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
+        name: 'matching.retentionTick',
+        queue: 'bulk',
+        description: 'Nightly: queue one purgePasses job per swipes partition.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
         name: 'matching.purgePasses',
         queue: 'bulk',
         description: 'Delete passes older than the cutoff in one partition, 5,000 rows per batch.',

@@ -11,6 +11,7 @@ import {
   verifyOtp,
 } from '@vouch/contracts';
 import { contractRoute } from '../../../../platform/routes.js';
+import { clientIpOf } from '../../../../platform/client-ip.js';
 
 export const REFRESH_COOKIE = 'vouch_refresh';
 
@@ -45,7 +46,7 @@ function contextOf(request) {
   return {
     actor: request.user ?? null,
     idempotencyKey: typeof key === 'string' ? key : undefined,
-    ip: request.ip,
+    ip: clientIpOf(request),
     refreshCookie: request.cookies?.vouch_refresh,
   };
 }

@@ -28,6 +28,8 @@ const DEFAULT_MESSAGES = /** @type {const} */ ({
   REFRESH_TOKEN_INVALID: 'Your session has ended. Sign in again.',
   REFRESH_TOKEN_REUSED: 'Your session has ended. Sign in again.',
   ACCOUNT_BANNED: 'This account has been suspended.',
+  NOT_SERVED: 'Swipe on people from your deck.',
+  NOT_MATCHED: 'This match has ended.',
 });
 
 const MESSAGES_BY_CODE = new Map(Object.entries(DEFAULT_MESSAGES));

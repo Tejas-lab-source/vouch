@@ -9,6 +9,7 @@ other modules show. Photo files are owned by media; profiles stores only their o
 | --------------- | ------------------------------------------------------------------------- |
 | `getCards(ids)` | `ProfileCard`s of active profiles, in the order asked; others are skipped |
 | `getCard(id)`   | One card or `null`                                                        |
+| `isActive(id)`  | Whether the profile is active (Phase 8: swipes)                           |
 
 Cards are cached in Redis as `profiles:card:{userId}` for 10 minutes and invalidated on every
 change. The `profiles.cardFields` pipeline (owned here, empty in v1) runs on every read, after

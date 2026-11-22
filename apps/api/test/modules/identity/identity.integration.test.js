@@ -390,7 +390,10 @@ describe('identity module (ROLE=all, real Postgres and Redis)', () => {
   }, 30_000);
 
   it('rate limits trigger at their thresholds (configurable)', async () => {
+    // Clients are told apart by X-Forwarded-For, believed only from a trusted proxy (ADR 0015):
+    // the injected requests come from 127.0.0.1, which plays the proxy here.
     const limited = await start({
+      TRUSTED_PROXIES: '127.0.0.1',
       RATE_LIMIT_OTP_EMAIL_15M: '2',
       RATE_LIMIT_OTP_DEVICE_HOUR: '3',
       RATE_LIMIT_OTP_IP_HOUR: '6',

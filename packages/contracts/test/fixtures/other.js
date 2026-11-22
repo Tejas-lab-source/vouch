@@ -280,6 +280,8 @@ export const jobFixtures = {
     valid: [{ partition: 15, olderThan: s.TS }],
     invalid: [{ partition: 16, olderThan: s.TS }],
   },
+  'job.matching.flushPasses': { valid: [{}], invalid: [{ now: true }] },
+  'job.matching.retentionTick': { valid: [{}], invalid: [{ partition: 1 }] },
   'job.media.retentionTick': { valid: [{}], invalid: [{ olderThan: 'now' }] },
   'job.media.processImage': {
     valid: [{ uploadId: s.ID, userId: s.ID2 }],
@@ -408,6 +410,7 @@ export const envFixtures = {
         PORT: '8080',
         DATABASE_PREPARE: 'false',
         CORS_ORIGINS: 'https://a.example.com, https://b.example.com',
+        TRUSTED_PROXIES: '10.0.0.0/8, 203.0.113.7, 2001:db8::/32',
       },
       {
         ...baseEnv,
@@ -438,6 +441,8 @@ export const envFixtures = {
       { ...baseEnv, MODERATION_PROVIDER: 'rekognition', MODERATION_API_KEY: 'k' },
       { ...baseEnv, MODERATION_REVIEW_CONFIDENCE: '90' },
       { ...baseEnv, MODERATION_AWS_REGION: 'mumbai' },
+      { ...baseEnv, TRUSTED_PROXIES: '10.0.0.0/8, not-an-ip' },
+      { ...baseEnv, RATE_LIMIT_USER_MINUTE: '0' },
     ],
   },
 };

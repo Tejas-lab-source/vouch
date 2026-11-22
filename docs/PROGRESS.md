@@ -11,8 +11,8 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 4   | Backend platform kernel                                                 | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-04.md |
 | 5   | Identity and authentication                                             | Approved    | 2026-11-21     | 2026-11-22         | phases/PHASE-05.md |
 | 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-06.md |
-| 7   | Safety core and discovery engine                                        | Report sent | 2026-11-22     | —                  | phases/PHASE-07.md |
-| 8   | Matching                                                                | Not started | —              | —                  | —                  |
+| 7   | Safety core and discovery engine                                        | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-07.md |
+| 8   | Matching                                                                | Report sent | 2026-11-22     | —                  | phases/PHASE-08.md |
 | 9   | Realtime chat                                                           | Not started | —              | —                  | —                  |
 | 10  | Notifications, moderation and admin backend                             | Not started | —              | —                  | —                  |
 | 11  | Frontend foundation                                                     | Not started | —              | —                  | —                  |
@@ -48,6 +48,9 @@ Owner instructions recorded here so the phase that owns them picks them up.
   - `user.unbanned.v1` and the unban flow.
   - Ban evasion across deletion: a banned user who deletes their account must not be able to
     sign up again with the same email after the 30-day erasure.
+- **Phase 12 — likes count (owner, 2026-11-22, Phase 8 plan):** add
+  `GET /v1/me/likes/count` (additive) over matching's `likesIn` use case (a count only, never
+  identities).
 - **Phase 12 — photos on the client (owner, 2026-11-22, from the Phase 6 plan):**
   - Photo reordering (no endpoint exists yet; add one additively when the screen needs it).
   - Resize photos on the client to at most 2048 px on the long edge before upload.
@@ -75,3 +78,8 @@ Owner instructions recorded here so the phase that owns them picks them up.
   - Moderation (owner, 2026-11-22, Phase 7 plan): with real AWS keys, confirm that Rekognition
     content moderation (`DetectModerationLabels`, `DetectFaces`) runs in `ap-south-1` (Mumbai)
     and confirm its current pricing.
+  - Client IP trust (owner, 2026-11-22, from the Phase 7 report): set `TRUSTED_PROXIES` to the
+    real proxy ranges, so the forwarded client IP (`CF-Connecting-IP` or `X-Forwarded-For`) is
+    used only for requests from them: Cloudflare's published IPv4 and IPv6 ranges
+    (cloudflare.com/ips) and Render's load-balancer addresses. Locally the list is empty, so the
+    socket address is used. The mechanism ships in Phase 8.

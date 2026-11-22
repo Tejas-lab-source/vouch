@@ -88,34 +88,51 @@ export function bearerToken(header) {
 }
 
 /**
- * Fastify plugin: authenticates each request according to its route's `config.auth`
- * (`public`, `optional`, `user` or `admin`) and sets `request.user`.
- * Admin routes also require MFA and, when configured, an allowlisted IP.
- * @param {{ verifier: TokenVerifier, adminIpAllowlist?: string[] }} options
+ * Fastify hooks for authentication, split in two so the global rate limiter runs between them
+ * (ADR 0015): `authenticate` (onRequest) sets `request.user`, or records why the request is
+ * not authenticated without rejecting it yet; `enforce` (preHandler) rejects it. A request
+ * with a missing or bad token is therefore counted against its client IP before it fails.
+ * Admin routes also require MFA and, when configured, an allowlisted client IP.
+ * @param {{ verifier: TokenVerifier, adminIpAllowlist?: string[], clientIp?: (request: import('fastify').FastifyRequest) => string }} options
  */
-export function authHook({ verifier, adminIpAllowlist = [] }) {
+export function authHooks({ verifier, adminIpAllowlist = [], clientIp = (r) => r.ip }) {
   /**
-   * @param {import('fastify').FastifyRequest & { user?: Principal | null }} request
+   * @param {import('fastify').FastifyRequest & { user?: Principal | null, authError?: unknown }} request
    */
-  return async (request) => {
+  const decide = async (request) => {
     const mode =
       /** @type {{ auth?: string }} */ (request.routeOptions.config ?? {}).auth ?? 'public';
-    request.user = null;
-    if (mode === 'public') return;
+    if (mode === 'public') return null;
     const token = bearerToken(request.headers.authorization);
     if (!token) {
-      if (mode === 'optional') return;
+      if (mode === 'optional') return null;
       throw new AppError('UNAUTHENTICATED');
     }
     if (mode === 'admin') {
-      if (adminIpAllowlist.length > 0 && !adminIpAllowlist.includes(request.ip)) {
+      if (adminIpAllowlist.length > 0 && !adminIpAllowlist.includes(clientIp(request))) {
         throw new AppError('IP_NOT_ALLOWED');
       }
       const principal = await verifier.verify(token, AUDIENCE.ADMIN);
       if (!principal.mfa) throw new AppError('MFA_REQUIRED');
-      request.user = principal;
-      return;
+      return principal;
     }
-    request.user = await verifier.verify(token, AUDIENCE.USER);
+    return verifier.verify(token, AUDIENCE.USER);
+  };
+
+  return {
+    /** @param {import('fastify').FastifyRequest & { user?: Principal | null, authError?: unknown }} request */
+    authenticate: async (request) => {
+      request.user = null;
+      request.authError = undefined;
+      try {
+        request.user = await decide(request);
+      } catch (error) {
+        request.authError = error;
+      }
+    },
+    /** @param {import('fastify').FastifyRequest & { authError?: unknown }} request */
+    enforce: async (request) => {
+      if (request.authError) throw request.authError;
+    },
   };
 }

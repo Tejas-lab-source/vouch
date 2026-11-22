@@ -88,6 +88,24 @@ export const EnvSchema = z
     JWT_ACTIVE_KID: z.string().min(1),
     COOKIE_SECRET: secret,
     CORS_ORIGINS: csv.pipe(z.array(z.url())).default([]),
+    TRUSTED_PROXIES: csv
+      .pipe(z.array(z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])))
+      .default([])
+      .describe(
+        'Proxies whose forwarded client IP is believed (ADR 0015). Empty: the socket address.',
+      ),
+    RATE_LIMIT_USER_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(300)
+      .describe('Global limit per signed-in user, per minute.'),
+    RATE_LIMIT_IP_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1000)
+      .describe('Global limit per client IP for unauthenticated or rejected requests, per minute.'),
     ADMIN_IP_ALLOWLIST: csv.optional(),
 
     // Object storage (Cloudflare R2; SeaweedFS locally, ADR 0012)
