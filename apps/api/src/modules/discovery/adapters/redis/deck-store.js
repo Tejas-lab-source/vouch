@@ -19,7 +19,9 @@ const EXPOSURE_TTL_SECONDS = 48 * 3600;
 export function createDeckStore({ redis }) {
   return {
     write: async (uid, ids) => {
-      const batch = redis.multi().del(deckKey(uid), servedKey(uid));
+      // The served set is kept: it has its own 24-hour TTL, and a rebuild queued right after a
+      // page was served (a refill) must not make those cards unswipeable (NOT_SERVED).
+      const batch = redis.multi().del(deckKey(uid));
       if (ids.length > 0) batch.rpush(deckKey(uid), ...ids).expire(deckKey(uid), DECK.ttlSeconds);
       await batch.exec();
     },
