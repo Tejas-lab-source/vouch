@@ -151,6 +151,14 @@ Owner instructions recorded here so the phase that owns them picks them up.
 - **Phase 13 — blocked users screen (owner, 2026-11-22, Phase 7 plan):** user routes for
   `listBlocked` (and admin `unblock` in Phase 10) are not built yet; add them additively when
   the settings screen needs them.
+- **Phase 14 — gateway memory per socket (owner, 2026-11-22, from the Phase 9 report):**
+  - Investigate gateway memory per socket: Phase 9 measured about 350–380 MB with 250 sockets
+    (about 0.8 MB per socket), against the design assumption of about 30 KB.
+  - Measure idle sockets separately from the load test's own overhead.
+  - Check per-message compression and buffer settings.
+  - Target: under 100 KB per idle socket, so a 512 MB beta server can hold the expected 600
+    concurrent sockets.
+  - Report the findings and any fix.
 - **Phase 14 — session revocation (owner, 2026-11-22):** check the session on sensitive routes,
   so a revoked session's access token (valid up to 15 minutes) cannot use them.
 - **Phase 15 — deploy and runtime (owner, 2026-11-21, from the Phase 4 report):**
