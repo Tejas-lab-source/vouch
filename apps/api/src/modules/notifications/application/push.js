@@ -43,13 +43,22 @@ export function makePush(deps) {
    * Decides whether a push goes out, logs the delivery and enqueues `notifications.sendPush`.
    * `dedupeKey` makes redelivered events no-ops; `from` is the other user (block cancel check).
    * `batched` logs a message push that fell inside the batching window as suppressed.
+   * `scope` is a consumer's transaction (its stores); the job is enqueued before that commits
+   * and `send` retries until the delivery row is visible.
    * @param {{ userId: string, template: string, params: Record<string, string>, dedupeKey: string, from?: string, batched?: boolean }} input
+   * @param {{ stores: import('../ports.js').NotificationStores }} [scope]
    * @returns {Promise<'queued' | 'suppressed' | 'duplicate'>}
    */
-  async function queue({ userId, template, params, dedupeKey, from, batched = false }) {
+  async function queue({ userId, template, params, dedupeKey, from, batched = false }, scope) {
     const definition = templates.get(template);
     if (!definition) throw new Error(`unknown notification template ${template}`);
-    const prefs = prefsView(await read((stores) => stores.prefs.find(userId)));
+    // Inside a consumer, everything uses the consumer's transaction (one pooled connection):
+    // the inbox row and the delivery row commit together.
+    /** @type {<T>(fn: (stores: import('../ports.js').NotificationStores) => Promise<T>) => Promise<T>} */
+    const inTx = scope ? (fn) => fn(scope.stores) : (fn) => uow.run(({ stores }) => fn(stores));
+    const prefs = prefsView(
+      await (scope ? scope.stores.prefs.find(userId) : read((stores) => stores.prefs.find(userId))),
+    );
     const now = clock.now();
     const suppressedBy = batched
       ? 'batched'
@@ -59,7 +68,7 @@ export function makePush(deps) {
           ? 'quiet_hours'
           : null;
     const id = newId();
-    const inserted = await uow.run(({ stores }) =>
+    const inserted = await inTx((stores) =>
       stores.deliveries.insert({
         id,
         userId,
@@ -90,7 +99,9 @@ export function makePush(deps) {
   async function send({ deliveryId, userId, template, params }) {
     const { from, ...visible } = params;
     const delivery = await read((stores) => stores.deliveries.find(deliveryId));
-    if (!delivery || delivery.status !== 'queued') return 'finished';
+    // Queued from a consumer whose transaction has not committed yet: retry (with backoff).
+    if (!delivery) throw new Error('delivery not visible yet');
+    if (delivery.status !== 'queued') return 'finished';
     /** @param {'sent' | 'failed' | 'cancelled'} status @param {string | null} errorCode @param {string | null} [ticketId] */
     const finish = (status, errorCode, ticketId = null) =>
       uow.run(({ stores }) =>

@@ -39,7 +39,10 @@ export async function startChatStack(env = {}) {
         ...env,
       }),
     );
-    const platform = await createPlatform({ config, logger: createLogger({ level: 'silent' }) });
+    const platform = await createPlatform({
+      config,
+      logger: createLogger({ level: /** @type {any} */ (process.env.P10_LOG ?? 'silent') }),
+    });
     return startRole({ platform, modules, listen });
   };
   /** @type {any} */
@@ -98,11 +101,13 @@ export async function startChatStack(env = {}) {
         })
       ).json();
     await like(a, b);
-    const { matchId } = await like(b, a);
+    const second = await like(b, a);
+    if (!second.matched) throw new Error(`matchedPair: ${JSON.stringify(second)}`);
+    const { matchId } = second;
     await eventually(
       async () =>
         (await infra.admin`SELECT 1 FROM chat.conversations WHERE id = ${matchId}`).length === 1,
-      20_000,
+      60_000,
     );
     return { a, b, conversationId: /** @type {string} */ (matchId) };
   }

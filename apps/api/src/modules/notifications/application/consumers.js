@@ -13,16 +13,20 @@ export function makeNotificationConsumers(deps) {
      * `match.created.v1`: one push to the user who liked first (the other just saw the match
      * on screen).
      * @param {{ matchId: string, firstLikerId: string, userLow: string, userHigh: string }} payload
+     * @param {{ tx: import('postgres').TransactionSql }} context
      */
-    async onMatchCreated(payload) {
+    async onMatchCreated(payload, { tx }) {
       const other = payload.firstLikerId === payload.userLow ? payload.userHigh : payload.userLow;
-      await queue({
-        userId: payload.firstLikerId,
-        template: 'match.new',
-        params: { matchId: payload.matchId },
-        dedupeKey: `match:${payload.matchId}`,
-        from: other,
-      });
+      await queue(
+        {
+          userId: payload.firstLikerId,
+          template: 'match.new',
+          params: { matchId: payload.matchId },
+          dedupeKey: `match:${payload.matchId}`,
+          from: other,
+        },
+        { stores: storesFor(tx) },
+      );
     },
 
     /**
@@ -30,19 +34,23 @@ export function makeNotificationConsumers(deps) {
      * offline, at most once per conversation per `PUSH_MESSAGE_BATCH_SECONDS` (30 s) — later
      * messages in the window are logged as suppressed.
      * @param {{ conversationId: string, seq: number, senderId: string, recipientId: string }} payload
+     * @param {{ tx: import('postgres').TransactionSql }} context
      */
-    async onMessageCreated(payload) {
+    async onMessageCreated(payload, { tx }) {
       if (await chat.isActiveRecently(payload.recipientId)) return;
       const windowKey = `notifications:batch:${payload.recipientId}:${payload.conversationId}`;
       const first = await redis.set(windowKey, '1', 'EX', settings.messageBatchSeconds, 'NX');
-      await queue({
-        userId: payload.recipientId,
-        template: 'message.new',
-        params: { conversationId: payload.conversationId },
-        dedupeKey: `message:${payload.conversationId}:${payload.seq}`,
-        from: payload.senderId,
-        batched: first !== 'OK',
-      });
+      await queue(
+        {
+          userId: payload.recipientId,
+          template: 'message.new',
+          params: { conversationId: payload.conversationId },
+          dedupeKey: `message:${payload.conversationId}:${payload.seq}`,
+          from: payload.senderId,
+          batched: first !== 'OK',
+        },
+        { stores: storesFor(tx) },
+      );
     },
 
     /**

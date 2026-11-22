@@ -14,6 +14,7 @@ import { createIdGenerator } from './ids.js';
 import { createIdempotencyStore } from './idempotency.js';
 import { createJobs } from './jobs.js';
 import { configRoute } from './config-route.js';
+import { createSemaphore } from './semaphore.js';
 import { CONSISTENCY_CRON, createConsistencyCheck } from './jobs/consistency.js';
 import { createMetrics, startMetricsServer } from './metrics.js';
 import { createPipelines } from './pipelines.js';
@@ -102,6 +103,11 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
  */
 async function startWorkers(platform, boot, events) {
   const { db, jobs, logger } = platform;
+  // Half the pool for consumer transactions; the rest stays free for the reads they make
+  // through other modules' APIs and for jobs (see events/consume.js).
+  const consumerSlots = createSemaphore(
+    Math.max(1, Math.floor(platform.config.DATABASE_POOL_MAX / 2)),
+  );
 
   /** @type {Map<string, Record<string, (job: any) => Promise<unknown>>>} */
   const byQueue = new Map();
@@ -124,6 +130,7 @@ async function startWorkers(platform, boot, events) {
         consumer: module,
         event: definition,
         handler: /** @type {any} */ (handler),
+        slots: consumerSlots,
       }),
     );
   }
