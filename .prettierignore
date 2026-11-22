@@ -6,3 +6,4 @@ coverage/
 .turbo/
 packages/contracts/openapi.json
 packages/contracts/schemas.json
+packages/ui-web/styles.css

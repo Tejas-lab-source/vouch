@@ -41,8 +41,7 @@
   --type-display-size: 28px;
   --type-display-line: 36px;
   --type-display-weight: 700;
-  --font-family:
-    system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
   --motion-fast: 120ms;
   --motion-base: 200ms;
   --motion-slow: 320ms;
