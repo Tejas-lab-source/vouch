@@ -3,23 +3,23 @@
 Status values: `Not started`, `Plan sent`, `In progress`, `Report sent`, `Approved`.
 See `docs/ROADMAP.md` Part A for the approval protocol.
 
-| #   | Phase                                                                   | Status      | Start approved | Completed approved | Report             |
-| --- | ----------------------------------------------------------------------- | ----------- | -------------- | ------------------ | ------------------ |
-| 1   | Repository foundation and tooling                                       | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-01.md |
-| 2   | Database architecture and migrations                                    | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-02.md |
-| 3   | API, event and socket contracts                                         | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-03.md |
-| 4   | Backend platform kernel                                                 | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-04.md |
-| 5   | Identity and authentication                                             | Approved    | 2026-11-21     | 2026-11-22         | phases/PHASE-05.md |
-| 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-06.md |
-| 7   | Safety core and discovery engine                                        | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-07.md |
-| 8   | Matching                                                                | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-08.md |
-| 9   | Realtime chat                                                           | In progress | 2026-11-22     | —                  | phases/PHASE-09.md |
-| 10  | Notifications, moderation and admin backend                             | Not started | —              | —                  | —                  |
-| 11  | Frontend foundation                                                     | Not started | —              | —                  | —                  |
-| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Not started | —              | —                  | —                  |
-| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Not started | —              | —                  | —                  |
-| 14  | End-to-end testing, security, privacy and performance                   | Not started | —              | —                  | —                  |
-| 15  | Deployment, observability and closed beta launch                        | Not started | —              | —                  | —                  |
+| #   | Phase                                                                   | Status                          | Start approved     | Completed approved | Report             |
+| --- | ----------------------------------------------------------------------- | ------------------------------- | ------------------ | ------------------ | ------------------ |
+| 1   | Repository foundation and tooling                                       | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-01.md |
+| 2   | Database architecture and migrations                                    | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-02.md |
+| 3   | API, event and socket contracts                                         | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-03.md |
+| 4   | Backend platform kernel                                                 | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-04.md |
+| 5   | Identity and authentication                                             | Approved                        | 2026-11-21         | 2026-11-22         | phases/PHASE-05.md |
+| 6   | Profiles, media and photo pipeline                                      | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-06.md |
+| 7   | Safety core and discovery engine                                        | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-07.md |
+| 8   | Matching                                                                | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-08.md |
+| 9   | Realtime chat                                                           | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-09.md |
+| 10  | Notifications, moderation and admin backend                             | Not started                     | —                  | —                  | —                  |
+| 11  | Frontend foundation                                                     | Not started                     | —                  | —                  | —                  |
+| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Not started                     | —                  | —                  | —                  |
+| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Not started                     | —                  | —                  | —                  |
+| 14  | End-to-end testing, security, privacy and performance                   | Not started                     | —                  | —                  | —                  |
+| 15  | Deployment, observability and closed beta launch                        | Not started                     | —                  | —                  | —                  |
 
 ## Batch run: Phases 9–13
 
@@ -104,13 +104,13 @@ gzipped.
 
 **Running log** (updated as the batch goes; resume from the last row after an interruption):
 
-| Phase | Status      | Last commit | CI run | Next step                               |
-| ----- | ----------- | ----------- | ------ | --------------------------------------- |
-| 9     | In progress | —           | —      | Error messages, then the socket gateway |
-| 10    | Not started | —           | —      | —                                       |
-| 11    | Not started | —           | —      | —                                       |
-| 12    | Not started | —           | —      | —                                       |
-| 13    | Not started | —           | —      | —                                       |
+| Phase | Status                          | Last commit                            | CI run                                                                                                   | Next step           |
+| ----- | ------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------- |
+| 9     | Complete — pending owner review | `9d5e6b7` (code), this report's commit | [run 57](https://github.com/Tejas-lab-source/vouch/actions/runs/44996229923) (code); report commit below | Phase 10 start plan |
+| 10    | Not started                     | —                                      | —                                                                                                        | —                   |
+| 11    | Not started                     | —                                      | —                                                                                                        | —                   |
+| 12    | Not started                     | —                                      | —                                                                                                        | —                   |
+| 13    | Not started                     | —                                      | —                                                                                                        | —                   |
 
 ## Notes for later phases
 
@@ -174,3 +174,9 @@ Owner instructions recorded here so the phase that owns them picks them up.
     used only for requests from them: Cloudflare's published IPv4 and IPv6 ranges
     (cloudflare.com/ips) and Render's load-balancer addresses. Locally the list is empty, so the
     socket address is used. The mechanism ships in Phase 8.
+  - Chat (from the Phase 9 report): re-measure gateway memory per socket on Render (about
+    0.8 MB per socket under load locally).
+- **Phases 11–13 — chat clients (from the Phase 9 report):** live delivery is best effort.
+  After every (re)connect, a client must send `sync` with its last seq per conversation,
+  merge messages by `(conversationId, seq)`, and send `auth.refresh` before the access token
+  expires (the server disconnects 60 s after expiry with `auth.expired`).
