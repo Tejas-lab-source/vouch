@@ -86,13 +86,14 @@ and INTERNAL 500. User routes add UNAUTHENTICATED 401 and ACCOUNT_BANNED 403.
 ```
 pnpm lint / format:check / typecheck / check:boundaries / contracts:check   → all exit 0
 pnpm contracts:diff --base origin/main  → No breaking contract changes against origin/main.
-pnpm test                               → 33 s
+pnpm test                               → 35 s
   @vouch/contracts  Tests 364 passed
   @vouch/config     Tests 4 passed
-  @vouch/api        Tests 206 passed (27 files) · src/platform lines 98.29%
+  @vouch/api        Tests 216 passed (27 files) · src/platform lines 98.29%
 ```
 
-The API suite also passed two more consecutive runs (206/206 each).
+The API suite also passed two more consecutive runs (216/216 each). Re-run after the rework on
+2026-11-22.
 
 Identity tests:
 
