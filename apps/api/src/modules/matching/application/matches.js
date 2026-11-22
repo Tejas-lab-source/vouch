@@ -63,7 +63,8 @@ export function makeMatches(deps) {
           ? [
               {
                 matchId: m.id,
-                conversationId: null,
+                // The conversation id is the match id (Phase 9, ADR 0017).
+                conversationId: m.id,
                 user: card,
                 createdAt: m.createdAt.toISOString(),
               },

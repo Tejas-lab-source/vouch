@@ -106,7 +106,7 @@ describe('matching (ROLE=all, the 2,000-user seed)', () => {
     const page = listMatchesEndpoint.response.schema.parse(list.json());
     expect(
       page.items.map((/** @type {any} */ m) => [m.matchId, m.user.userId, m.conversationId]),
-    ).toEqual([[matchId, b.public_id, null]]);
+    ).toEqual([[matchId, b.public_id, matchId]]);
 
     const unmatch = async () =>
       app.http.inject({
