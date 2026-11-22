@@ -48,6 +48,7 @@
       "errors": [
         "CAPTCHA_FAILED",
         "VALIDATION_FAILED",
+        "FEATURE_DISABLED",
         "EMAIL_DOMAIN_NOT_ALLOWED",
         "APP_VERSION_UNSUPPORTED",
         "RATE_LIMITED",
@@ -94,6 +95,14 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "verification": {
+              "type": "string",
+              "enum": [
+                "college_email",
+                "id_card"
+              ],
+              "description": "Omitted means college_email."
             }
           },
           "required": [
@@ -240,6 +249,12 @@
                     "purposes"
                   ],
                   "additionalProperties": false
+                },
+                "collegeId": {
+                  "description": "Required for an ID-card sign-up (any email); ignored for a college email.",
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
                 }
               },
               "required": [
@@ -247,6 +262,14 @@
                 "consent"
               ],
               "additionalProperties": false
+            },
+            "verification": {
+              "type": "string",
+              "enum": [
+                "college_email",
+                "id_card"
+              ],
+              "description": "Omitted means college_email."
             }
           },
           "required": [
@@ -3185,6 +3208,246 @@
         "additionalProperties": false
       }
     },
+    "createIdCardUploads": {
+      "module": "safety",
+      "method": "POST",
+      "path": "/v1/verification/id-card/uploads",
+      "auth": "user",
+      "idempotency": "header",
+      "status": 201,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "FORBIDDEN",
+        "CONFLICT",
+        "FILE_TOO_LARGE",
+        "UNSUPPORTED_MEDIA_TYPE",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            },
+            "idempotency-key": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$",
+              "description": "Client-generated key, typically a UUID; reused only for retries of one request."
+            }
+          },
+          "required": [
+            "x-app-version",
+            "idempotency-key"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "idCard": {
+              "type": "object",
+              "properties": {
+                "contentType": {
+                  "type": "string",
+                  "enum": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp"
+                  ]
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10485760
+                }
+              },
+              "required": [
+                "contentType",
+                "sizeBytes"
+              ],
+              "additionalProperties": false
+            },
+            "selfie": {
+              "type": "object",
+              "properties": {
+                "contentType": {
+                  "type": "string",
+                  "enum": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp"
+                  ]
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10485760
+                }
+              },
+              "required": [
+                "contentType",
+                "sizeBytes"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "idCard",
+            "selfie"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "submissionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "idCard": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "method": {
+                "type": "string",
+                "const": "PUT"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Headers the upload request must send."
+              }
+            },
+            "required": [
+              "url",
+              "method",
+              "headers"
+            ],
+            "additionalProperties": false
+          },
+          "selfie": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "method": {
+                "type": "string",
+                "const": "PUT"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Headers the upload request must send."
+              }
+            },
+            "required": [
+              "url",
+              "method",
+              "headers"
+            ],
+            "additionalProperties": false
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "submissionId",
+          "idCard",
+          "selfie",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "submitIdCard": {
+      "module": "safety",
+      "method": "POST",
+      "path": "/v1/verification/id-card",
+      "auth": "user",
+      "idempotency": "body",
+      "idempotencyField": "submissionId",
+      "status": 201,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "CONFLICT",
+        "UPLOAD_NOT_UPLOADED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "submissionId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+            }
+          },
+          "required": [
+            "submissionId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "pending"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
     "putNotificationPrefs": {
       "module": "notifications",
       "method": "PUT",
@@ -3324,6 +3587,516 @@
           "pushLikesDigest",
           "quietHours",
           "timezone"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "adminLogin": {
+      "module": "admin",
+      "method": "POST",
+      "path": "/v1/admin/auth/login",
+      "auth": "public",
+      "idempotency": "header",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "IP_NOT_ALLOWED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            },
+            "idempotency-key": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$",
+              "description": "Client-generated key, typically a UUID; reused only for retries of one request."
+            }
+          },
+          "required": [
+            "x-app-version",
+            "idempotency-key"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string",
+              "maxLength": 254,
+              "format": "email",
+              "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "totp": {
+              "type": "string",
+              "pattern": "^[0-9]{6}$"
+            }
+          },
+          "required": [
+            "email",
+            "password",
+            "totp"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "minLength": 1,
+            "description": "EdDSA JWT, audience vouch:admin, amr mfa."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "admin": {
+            "type": "object",
+            "properties": {
+              "displayName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "moderator",
+                  "admin"
+                ]
+              }
+            },
+            "required": [
+              "displayName",
+              "role"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "accessToken",
+          "expiresAt",
+          "admin"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "adminListPanels": {
+      "module": "admin",
+      "method": "GET",
+      "path": "/v1/admin/panels",
+      "auth": "admin",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "MFA_REQUIRED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "IP_NOT_ALLOWED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9.-]{1,59}$"
+                },
+                "module": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                },
+                "roles": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "moderator",
+                      "admin"
+                    ]
+                  }
+                },
+                "list": {
+                  "type": "object",
+                  "properties": {
+                    "endpoint": {
+                      "type": "string",
+                      "pattern": "^admin[A-Z][A-Za-z]{1,79}$"
+                    },
+                    "columns": {
+                      "minItems": 1,
+                      "maxItems": 12,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z][a-zA-Z0-9.]{0,79}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 60
+                          },
+                          "kind": {
+                            "default": "text",
+                            "type": "string",
+                            "enum": [
+                              "text",
+                              "timestamp",
+                              "status",
+                              "user",
+                              "image",
+                              "json"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "label",
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "endpoint",
+                    "columns"
+                  ],
+                  "additionalProperties": false
+                },
+                "detail": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "endpoint": {
+                          "type": "string",
+                          "pattern": "^admin[A-Z][A-Za-z]{1,79}$"
+                        },
+                        "fields": {
+                          "minItems": 1,
+                          "maxItems": 40,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z][a-zA-Z0-9.]{0,79}$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60
+                              },
+                              "kind": {
+                                "default": "text",
+                                "type": "string",
+                                "enum": [
+                                  "text",
+                                  "timestamp",
+                                  "status",
+                                  "user",
+                                  "image",
+                                  "json"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "label",
+                              "kind"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "endpoint",
+                        "fields"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "actions": {
+                  "maxItems": 12,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z_]{1,39}$"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "endpoint": {
+                        "type": "string",
+                        "pattern": "^admin[A-Z][A-Za-z]{1,79}$"
+                      },
+                      "body": {
+                        "default": {},
+                        "description": "Fixed body fields.",
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      "needsNote": {
+                        "default": false,
+                        "type": "boolean"
+                      },
+                      "confirm": {
+                        "default": false,
+                        "type": "boolean"
+                      },
+                      "danger": {
+                        "default": false,
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "label",
+                      "endpoint",
+                      "body",
+                      "needsNote",
+                      "confirm",
+                      "danger"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "module",
+                "title",
+                "roles",
+                "list",
+                "detail",
+                "actions"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "adminListOverdueDeletions": {
+      "module": "admin",
+      "method": "GET",
+      "path": "/v1/admin/deletions/overdue",
+      "auth": "admin",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "MFA_REQUIRED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "IP_NOT_ALLOWED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{16,32}$",
+                  "description": "Random public id of a user. Internal user UUIDs are never exposed."
+                },
+                "deletedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "pendingConsumers": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                }
+              },
+              "required": [
+                "userId",
+                "deletedAt",
+                "pendingConsumers"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "adminUnblock": {
+      "module": "admin",
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/unblock",
+      "auth": "admin",
+      "idempotency": "body",
+      "idempotencyField": "otherUserId",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "MFA_REQUIRED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "IP_NOT_ALLOWED",
+        "NOT_FOUND",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,32}$",
+              "description": "Random public id of a user. Internal user UUIDs are never exposed."
+            }
+          },
+          "required": [
+            "userId"
+          ],
+          "additionalProperties": false
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "otherUserId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,32}$",
+              "description": "Random public id of a user. Internal user UUIDs are never exposed."
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "otherUserId",
+            "note"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "unblocked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "unblocked"
         ],
         "additionalProperties": false
       }
@@ -7296,6 +8069,72 @@
         ],
         "additionalProperties": false
       }
+    },
+    "user.unbanned.v1": {
+      "producer": "safety",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "banId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "liftedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "userId",
+          "banId",
+          "liftedAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "verification.decided.v1": {
+      "producer": "safety",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "reviewId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "userId",
+          "reviewId",
+          "decision",
+          "decidedAt"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "jobs": {
@@ -7487,6 +8326,54 @@
           "template",
           "params"
         ],
+        "additionalProperties": false
+      }
+    },
+    "notifications.likesDigest": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "notifications.retentionTick": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "safety.retentionTick": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "admin.retentionTick": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "platform.consistencyCheck": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "media.reviewAlert": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
         "additionalProperties": false
       }
     },

@@ -17,8 +17,8 @@ import { defineEndpoint, EmptyBody } from './endpoint.js';
 
 /**
  * Admin routes. Every route needs an admin token (separate audience claim), MFA and, when
- * configured, an allowlisted IP. Every action writes one `admin.audit_log` entry. Admin login
- * and MFA enrolment endpoints are added in Phase 10 (additive).
+ * configured, an allowlisted IP. Every action writes one `admin.audit_log` entry. Admin
+ * accounts and their TOTP enrolment are created only by the `admin:create` script (Phase 10).
  */
 
 const ReportStatus = z.enum(['open', 'actioned', 'dismissed']);
@@ -303,7 +303,119 @@ export const putFlag = defineEndpoint({
   response: { status: 200, schema: Flag },
 });
 
+export const adminLogin = defineEndpoint({
+  id: 'adminLogin',
+  module: 'admin',
+  method: 'POST',
+  path: '/v1/admin/auth/login',
+  auth: 'public',
+  summary: 'Sign in with email, password and a TOTP code; returns an admin access token.',
+  description:
+    'Every failure answers the same UNAUTHENTICATED, whichever factor was wrong. Rate-limited ' +
+    'per email and per IP. A TOTP code is accepted once. Honours ADMIN_IP_ALLOWLIST.',
+  body: z.strictObject({
+    email: z.email().max(254),
+    password: z.string().min(1).max(200),
+    totp: z.string().regex(/^[0-9]{6}$/),
+  }),
+  response: {
+    status: 200,
+    schema: z.strictObject({
+      accessToken: z.string().min(1).describe('EdDSA JWT, audience vouch:admin, amr mfa.'),
+      expiresAt: Timestamp,
+      admin: z.strictObject({
+        displayName: z.string().min(1).max(100),
+        role: z.enum(['moderator', 'admin']),
+      }),
+    }),
+  },
+  errors: ['UNAUTHENTICATED', 'IP_NOT_ALLOWED'],
+});
+
+/** A field shown in a panel list or detail view. */
+const PanelField = z.strictObject({
+  field: z.string().regex(/^[a-zA-Z][a-zA-Z0-9.]{0,79}$/),
+  label: z.string().min(1).max(60),
+  kind: z.enum(['text', 'timestamp', 'status', 'user', 'image', 'json']).default('text'),
+});
+
+/** An action button; `endpoint` names the operationId the admin app calls. */
+const PanelAction = z.strictObject({
+  id: z.string().regex(/^[a-z][a-z_]{1,39}$/),
+  label: z.string().min(1).max(60),
+  endpoint: z.string().regex(/^admin[A-Z][A-Za-z]{1,79}$/),
+  body: z.record(z.string(), z.unknown()).default({}).describe('Fixed body fields.'),
+  needsNote: z.boolean().default(false),
+  confirm: z.boolean().default(false),
+  danger: z.boolean().default(false),
+});
+
+/** One admin panel, declared by a module manifest (`admin.panels`) and rendered generically. */
+export const AdminPanel = z.strictObject({
+  id: z.string().regex(/^[a-z][a-z0-9.-]{1,59}$/),
+  module: z.string().min(1).max(40),
+  title: z.string().min(1).max(60),
+  roles: z.array(z.enum(['moderator', 'admin'])).min(1),
+  list: z.strictObject({
+    endpoint: z.string().regex(/^admin[A-Z][A-Za-z]{1,79}$/),
+    columns: z.array(PanelField).min(1).max(12),
+  }),
+  detail: z
+    .strictObject({
+      endpoint: z.string().regex(/^admin[A-Z][A-Za-z]{1,79}$/),
+      fields: z.array(PanelField).min(1).max(40),
+    })
+    .nullable(),
+  actions: z.array(PanelAction).max(12),
+});
+
+export const listPanels = defineEndpoint({
+  id: 'adminListPanels',
+  module: 'admin',
+  method: 'GET',
+  path: '/v1/admin/panels',
+  auth: 'admin',
+  summary: 'The admin panels this admin may use, from every module’s manifest.',
+  response: { status: 200, schema: z.strictObject({ items: z.array(AdminPanel) }) },
+});
+
+/** An account deletion whose erasure has not finished everywhere. */
+export const OverdueDeletion = z.strictObject({
+  userId: PublicUserId,
+  deletedAt: Timestamp,
+  pendingConsumers: z.array(z.string().min(1).max(100)).min(1),
+});
+
+export const listOverdueDeletions = defineEndpoint({
+  id: 'adminListOverdueDeletions',
+  module: 'admin',
+  method: 'GET',
+  path: '/v1/admin/deletions/overdue',
+  auth: 'admin',
+  summary: 'Account deletions that a module has not finished erasing within 24 hours.',
+  response: { status: 200, schema: z.strictObject({ items: z.array(OverdueDeletion).max(500) }) },
+});
+
+export const unblockUsers = defineEndpoint({
+  id: 'adminUnblock',
+  module: 'admin',
+  method: 'POST',
+  path: '/v1/admin/users/{userId}/unblock',
+  auth: 'admin',
+  summary: 'Remove the block userId placed on otherUserId (for example one made in error).',
+  idempotency: 'body',
+  idempotencyField: 'otherUserId',
+  params: z.strictObject({ userId: PublicUserId }),
+  body: z.strictObject({ otherUserId: PublicUserId, note: z.string().min(1).max(500) }),
+  response: { status: 200, schema: z.strictObject({ unblocked: z.boolean() }) },
+  errors: ['NOT_FOUND'],
+});
+
 export const adminEndpoints = [
+  adminLogin,
+  listPanels,
+  listOverdueDeletions,
+  unblockUsers,
   listReports,
   getReport,
   actOnReport,

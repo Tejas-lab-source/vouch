@@ -1,7 +1,7 @@
 // @ts-check
 import { z } from 'zod';
 import { Platform } from '../common/codes.js';
-import { IsoDate, PublicUserId, Timestamp, Uuidv7 } from '../common/ids.js';
+import { CollegeId, IsoDate, PublicUserId, Timestamp, Uuidv7 } from '../common/ids.js';
 import { defineEndpoint, EmptyBody } from './endpoint.js';
 
 const Email = z.email().max(254).describe('College email address; never stored in clear.');
@@ -35,7 +35,18 @@ const SignupDetails = z.strictObject({
   birthDate: IsoDate.describe('Must make the user at least 18 today; otherwise UNDERAGE.'),
   gradYear: z.int().min(2000).max(2100).optional(),
   consent: Consent,
+  collegeId: CollegeId.optional().describe(
+    'Required for an ID-card sign-up (any email); ignored for a college email.',
+  ),
 });
+
+/**
+ * How the student proves enrolment. `id_card` (Phase 10) accepts any email; the account stays
+ * `pending_review` until staff approve a student ID and a selfie.
+ */
+const VerificationMethod = z
+  .enum(['college_email', 'id_card'])
+  .describe('Omitted means college_email.');
 
 const DeviceInfo = z.strictObject({
   platform: Platform,
@@ -67,9 +78,15 @@ export const requestOtp = defineEndpoint({
       .uuid()
       .optional()
       .describe('Client-generated install id, for per-device rate limits.'),
+    verification: VerificationMethod.optional(),
   }),
   response: { status: 200, schema: z.strictObject({ sent: z.literal(true) }) },
-  errors: ['CAPTCHA_FAILED', 'EMAIL_DOMAIN_NOT_ALLOWED', 'TEMPORARILY_UNAVAILABLE'],
+  errors: [
+    'CAPTCHA_FAILED',
+    'EMAIL_DOMAIN_NOT_ALLOWED',
+    'FEATURE_DISABLED',
+    'TEMPORARILY_UNAVAILABLE',
+  ],
 });
 
 export const verifyOtp = defineEndpoint({
@@ -91,6 +108,7 @@ export const verifyOtp = defineEndpoint({
     device: DeviceInfo,
     tokenTransport: TokenTransport,
     signup: SignupDetails.optional(),
+    verification: VerificationMethod.optional(),
   }),
   response: {
     status: 200,
