@@ -10,7 +10,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 3   | API, event and socket contracts                                         | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-03.md |
 | 4   | Backend platform kernel                                                 | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-04.md |
 | 5   | Identity and authentication                                             | Approved    | 2026-11-21     | 2026-11-22         | phases/PHASE-05.md |
-| 6   | Profiles, media and photo pipeline                                      | In progress | 2026-11-22     | —                  | —                  |
+| 6   | Profiles, media and photo pipeline                                      | Report sent | 2026-11-22     | —                  | phases/PHASE-06.md |
 | 7   | Safety core and discovery engine                                        | Not started | —              | —                  | —                  |
 | 8   | Matching                                                                | Not started | —              | —                  | —                  |
 | 9   | Realtime chat                                                           | Not started | —              | —                  | —                  |
