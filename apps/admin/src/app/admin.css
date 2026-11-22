@@ -1,0 +1,26 @@
+.a-page {
+  max-width: 24rem;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-4);
+}
+.a-shell {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+.a-header {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.a-nav {
+  border-right: 1px solid var(--color-border);
+}
+.a-main {
+  padding: var(--space-4);
+}
