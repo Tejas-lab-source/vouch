@@ -10,6 +10,7 @@
     "RATE_LIMITED": 429,
     "FEATURE_DISABLED": 403,
     "INTERNAL": 500,
+    "TEMPORARILY_UNAVAILABLE": 503,
     "CAPTCHA_FAILED": 400,
     "EMAIL_DOMAIN_NOT_ALLOWED": 422,
     "OTP_INVALID": 400,
@@ -50,7 +51,8 @@
         "EMAIL_DOMAIN_NOT_ALLOWED",
         "APP_VERSION_UNSUPPORTED",
         "RATE_LIMITED",
-        "INTERNAL"
+        "INTERNAL",
+        "TEMPORARILY_UNAVAILABLE"
       ],
       "request": {
         "headers": {
@@ -86,6 +88,12 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 2048
+            },
+            "deviceId": {
+              "description": "Client-generated install id, for per-device rate limits.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           "required": [
@@ -121,12 +129,14 @@
         "OTP_INVALID",
         "VALIDATION_FAILED",
         "ACCOUNT_BANNED",
+        "FORBIDDEN",
         "SIGNUP_DETAILS_REQUIRED",
         "UNDERAGE",
         "APP_VERSION_UNSUPPORTED",
         "OTP_ATTEMPTS_EXHAUSTED",
         "RATE_LIMITED",
-        "INTERNAL"
+        "INTERNAL",
+        "TEMPORARILY_UNAVAILABLE"
       ],
       "request": {
         "headers": {
@@ -331,7 +341,8 @@
         "ACCOUNT_BANNED",
         "APP_VERSION_UNSUPPORTED",
         "RATE_LIMITED",
-        "INTERNAL"
+        "INTERNAL",
+        "TEMPORARILY_UNAVAILABLE"
       ],
       "request": {
         "headers": {
@@ -595,6 +606,217 @@
         },
         "required": [
           "registered"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "logout": {
+      "module": "identity",
+      "method": "POST",
+      "path": "/v1/auth/logout",
+      "auth": "user",
+      "idempotency": "header",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            },
+            "idempotency-key": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$",
+              "description": "Client-generated key, typically a UUID; reused only for retries of one request."
+            }
+          },
+          "required": [
+            "x-app-version",
+            "idempotency-key"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "loggedOut": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "loggedOut"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "listDevices": {
+      "module": "identity",
+      "method": "GET",
+      "path": "/v1/me/devices",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                  "description": "Device id (UUIDv7); only ever shown to its owner."
+                },
+                "platform": {
+                  "type": "string",
+                  "enum": [
+                    "ios",
+                    "android",
+                    "web"
+                  ]
+                },
+                "appVersion": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "lastSeenAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "current": {
+                  "type": "boolean",
+                  "description": "True for the device making this request."
+                }
+              },
+              "required": [
+                "id",
+                "platform",
+                "appVersion",
+                "createdAt",
+                "lastSeenAt",
+                "current"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "revokeDevice": {
+      "module": "identity",
+      "method": "DELETE",
+      "path": "/v1/me/devices/{id}",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "NOT_FOUND",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "revoked": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "revoked"
         ],
         "additionalProperties": false
       }
@@ -5543,6 +5765,7 @@
                         "RATE_LIMITED",
                         "FEATURE_DISABLED",
                         "INTERNAL",
+                        "TEMPORARILY_UNAVAILABLE",
                         "CAPTCHA_FAILED",
                         "EMAIL_DOMAIN_NOT_ALLOWED",
                         "OTP_INVALID",
@@ -5788,6 +6011,7 @@
                         "RATE_LIMITED",
                         "FEATURE_DISABLED",
                         "INTERNAL",
+                        "TEMPORARILY_UNAVAILABLE",
                         "CAPTCHA_FAILED",
                         "EMAIL_DOMAIN_NOT_ALLOWED",
                         "OTP_INVALID",
@@ -6863,6 +7087,32 @@
         "additionalProperties": false
       }
     },
+    "identity.retention": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "task": {
+            "type": "string",
+            "enum": [
+              "sessions",
+              "devices",
+              "deletedUsers"
+            ]
+          },
+          "olderThan": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "task",
+          "olderThan"
+        ],
+        "additionalProperties": false
+      }
+    },
     "platform.retention": {
       "queue": "bulk",
       "payload": {
@@ -7448,6 +7698,7 @@
                   "RATE_LIMITED",
                   "FEATURE_DISABLED",
                   "INTERNAL",
+                  "TEMPORARILY_UNAVAILABLE",
                   "CAPTCHA_FAILED",
                   "EMAIL_DOMAIN_NOT_ALLOWED",
                   "OTP_INVALID",

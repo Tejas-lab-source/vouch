@@ -9,8 +9,15 @@ import * as s from './samples.js';
 export const httpFixtures = {
   // identity
   'requestOtp.body': {
-    valid: [{ email: 'student@northfield.example.edu', turnstileToken: 'tok' }],
-    invalid: [{ email: 'not-an-email', turnstileToken: 'tok' }, { email: 'a@b.edu' }],
+    valid: [
+      { email: 'student@northfield.example.edu', turnstileToken: 'tok' },
+      { email: 'student@northfield.example.edu', turnstileToken: 'tok', deviceId: s.UUID4 },
+    ],
+    invalid: [
+      { email: 'not-an-email', turnstileToken: 'tok' },
+      { email: 'a@b.edu' },
+      { email: 'a@b.edu', turnstileToken: 'tok', deviceId: 'phone' },
+    ],
   },
   'requestOtp.response': {
     valid: [{ sent: true }],
@@ -66,6 +73,42 @@ export const httpFixtures = {
     invalid: [{ pushToken: 'ExponentPushToken[abc]', platform: 'windows' }],
   },
   'registerDevice.response': { valid: [{ registered: true }], invalid: [{}] },
+  'logout.body': { valid: [{}], invalid: [{ everywhere: true }] },
+  'logout.response': { valid: [{ loggedOut: true }], invalid: [{ loggedOut: false }] },
+  'listDevices.response': {
+    valid: [
+      {
+        items: [
+          {
+            id: s.ID,
+            platform: 'ios',
+            appVersion: '1.0.0',
+            createdAt: s.TS,
+            lastSeenAt: s.TS,
+            current: true,
+          },
+        ],
+      },
+      { items: [] },
+    ],
+    invalid: [
+      {
+        items: [
+          {
+            id: s.ID,
+            platform: 'ios',
+            appVersion: null,
+            createdAt: s.TS,
+            lastSeenAt: s.TS,
+            current: true,
+            pushToken: 'x',
+          },
+        ],
+      },
+    ],
+  },
+  'revokeDevice.params': { valid: [{ id: s.ID }], invalid: [{ id: s.UUID4 }] },
+  'revokeDevice.response': { valid: [{ revoked: true }], invalid: [{ revoked: 'yes' }] },
 
   // platform
   'getConfig.response': {

@@ -80,6 +80,15 @@ export const JOBS = Object.freeze(
         }),
       }),
       defineJob({
+        name: 'identity.retention',
+        queue: 'bulk',
+        description: 'Purge expired or revoked sessions, revoked devices and erased accounts.',
+        payload: z.strictObject({
+          task: z.enum(['sessions', 'devices', 'deletedUsers']),
+          olderThan: Timestamp,
+        }),
+      }),
+      defineJob({
         name: 'platform.retention',
         queue: 'bulk',
         description: 'Run one nightly retention task (see docs/data-model.md, Retention).',

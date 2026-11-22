@@ -52,6 +52,15 @@ export const EnvSchema = z
       .default(25000)
       .describe('Graceful drain on SIGTERM; finishes before the host 30 s kill.'),
 
+    // Identity rate limits. Campuses share one public IP, so per-IP limits are high
+    // (ADR 0011); per-email and per-device limits do the fine-grained work.
+    RATE_LIMIT_OTP_EMAIL_15M: z.coerce.number().int().min(1).default(3),
+    RATE_LIMIT_OTP_EMAIL_DAY: z.coerce.number().int().min(1).default(10),
+    RATE_LIMIT_OTP_IP_HOUR: z.coerce.number().int().min(1).default(300),
+    RATE_LIMIT_OTP_DEVICE_HOUR: z.coerce.number().int().min(1).default(5),
+    RATE_LIMIT_VERIFY_IP_15M: z.coerce.number().int().min(1).default(300),
+    RATE_LIMIT_REFRESH_SESSION_HOUR: z.coerce.number().int().min(1).default(60),
+
     // Postgres (one login per module role is configured in Phase 15)
     DATABASE_URL: postgresUrl,
     DATABASE_REPLICA_URL: postgresUrl.optional(),

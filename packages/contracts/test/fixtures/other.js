@@ -292,6 +292,10 @@ export const jobFixtures = {
     valid: [{ ticketIds: ['t1'] }],
     invalid: [{ ticketIds: [] }],
   },
+  'job.identity.retention': {
+    valid: [{ task: 'sessions', olderThan: s.TS }],
+    invalid: [{ task: 'outbox', olderThan: s.TS }],
+  },
   'job.platform.retention': {
     valid: [{ task: 'outbox', olderThan: s.TS }],
     invalid: [{ task: 'everything', olderThan: s.TS }],
