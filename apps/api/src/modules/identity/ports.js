@@ -1,0 +1,155 @@
+// @ts-check
+
+/**
+ * Ports of the identity module: what its use cases need from outside. Adapters implement them;
+ * use-case tests pass in-memory fakes.
+ */
+
+/**
+ * @typedef {object} UserRecord
+ * @property {string} id
+ * @property {string} publicId
+ * @property {string} collegeId
+ * @property {'pending' | 'pending_review' | 'active' | 'banned' | 'deleted'} status
+ * @property {string} birthDate  `YYYY-MM-DD`
+ * @property {number | null} gradYear
+ * @property {Date} createdAt
+ * @property {Date | null} deletedAt
+ */
+
+/**
+ * @typedef {object} SessionRecord
+ * @property {string} id
+ * @property {string} userId
+ * @property {string} deviceId
+ * @property {string} familyId
+ * @property {string | null} replacedBy
+ * @property {Date} expiresAt
+ * @property {Date | null} revokedAt
+ */
+
+/**
+ * @typedef {object} DeviceRecord
+ * @property {string} id
+ * @property {string} userId
+ * @property {'ios' | 'android' | 'web'} platform
+ * @property {string | null} appVersion
+ * @property {Date} createdAt
+ * @property {Date} lastSeenAt
+ * @property {Date | null} revokedAt
+ */
+
+/**
+ * Stores bound to one transaction (as `vouch_identity`).
+ * @typedef {object} IdentityStores
+ * @property {{
+ *   findByEmailHmac(emailHmac: Buffer): Promise<UserRecord | null>,
+ *   findById(id: string): Promise<UserRecord | null>,
+ *   findManyByIds(ids: readonly string[]): Promise<UserRecord[]>,
+ *   insert(user: { id: string, publicId: string, collegeId: string, emailHmac: Buffer, status: 'active', birthDate: string, gradYear: number | null, createdAt: Date }): Promise<void>,
+ *   markDeleted(id: string, at: Date): Promise<void>,
+ *   setStatus(id: string, status: UserRecord['status']): Promise<void>,
+ * }} users
+ * @property {{
+ *   insert(session: { id: string, userId: string, deviceId: string, familyId: string, tokenHash: Buffer, createdAt: Date, expiresAt: Date }): Promise<void>,
+ *   findByTokenHashForUpdate(tokenHash: Buffer): Promise<SessionRecord | null>,
+ *   findById(id: string): Promise<SessionRecord | null>,
+ *   markRotated(id: string, replacedBy: string, at: Date): Promise<void>,
+ *   revokeFamily(familyId: string, at: Date): Promise<number>,
+ *   revokeAllForUser(userId: string, at: Date): Promise<number>,
+ *   revokeAllForDevice(deviceId: string, at: Date): Promise<number>,
+ * }} sessions
+ * @property {{
+ *   insert(device: { id: string, userId: string, platform: DeviceRecord['platform'], appVersion: string | null, at: Date }): Promise<void>,
+ *   listActive(userId: string): Promise<DeviceRecord[]>,
+ *   findForUser(id: string, userId: string): Promise<DeviceRecord | null>,
+ *   revoke(id: string, at: Date): Promise<void>,
+ *   setPushToken(id: string, pushToken: string, platform: DeviceRecord['platform'], at: Date): Promise<void>,
+ *   touch(id: string, at: Date): Promise<void>,
+ * }} devices
+ * @property {{
+ *   insert(consent: { id: string, userId: string, noticeVersion: string, purposes: string[], at: Date }): Promise<void>,
+ *   listForUser(userId: string): Promise<{ noticeVersion: string, purposes: string[], grantedAt: Date, withdrawnAt: Date | null }[]>,
+ * }} consents
+ */
+
+/**
+ * @typedef {object} OtpRecord
+ * @property {string} codeHash
+ * @property {number} attempts
+ */
+
+/**
+ * Hashed one-time codes in Redis (`identity:otp:{emailHmac}`, 10-minute TTL).
+ * Every method throws when Redis is unavailable.
+ * @typedef {object} OtpStore
+ * @property {(key: string, codeHash: string, ttlMs: number) => Promise<void>} save  Replaces any previous code.
+ * @property {(key: string) => Promise<OtpRecord | null>} get
+ * @property {(key: string) => Promise<number>} addFailedAttempt  Returns the attempt count after this one.
+ * @property {(key: string) => Promise<boolean>} consume  True for exactly one caller.
+ */
+
+/**
+ * @typedef {object} College
+ * @property {string} id
+ * @property {string} clusterId
+ * @property {string[]} emailDomains
+ */
+
+/**
+ * @typedef {object} IdentityCrypto
+ * @property {(address: string) => Buffer} hmacEmail  HMAC-SHA256 with the server secret.
+ * @property {(emailHmac: Buffer, code: string) => string} hashCode
+ * @property {(token: string) => Buffer} hashToken  SHA-256 of a refresh token.
+ * @property {(a: string, b: string) => boolean} safeEqual  Constant-time comparison.
+ * @property {() => string} randomCode  6 digits from `crypto.randomInt`.
+ * @property {() => string} randomToken  32 random bytes, base64url.
+ * @property {() => string} randomPublicId  16 random bytes, base64url (22 characters).
+ */
+
+/**
+ * @typedef {object} TokenIssuer
+ * @property {(claims: { userId: string, sessionId: string }) => Promise<{ token: string, expiresAt: Date }>} issueAccessToken
+ */
+
+/**
+ * @typedef {object} EmailProvider
+ * @property {(message: { to: string, code: string, emailHmac: Buffer }) => Promise<void>} sendOtp
+ */
+
+/**
+ * @typedef {object} CaptchaVerifier
+ * @property {(token: string, ip: string) => Promise<boolean>} verify
+ */
+
+/**
+ * @typedef {object} IdentityLimits
+ * @property {number} otpEmail15m
+ * @property {number} otpEmailDay
+ * @property {number} otpIpHour
+ * @property {number} otpDeviceHour
+ * @property {number} verifyIp15m
+ * @property {number} refreshSessionHour
+ */
+
+/**
+ * Everything the identity use cases receive.
+ * @typedef {object} IdentityDeps
+ * @property {import('../../platform/use-case.js').UseCaseFactory} useCase
+ * @property {import('../../platform/uow.js').UnitOfWork<IdentityStores>} uow
+ * @property {<T>(fn: (stores: IdentityStores) => Promise<T>) => Promise<T>} read  Read-only transaction.
+ * @property {OtpStore} otpStore
+ * @property {{ all: () => Promise<College[]> }} colleges
+ * @property {IdentityCrypto} crypto
+ * @property {TokenIssuer} tokens
+ * @property {EmailProvider} email
+ * @property {CaptchaVerifier} captcha
+ * @property {{ hit: (limits: { key: string, max: number, windowMs: number }[], options?: { failClosed?: boolean }) => Promise<void> }} rateLimiter
+ * @property {IdentityLimits} limits
+ * @property {{ now: () => Date }} clock
+ * @property {() => string} newId
+ * @property {string} privacyNoticeVersion
+ * @property {Map<string, (userId: string) => Promise<Record<string, unknown>>>} exporters
+ */
+
+export {};
