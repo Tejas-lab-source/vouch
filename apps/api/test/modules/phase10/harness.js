@@ -202,6 +202,9 @@ export async function startBackend(env = {}) {
     return /** @type {string} */ (created.body.uploadId);
   }
 
+  /** @type {Set<string>} */
+  const completed = new Set();
+
   /** @param {string} uploadId @param {string} status */
   const uploadReaches = (uploadId, status) =>
     eventually(async () => {
@@ -215,6 +218,7 @@ export async function startBackend(env = {}) {
    * @param {{ name?: string, gender?: number, interestedIn?: number[] }} [details]
    */
   async function completeProfile(user, details = {}) {
+    completed.add(/** @type {any} */ (user).id);
     const patched = await call('PATCH', '/v1/me/profile', {
       token: user.token,
       body: {
@@ -259,17 +263,29 @@ export async function startBackend(env = {}) {
    * @param {any} a @param {any} b
    */
   async function match(a, b) {
+    // Swipes need visible profiles on both sides.
+    for (const user of [a, b]) {
+      if (!completed.has(user.id)) await completeProfile(user, { gender: completed.size % 2 });
+    }
     const redis = app.platform.redis.command;
-    await redis.sadd(`discovery:served:${a.id}`, b.id);
-    await redis.sadd(`discovery:served:${b.id}`, a.id);
-    await call('POST', '/v1/swipes', {
-      token: a.token,
-      body: { swipeId: randomUUID(), targetId: b.publicId, direction: 'like' },
-    });
-    const liked = await call('POST', '/v1/swipes', {
-      token: b.token,
-      body: { swipeId: randomUUID(), targetId: a.publicId, direction: 'like' },
-    });
+    /**
+     * Likes `to` as `from`. A deck build can rewrite the served set right after it is seeded
+     * here, so NOT_SERVED is retried a few times.
+     * @param {any} from @param {any} to
+     */
+    const like = async (from, to) => {
+      for (let attempt = 0; ; attempt += 1) {
+        await redis.sadd(`discovery:served:${from.id}`, to.id);
+        const res = await call('POST', '/v1/swipes', {
+          token: from.token,
+          body: { swipeId: randomUUID(), targetId: to.publicId, direction: 'like' },
+        });
+        if (res.body?.error?.code !== 'NOT_SERVED' || attempt === 5) return res;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    };
+    await like(a, b);
+    const liked = await like(b, a);
     if (!liked.body?.matched) throw new Error(`no match ${JSON.stringify(liked.body)}`);
     const matchId = /** @type {string} */ (liked.body.matchId);
     await eventually(

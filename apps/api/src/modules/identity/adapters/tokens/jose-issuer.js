@@ -4,7 +4,8 @@ import { ACCESS_TOKEN_TTL_MS } from '../../domain/session.js';
 
 /**
  * Signs 15-minute EdDSA access tokens with the active key (`JWT_ACTIVE_KID`). Claims: `sub`
- * (the caller's internal user id), `sid` (session id), `iss` vouch, `aud` vouch:user.
+ * (the caller's internal user id), `sid` (session id), `iss` vouch, `aud` vouch:user, and `pr`
+ * (true while the account waits for ID-card review, Phase 10).
  * @param {{ keys: import('../../../../platform/config.js').JwtKey[], activeKid: string, clock: { now: () => Date } }} options
  * @returns {Promise<import('../../ports.js').TokenIssuer>}
  */
@@ -20,10 +21,10 @@ export async function createTokenIssuer({ keys, activeKid, clock }) {
     'EdDSA',
   );
   return {
-    async issueAccessToken({ userId, sessionId }) {
+    async issueAccessToken({ userId, sessionId, pendingReview = false }) {
       const now = clock.now();
       const expiresAt = new Date(now.getTime() + ACCESS_TOKEN_TTL_MS);
-      const token = await new SignJWT({ sid: sessionId })
+      const token = await new SignJWT({ sid: sessionId, ...(pendingReview ? { pr: true } : {}) })
         .setProtectedHeader({ alg: 'EdDSA', kid: activeKid, typ: 'JWT' })
         .setIssuer('vouch')
         .setAudience('vouch:user')

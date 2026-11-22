@@ -32,7 +32,7 @@ export function createNotificationStores(tx) {
         ).count === 1,
       find: async (id) =>
         /** @type {any} */ (
-          (await tx`SELECT * FROM notifications.deliveries WHERE id = ${id} FOR UPDATE`)[0]
+          (await tx`SELECT * FROM notifications.deliveries WHERE id = ${id}`)[0]
         ) ?? null,
       finish: async (id, { status, ticketId, errorCode, at }) => {
         await tx`UPDATE notifications.deliveries SET status = ${status},

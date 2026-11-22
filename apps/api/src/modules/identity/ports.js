@@ -119,7 +119,7 @@
 
 /**
  * @typedef {object} TokenIssuer
- * @property {(claims: { userId: string, sessionId: string }) => Promise<{ token: string, expiresAt: Date }>} issueAccessToken
+ * @property {(claims: { userId: string, sessionId: string, pendingReview?: boolean }) => Promise<{ token: string, expiresAt: Date }>} issueAccessToken
  */
 
 /**

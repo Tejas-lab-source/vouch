@@ -12,6 +12,7 @@ export const RETIRED_KEY_GRACE_MS = 15 * 60 * 1000;
  * @property {string} userId  The internal user (or admin) id from `sub`.
  * @property {'vouch:user' | 'vouch:admin'} audience
  * @property {boolean} mfa  True when `amr` includes `mfa` (required for admin routes).
+ * @property {boolean} [pendingReview]  `pr` claim: the account waits for ID-card review (Phase 10).
  * @property {string | undefined} sessionId  `sid` claim, when present.
  * @property {Date} [expiresAt]  From `exp` (sockets re-check it, Phase 9).
  */
@@ -65,6 +66,7 @@ export async function createTokenVerifier({ keys, clock }) {
           userId: /** @type {string} */ (payload.sub),
           audience,
           mfa: amr.includes('mfa'),
+          pendingReview: payload.pr === true,
           sessionId: typeof payload.sid === 'string' ? payload.sid : undefined,
           ...(typeof payload.exp === 'number' ? { expiresAt: new Date(payload.exp * 1000) } : {}),
         };
@@ -118,7 +120,15 @@ export function authHooks({ verifier, adminIpAllowlist = [], clientIp = (r) => r
       if (!principal.mfa) throw new AppError('MFA_REQUIRED');
       return principal;
     }
-    return verifier.verify(token, AUDIENCE.USER);
+    const principal = await verifier.verify(token, AUDIENCE.USER);
+    // An account waiting for ID-card review may use only the routes marked for it (Phase 10).
+    const config = /** @type {{ allowPendingReview?: boolean }} */ (
+      request.routeOptions.config ?? {}
+    );
+    if (principal.pendingReview && !config.allowPendingReview) {
+      throw new AppError('ACCOUNT_PENDING_REVIEW');
+    }
+    return principal;
   };
 
   return {

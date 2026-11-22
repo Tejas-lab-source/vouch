@@ -184,6 +184,8 @@ export function createSocketGateway({ server, config, logger, verifier, redis, c
     try {
       if (typeof token !== 'string' || token.length === 0) throw new AppError('UNAUTHENTICATED');
       const principal = await verifier.verify(token, AUDIENCE.USER);
+      // No chat while the account waits for ID-card review (Phase 10).
+      if (principal.pendingReview) throw new AppError('ACCOUNT_PENDING_REVIEW');
       socket.data.user = principal;
       socket.data.ip = handshakeIp(socket.request, trust);
       return next();

@@ -108,7 +108,11 @@ export function makeVerifyOtp(deps) {
           return startSession(stores, deps, { userId: existing.id, deviceId });
         });
         return {
-          tokens: await tokenPair(tokens, { userId: existing.id, ...session }),
+          tokens: await tokenPair(tokens, {
+            userId: existing.id,
+            ...session,
+            pendingReview: existing.status === 'pending_review',
+          }),
           user: { userId: existing.publicId, status: existing.status, newUser: false },
         };
       }
@@ -176,7 +180,11 @@ export function makeVerifyOtp(deps) {
         return startSession(stores, deps, { userId, deviceId });
       });
       return {
-        tokens: await tokenPair(tokens, { userId, ...session }),
+        tokens: await tokenPair(tokens, {
+          userId,
+          ...session,
+          pendingReview: status === 'pending_review',
+        }),
         user: { userId: publicId, status, newUser: true },
       };
     },
