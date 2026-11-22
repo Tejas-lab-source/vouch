@@ -163,7 +163,11 @@ describe(
           .admin`SELECT push_token FROM identity.devices WHERE user_id = ${a.id}`;
         return rows.every((r) => r.push_token === null) || null;
       }, WAIT_MS);
-      const [row] = await deliveries(a.id);
+      // The token is removed before the delivery is recorded: wait for the final status too.
+      const row = await eventually(async () => {
+        const [first] = await deliveries(a.id);
+        return first && first.status !== 'queued' ? first : null;
+      }, WAIT_MS);
       expect(row).toMatchObject({
         template: 'match.new',
         status: 'failed',
