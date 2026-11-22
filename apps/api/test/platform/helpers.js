@@ -121,10 +121,11 @@ export function testEnv(overrides = {}) {
       { kid: 'test-1', publicJwk: { kty: 'OKP', crv: 'Ed25519', x: 'aGVsbG8' } },
     ]),
     JWT_ACTIVE_KID: 'test-1',
-    R2_ACCESS_KEY_ID: 'minio',
-    R2_SECRET_ACCESS_KEY: 'minio-secret',
+    R2_ENDPOINT: 'http://127.0.0.1:8333',
+    R2_ACCESS_KEY_ID: 'vouch-local',
+    R2_SECRET_ACCESS_KEY: 'vouch-local-secret',
     R2_BUCKET: 'vouch',
-    CDN_BASE_URL: 'http://localhost:9000/vouch',
+    CDN_BASE_URL: 'http://127.0.0.1:8333/vouch',
     ...overrides,
   };
 }

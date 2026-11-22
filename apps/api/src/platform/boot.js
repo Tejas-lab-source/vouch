@@ -48,7 +48,11 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
   });
   const redis = createRedis({ url: config.REDIS_URL });
   const metrics = createMetrics();
-  const jobs = createJobs({ connection: redis.bullmq, logger });
+  const jobs = createJobs({
+    connection: redis.bullmq,
+    logger,
+    concurrency: { media: config.IMAGE_WORKER_CONCURRENCY },
+  });
   const flags = createFlags({ db, redis: redis.command, logger });
   const idempotency = createIdempotencyStore({ redis: redis.command });
   const pipelines = createPipelines({ logger });

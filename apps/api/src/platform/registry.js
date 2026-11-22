@@ -1,4 +1,5 @@
 // @ts-check
+import { defineSection } from '@vouch/contracts';
 import { z } from 'zod';
 
 /** Any function (loaders, factories). */
@@ -128,6 +129,8 @@ export function capabilitiesOf(role) {
  * @property {{ module: string, id: string, cron: string, job: string }[]} schedules  (worker, all).
  * @property {Map<string, (userId: string) => Promise<Record<string, unknown>>>} exporters
  *   Module name → personal-data exporter (filled during boot; read at call time).
+ * @property {Map<string, Readonly<import('@vouch/contracts').SectionDefinition>>} sections
+ *   Section type → definition (manifest key `sections`, extension point 9; filled during boot).
  */
 
 /**
@@ -153,14 +156,29 @@ export async function bootModules({ modules, role, platform, pipelines }) {
     consumers: [],
     schedules: [],
     exporters: new Map(),
+    sections: new Map(),
   };
 
   for (const module of sortModules(modules)) {
     const deps = Object.fromEntries(module.dependsOn.map((name) => [name, result.apis.get(name)]));
-    const ctx = { ...platform, module: module.name, deps, exporters: result.exporters };
+    const ctx = {
+      ...platform,
+      module: module.name,
+      deps,
+      exporters: result.exporters,
+      sections: result.sections,
+    };
     if (module.api) result.apis.set(module.name, await module.api(ctx));
     if (module.exports) result.exporters.set(module.name, await module.exports(ctx));
 
+    for (const [type, load] of Object.entries(module.sections ?? {})) {
+      if (result.sections.has(type)) throw new Error(`duplicate section type: ${type}`);
+      const definition = defineSection(await load(ctx));
+      if (definition.type !== type) {
+        throw new Error(`section ${type} of ${module.name} declares type ${definition.type}`);
+      }
+      result.sections.set(type, definition);
+    }
     for (const [pipeline, load] of Object.entries(module.contribute ?? {})) {
       pipelines.contribute(pipeline, await load(ctx));
     }

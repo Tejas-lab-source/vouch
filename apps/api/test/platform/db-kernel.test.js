@@ -3,7 +3,7 @@ import { userBlocked } from '@vouch/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase } from '../../src/platform/db.js';
 import { uuidv7 } from '../../src/platform/ids.js';
-import { lockPair } from '../../src/platform/locks.js';
+import { lockKey, lockPair } from '../../src/platform/locks.js';
 import { createUnitOfWork } from '../../src/platform/uow.js';
 import { runWithContext } from '../../src/platform/context.js';
 import { HOOK_TIMEOUT_MS, startInfra } from './helpers.js';
@@ -182,5 +182,31 @@ describe('database kernel (SET LOCAL ROLE per transaction, ADR 0010)', () => {
     await Promise.all([holder, waiter]);
     await pool.end();
     expect(order).toEqual(['first-locked', 'first-done', 'second-locked']);
+  });
+
+  it('lockKey serialises concurrent transactions on the same key only', async () => {
+    const pool = createDatabase({ url: infra.appUrl, max: 3 });
+    /** @type {string[]} */
+    const order = [];
+    const holder = pool.transaction('media', async (tx) => {
+      await lockKey(tx, 'media:uploads:u1');
+      order.push('first-locked');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      order.push('first-done');
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const other = pool.transaction('media', async (tx) => {
+      await lockKey(tx, 'media:uploads:u2');
+      order.push('other-key');
+    });
+    const waiter = pool.transaction('media', async (tx) => {
+      await lockKey(tx, 'media:uploads:u1');
+      order.push('second-locked');
+    });
+    await Promise.all([holder, other, waiter]);
+    await pool.end();
+    // Another key is not blocked; the same key waits for the first transaction to finish.
+    expect(order.indexOf('other-key')).toBeLessThan(order.indexOf('first-done'));
+    expect(order.indexOf('first-done')).toBeLessThan(order.indexOf('second-locked'));
   });
 });
