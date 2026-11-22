@@ -101,9 +101,9 @@ Codes and meaning (owner decisions, Phase 3; defined in `packages/contracts/src/
 
 ### `media`
 
-| Table     | Purpose                    | Key                    | Notable constraints and indexes                                                                                                                        |
-| --------- | -------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `uploads` | Presigned upload lifecycle | `id`; `raw_key` unique | Content type in `jpeg, png, webp`; `max_bytes` is the exact signed size, up to 10 MB; `photo_key` (Phase 6) is the random key of the approved variants |
+| Table     | Purpose                    | Key                    | Notable constraints and indexes                                                                                                                                                                                     |
+| --------- | -------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uploads` | Presigned upload lifecycle | `id`; `raw_key` unique | Content type in `jpeg, png, webp`; `max_bytes` is the exact signed size, up to 10 MB; `photo_key` (Phase 6) is the random key of the approved variants; status `in_review` (Phase 7) holds a photo for human review |
 
 ### `safety`
 
@@ -186,11 +186,12 @@ Views: `matching.seen_v` (`swiper_id, target_id`) and `matching.likes_in_v` (`us
 
 ## Object storage keys (Phase 6, ADR 0012)
 
-| Key                                        | Contents                      | Access                            |
-| ------------------------------------------ | ----------------------------- | --------------------------------- |
-| `uploads/raw/{uploadId}`                   | The file as uploaded          | Private; deleted after processing |
-| `uploads/processed/{uploadId}_{size}.webp` | Variants awaiting moderation  | Private; deleted after processing |
-| `photos/{photoKey}/{photoId}_{size}.webp`  | Approved variants (1080, 400) | Public through the CDN            |
+| Key                                        | Contents                                 | Access                            |
+| ------------------------------------------ | ---------------------------------------- | --------------------------------- |
+| `uploads/raw/{uploadId}`                   | The file as uploaded                     | Private; deleted after processing |
+| `uploads/processed/{uploadId}_{size}.webp` | Variants awaiting moderation             | Private; deleted after processing |
+| `review/{uploadId}_{size}.webp`            | Variants held for human review (Phase 7) | Private; kept until the decision  |
+| `photos/{photoKey}/{photoId}_{size}.webp`  | Approved variants (1080, 400)            | Public through the CDN            |
 
 `photoKey` is 16 random bytes (base64url) per photo; no key contains an internal user id.
 An R2 lifecycle rule deletes anything left under `uploads/` after 1 day (Phase 15).

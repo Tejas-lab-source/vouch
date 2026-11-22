@@ -205,3 +205,44 @@ All notable changes are recorded here, grouped by roadmap phase.
   photo, never the user id. It stays deterministic, but its generated values differ from Phase 5's
   because the generator now also draws the photo keys.
 - The modules list is now identity, profiles, media.
+
+## Phase 7 — Safety core and discovery engine
+
+### Added
+
+- `modules/safety` (part 1; see its README):
+  - `POST /v1/blocks` (idempotent, one `user.blocked.v1` per new block), and `unblock`
+    (admin) and `listBlocked` use cases without routes yet
+  - `blockPolicy.isBlocked` and `blockedAmong` (Redis `safety:blocked:{uid}`, trusted only once
+    loaded from Postgres), `isBanned` and `bannedAmong`
+  - the `safety.contentChecks` pipeline (fail closed) with a `ModerationProvider` port: Amazon
+    Rekognition in `ap-south-1` (moderation labels and face age ranges) and a development
+    adapter
+- `modules/discovery` (see its README):
+  - a candidate source over the published views (one cluster, mutual preferences, swipe, block
+    and active-account exclusions, up to 500, on the read replica when configured)
+  - the `discovery.candidateFilters` and `discovery.scorers` pipelines with the v1 steps, each
+    in its own file
+  - `HandTunedRanker` with configurable weights, an exposure-cap gate and diversified first
+    10 slots
+  - the deck worker (`deck-{uid}` job id), `GET /v1/deck`, `api.nextCards` and `wasServed`,
+    `deck.served.v1` per page, and consumers for blocks, matches, profile updates and approved
+    photos
+- Media: photos are moderated through `safety.contentChecks`; a `review` verdict holds the photo
+  `in_review` under the private `review/` prefix, and `media.api.resolveReview` decides it.
+- `db.read(module, fn, { replica: true })` uses `DATABASE_REPLICA_URL` when set.
+- `identity.api.getUsersByPublicIds`.
+- `pnpm --filter @vouch/api bench:deck`: deck latency over 1,000 requests.
+- Env: `MODERATION_AWS_*`, `MODERATION_*_CONFIDENCE`, `MODERATION_FACE_AGE_CHECK`,
+  `MODERATION_MINOR_AGE`, `MODERATION_ENDPOINT` (test-only), `DISCOVERY_*`.
+- Contracts (additive): the processed image bytes on the `safety.contentChecks` input, and
+  `Candidate.collegeId`.
+- Migration (expand-only): `media.uploads.status` gains `in_review`.
+- Dependency (approved): `@aws-sdk/client-rekognition@3.1175.0`.
+- ADRs 0013 (photo moderation) and 0014 (discovery ranking).
+
+### Changed
+
+- Media's development `ContentCheck` is replaced by the pipeline; `MODERATION_PROVIDER` is
+  `dev` or `rekognition`.
+- The modules list is now identity, profiles, media, safety, discovery.

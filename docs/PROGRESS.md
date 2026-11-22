@@ -11,7 +11,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 4   | Backend platform kernel                                                 | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-04.md |
 | 5   | Identity and authentication                                             | Approved    | 2026-11-21     | 2026-11-22         | phases/PHASE-05.md |
 | 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-06.md |
-| 7   | Safety core and discovery engine                                        | In progress | 2026-11-22     | —                  | —                  |
+| 7   | Safety core and discovery engine                                        | Report sent | 2026-11-22     | —                  | phases/PHASE-07.md |
 | 8   | Matching                                                                | Not started | —              | —                  | —                  |
 | 9   | Realtime chat                                                           | Not started | —              | —                  | —                  |
 | 10  | Notifications, moderation and admin backend                             | Not started | —              | —                  | —                  |
@@ -38,6 +38,7 @@ Owner instructions recorded here so the phase that owns them picks them up.
 - **Phase 7 — photo moderation (owner, 2026-11-22, from the Phase 6 report):** connect the real
   `safety.contentChecks` pipeline in place of media's development `ContentCheck`, and the
   needs-review path for photos (a `review` verdict currently leaves the upload `processing`).
+  _Done in Phase 7 (ADR 0013)._
 - **Phase 10 — photo review alert (owner, 2026-11-22, Phase 7 plan):** alert if any photo has
   been `in_review` for more than 48 hours (Phase 7 holds photos for review with no automatic
   decision; the moderation queue resolves them through `media.api.resolveReview`).
