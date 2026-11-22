@@ -14,7 +14,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 7   | Safety core and discovery engine                                        | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-07.md |
 | 8   | Matching                                                                | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-08.md |
 | 9   | Realtime chat                                                           | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-09.md |
-| 10  | Notifications, moderation and admin backend                             | Not started                     | —                  | —                  | —                  |
+| 10  | Notifications, moderation and admin backend                             | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-10.md |
 | 11  | Frontend foundation                                                     | Not started                     | —                  | —                  | —                  |
 | 12  | Frontend features I (onboarding, profile, discovery, matching)          | Not started                     | —                  | —                  | —                  |
 | 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Not started                     | —                  | —                  | —                  |
@@ -104,13 +104,13 @@ gzipped.
 
 **Running log** (updated as the batch goes; resume from the last row after an interruption):
 
-| Phase | Status                          | Last commit | CI run                                                                          | Next step                      |
-| ----- | ------------------------------- | ----------- | ------------------------------------------------------------------------------- | ------------------------------ |
-| 9     | Complete — pending owner review | `f8519dd`   | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan            |
-| 10    | In progress                     | —           | —                                                                               | Start plan, then notifications |
-| 11    | Not started                     | —           | —                                                                               | —                              |
-| 12    | Not started                     | —           | —                                                                               | —                              |
-| 13    | Not started                     | —           | —                                                                               | —                              |
+| Phase | Status                          | Last commit      | CI run                                                                                               | Next step           |
+| ----- | ------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------- | ------------------- |
+| 9     | Complete — pending owner review | `f8519dd`        | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅                      | Phase 10 start plan |
+| 10    | Complete — pending owner review | `3cdb3de` (code) | [run 67](https://github.com/Tejas-lab-source/vouch/actions/runs/45017080364) ✅; report commit below | Phase 11 start plan |
+| 11    | In progress                     | —                | —                                                                                                    | Start plan          |
+| 12    | Not started                     | —                | —                                                                                                    | —                   |
+| 13    | Not started                     | —                | —                                                                                                    | —                   |
 
 ## Notes for later phases
 

@@ -289,3 +289,170 @@ overdue deletions: listed only when a module has not finished
 | Audit log / deliveries / report evidence / deletion tasks | 2 y / 90 d / 1 y after close / 90 d after completion | Nightly purges                                           |
 | Consistency check                                         | 04:37 UTC                                            | `vouch_consistency_violations{check}`                    |
 | Consumer transactions at once                             | ½ of `DATABASE_POOL_MAX` (5)                         | The deadlock fix                                         |
+
+**Tests and validation** (clean clone of `3cdb3de`; Node 24, pnpm 10.34.9; every check unpiped
+or with `set -o pipefail`):
+
+```
+pnpm install --frozen-lockfile    → ok
+pnpm lint / typecheck / format:check / check:boundaries → 0 / 0 / 0 / 0
+pnpm contracts:check / contracts:diff → 0 / 0 (no breaking changes)
+pnpm test                         → contracts 436 passed, config 4 passed, api 421 passed
+  api coverage: statements 95.6 %, branches 86.58 %, functions 96.83 %, lines 97.23 %
+pnpm test:invariants (twice)      → 7 passed, 7 passed (Phase 9 load smoke: zero loss; p95 102 and 305 ms)
+```
+
+CI: [run 67](https://github.com/Tejas-lab-source/vouch/actions/runs/45017080364) ✅ (code
+identical to `3cdb3de`). The run on this report's commit is in `docs/PROGRESS.md`.
+
+**Mutation checks** (each change made by hand, the tests run, and the change reverted; all 15
+were caught):
+
+| Mutation                                               | Caught by                           |
+| ------------------------------------------------------ | ----------------------------------- |
+| A TOTP code accepted twice (`<` → `<=` on the step)    | admin integration                   |
+| A disabled staff account still allowed                 | admin integration                   |
+| The role check removed (moderators reach admin routes) | admin integration                   |
+| Admin actions not audited                              | admin integration                   |
+| Pending-review accounts reach every route              | safety integration                  |
+| Auto-hide needs a fourth reporter (`>=` → `>`)         | safety integration                  |
+| Evidence for a reporter who is not a member            | safety integration                  |
+| No message batching                                    | notifications integration           |
+| Quiet hours ignored                                    | notifications integration           |
+| Invalid push tokens kept                               | notifications integration           |
+| A block does not cancel queued pushes                  | notifications integration           |
+| A banned email signs up again                          | identity unit                       |
+| Deletion completion not recorded                       | scenario (deletion and consistency) |
+| A deck rebuild clears the served set (the old bug)     | scenario                            |
+| A ban does not end matches                             | safety integration                  |
+
+**End to end against the Docker image** (`vouch-api:phase10`, 545 MB; `ROLE=api`, `ws` and
+`worker` as three containers; Compose Postgres, Redis and SeaweedFS; 2,000-user seed):
+
+```
+admin:create inside the image → Created admin "Asha (moderation)"; otpauth URI printed once (secret redacted here)
+1) mutual like                          → {"matched":true,"matchId":"01a202fd-…"}
+2) B sends 2 messages, A offline        → seq 1, seq 2
+3) deliveries for A                     → match.new failed no_device, message.new failed no_device, message.new suppressed batched
+   (a user with a device:               → match.new sent, message.new sent; worker log: "development push", tokenHash only)
+4) A reports B (chat)                   → 201 {"status":"open"}; worker: "development alert email"
+5) staff login (password + TOTP)        → 200, role admin; the same code again → 401 UNAUTHENTICATED
+6) a user token on an admin route       → 401
+7) report evidence                      → hi there | are you free on Friday?
+8) ban through the report               → 200 actioned; B banned; conversation closed; B told "banned"
+9) flag edit                            → 200; GET /v1/config flags {"chat.links":true}
+10) audit log                           → flag.put, report.ban, admin.login
+11) panels                              → safety.reports, safety.photo-reviews, safety.verification-reviews, safety.bans, admin.deletions, admin.flags, admin.audit-log
+Error-level logs: 0 in all three containers. Message bodies, push tokens or passwords in logs: 0.
+docker stop --time 30 → exit 0 for api, ws and worker.
+```
+
+**Decisions made:**
+
+- [ADR 0018 — Admin backend: staff sign-in, roles and the audit log](../adr/0018-admin-backend-and-staff-sign-in.md)
+- [ADR 0019 — Push notifications: Expo over HTTPS, batching and privacy](../adr/0019-push-notifications.md)
+- [ADR 0020 — Moderation, bans and the ID-card fallback](../adr/0020-moderation-bans-and-id-card-verification.md)
+
+**Decisions taken without the owner** (under the batch authorisation):
+
+1. **Admin sign-in is email + password (scrypt) + TOTP.** The password column is added by
+   migration. Tokens last 60 minutes, with no refresh. The account is re-checked on every
+   call (ADR 0018).
+2. **Roles:**
+   - moderators handle reports (not bans), photo reviews and ID reviews
+   - bans, lifting, unblocking, flags, the audit log and overdue deletions are admin-only
+3. **The audit entry is written after the action succeeds, never with notes or personal
+   data.** Sign-in is audited; reads are not.
+4. **Chat evidence comes through a new fail-closed pipeline, `safety.reportEvidence`,** to
+   which chat contributes. Making safety depend on chat would have been a cycle.
+5. **Bans end matches** (matching consumes `user.banned.v1`). Chat's existing unmatch path
+   tells the other person `unmatched`. Lifting a ban does not restore matches. Banned users
+   are also dropped from decks.
+6. **Ban evasion is kept in identity (`identity.banned_emails`, no user id)** while the ban is
+   active, not at erasure time. A banned user cannot sign in to delete their account.
+7. **Pending-review accounts get a `pr` token claim and an allow-list of routes** (HTTP and
+   socket), with no per-request lookup. After approval the next refresh drops it.
+8. **The ID-card fallback is on by default (`ID_CARD_FALLBACK`).** It accepts any college in
+   the list. Student ID and selfie go to the private `verification/` prefix; staff see
+   5-minute signed URLs; images are deleted 30 days after the decision.
+9. **Repeat offences open one system report** (a fixed system reporter id) after 3 moderation
+   rejections in 30 days. Only `moderation` rejections count.
+10. **Message pushes are batched with a fixed 30-second window per conversation** (Redis
+    `SET NX`). Later messages in the window are logged as `suppressed`/`batched`.
+11. **Report alerts go to one `ADMIN_ALERT_EMAIL`.** Admin emails are stored only as HMACs, so
+    they cannot be emailed.
+12. **The kernel records `user.deleted.v1` completion** in `platform.deletion_tasks` (which
+    existed since Phase 2) for every consumer. Overdue deletions and the consistency job read
+    it.
+13. **The consistency job runs as `vouch_platform`** with column-level grants: ids, statuses and
+    timestamps only.
+14. **`GET /v1/config` is registered by the platform.** It reads module values through their
+    public APIs.
+15. **`ADMIN_TOTP_KEY` is optional in development and required in production.**
+    `pnpm dev:keys --write` adds it.
+16. **Verification-review URLs accept `http(s)`,** like `PhotoUrls`, for local storage. R2's
+    signed URLs are always https.
+17. **The pending likes digest runs daily at 18:23 IST.**
+18. **Kernel fix:** consumer transactions are bounded to half the pool (see the known issues).
+19. **Discovery fix:** deck rebuilds keep the served set (see the known issues).
+
+**Deviations from the roadmap:**
+
+- **No admin logout route.** Admin tokens are short-lived and stateless; disabling an account
+  takes effect on the next call. A server-side revocation list is a follow-up.
+- **Warnings are recorded on the report only.** Showing them to the user needs client screens
+  (Phases 12–13).
+- **Photo review items carry `reasons: []`.** The moderation provider's reasons are logged at
+  hold time but not stored. Storing them needs a column (follow-up).
+- **`user.blocked.v1` cancels queued pushes for an hour** (a Redis marker), rather than
+  deleting queued jobs.
+
+**Known issues and risks:**
+
+- **Fixed in this phase (found by the new tests):**
+  1. **Discovery (Phase 7):** a deck rebuild deleted the served set, so a swipe on cards
+     served just before a refill failed with `NOT_SERVED`. This hits small campuses most.
+  2. **Kernel (Phase 4):** consumers that read through another module's API take a second
+     pooled connection. With nine consumer queues running five jobs each, the pool could be
+     exhausted and stall. The load smoke found it. Consumer transactions are now bounded.
+     Notifications also works inside its consumer's transaction.
+  3. A delivery lookup used `FOR UPDATE` in a read-only transaction.
+  4. A `pending_review` account could reach normal routes.
+- **Phase 9 load-smoke p95** varies between 22 and 330 ms across runs since Phase 10, because
+  background consumers now share the machine. It is still well under the 1 s target.
+- **TOTP secrets depend on `ADMIN_TOTP_KEY`.** Losing it means re-enrolling staff (Phase 15:
+  back it up with the other secrets).
+- **Audit-after-action can leave an action unaudited** if the process dies in between. It is
+  logged, and an alert is a follow-up.
+
+**Suggested follow-ups (not done, need approval):**
+
+- WebAuthn for staff, and admin token revocation.
+- Store the moderation provider's reasons for photo reviews.
+- Show warnings to users (with Phases 12–13).
+- An alert on audit write failures.
+- Test Expo push against the real service with a real device token (Phase 15, with the other
+  real-service checks).
+
+**How you can check it yourself:**
+
+```bash
+cp .env.example .env && pnpm dev:keys --write && docker compose up -d --wait && pnpm db:migrate && pnpm db:seed && pnpm storage:init
+```
+
+```bash
+pnpm test && pnpm --filter @vouch/api test:invariants
+```
+
+```bash
+ADMIN_CREATE_PASSWORD='a long passphrase here' pnpm --filter @vouch/api admin:create --email you@example.com --name "You" --role admin
+```
+
+Scan the printed URI with an authenticator app, then sign in with `POST /v1/admin/auth/login`
+(`email`, `password`, `totp`).
+
+**Pull request:** one PR for Phases 9–13 at the end of the batch · Branch:
+`claude/lucid-rubin-foq2uj`
+
+Phase 10 is marked "Complete — pending owner review"; under the batch authorisation I continue
+with Phase 11.
