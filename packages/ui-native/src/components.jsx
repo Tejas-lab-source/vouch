@@ -18,7 +18,8 @@ import { useTheme } from './theme.js';
  */
 
 /**
- * @param {{ title: string, onPress?: () => void, variant?: 'primary' | 'secondary' | 'danger' | 'ghost', loading?: boolean, disabled?: boolean, testID?: string }} props
+ * @param {{ title: string, onPress?: () => void, variant?: 'primary' | 'secondary' | 'danger' | 'ghost', loading?: boolean, disabled?: boolean, testID?: string, accessibilityLabel?: string }} props
+ *   `accessibilityLabel` names icon-like buttons (for example "←") for screen readers.
  */
 export function Button({
   title,
@@ -27,6 +28,7 @@ export function Button({
   loading = false,
   disabled = false,
   testID,
+  accessibilityLabel,
 }) {
   const { colors, radius: r, minTouchTarget, type: ty, space: sp } = useTheme();
   const background = new Map([
@@ -46,7 +48,7 @@ export function Button({
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       onPress={onPress}

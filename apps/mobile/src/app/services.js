@@ -1,6 +1,6 @@
 // @ts-check
 import { createSession, createSessionClient, keys } from '@vouch/api-client';
-import { createAuthFlow } from '@vouch/features-core';
+import { createAuthFlow, createEventHub, createLogAnalytics } from '@vouch/features-core';
 import { createRealtime, memoryCursors, queryCacheAdapter } from '@vouch/realtime';
 import { QueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
@@ -8,6 +8,8 @@ import { Platform } from 'react-native';
 import { io } from 'socket.io-client';
 import { API_URL, APP_VERSION } from '../shared/config/index.js';
 import { captchaToken } from '../shared/lib/captcha.js';
+import { nativePhotoIo } from '../shared/lib/photo-io.js';
+import { securePrefs } from '../shared/lib/prefs.js';
 import { secureTokenStorage } from '../shared/lib/secure-storage.js';
 import { createMobileRegistry } from './features.js';
 
@@ -23,13 +25,17 @@ export function createServices() {
   const client = createSessionClient({ session, ...common });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
   const cache = queryCacheAdapter(queryClient, keys);
+  const events = createEventHub();
   const realtime = createRealtime({
     url: API_URL,
     connect: io,
     session,
     cursors: memoryCursors(),
     onMessage: cache.onMessage,
-    onEvent: cache.onEvent,
+    onEvent: (event, payload) => {
+      cache.onEvent(event);
+      events.emit(event, payload);
+    },
     newId: randomUUID,
   });
   session.subscribe((signedIn) => {
@@ -41,5 +47,22 @@ export function createServices() {
   });
   const platform = Platform.OS === 'ios' ? 'ios' : 'android';
   const auth = createAuthFlow({ client, session, platform, appVersion: APP_VERSION, captchaToken });
-  return { session, client, queryClient, realtime, registry: createMobileRegistry(), auth };
+  // Analytics only logs in v1 (development builds), never personal data (docs/analytics.md).
+  const analytics = createLogAnalytics((line) => {
+    // eslint-disable-next-line no-console -- the v1 analytics adapter is a development log
+    if (/** @type {any} */ (globalThis).__DEV__) console.debug(line);
+  });
+  return {
+    session,
+    client,
+    queryClient,
+    realtime,
+    registry: createMobileRegistry(),
+    auth,
+    events,
+    analytics,
+    prefs: securePrefs,
+    photoIo: nativePhotoIo,
+    newId: randomUUID,
+  };
 }

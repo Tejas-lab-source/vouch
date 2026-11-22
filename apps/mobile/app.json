@@ -12,6 +12,14 @@
       ["expo-router", { "root": "./src/routes" }],
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Vouch uses the photos you choose for your profile.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff",
