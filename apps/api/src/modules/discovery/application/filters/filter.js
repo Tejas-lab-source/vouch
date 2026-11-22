@@ -12,12 +12,15 @@
  * @param {number} order
  * @param {string} reason  Snake case, logged with each removal.
  * @param {(input: FilterInput) => Promise<(candidate: import('../../ports.js').Candidate) => boolean> | ((candidate: import('../../ports.js').Candidate) => boolean)} keepFor
+ * @param {number} [timeoutMs]  Steps that query run on the deck worker only, so they may take
+ *   longer than the 50 ms default (ADR 0014).
  * @returns {import('../../../../platform/pipelines.js').PipelineStep}
  */
-export function filterStep(id, order, reason, keepFor) {
+export function filterStep(id, order, reason, keepFor, timeoutMs) {
   return {
     id,
     order,
+    ...(timeoutMs ? { timeoutMs } : {}),
     run: async (/** @type {FilterInput} */ input) => {
       const keep = await keepFor(input);
       /** @type {FilterOutput} */
@@ -30,3 +33,6 @@ export function filterStep(id, order, reason, keepFor) {
     },
   };
 }
+
+/** Timeout for filter steps that query Postgres or Redis (worker path only). */
+export const QUERY_STEP_TIMEOUT_MS = 250;
