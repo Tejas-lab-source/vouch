@@ -15,6 +15,15 @@ import { makeKeys } from './helpers.js';
 const parseKeys = (json) => JSON.parse(json);
 
 describe('token verification', () => {
+  it('reads the pending-review claim (Phase 10)', async () => {
+    const keys = await makeKeys();
+    const verifier = await createTokenVerifier({ keys: parseKeys(keys.json), clock: systemClock });
+    const pending = await verifier.verify(await keys.sign({ sub: 'u1', pr: true }), 'vouch:user');
+    expect(pending.pendingReview).toBe(true);
+    const forged = await verifier.verify(await keys.sign({ sub: 'u1', pr: 'yes' }), 'vouch:user');
+    expect(forged.pendingReview).toBe(false);
+  });
+
   it('accepts a valid user token and returns the principal', async () => {
     const keys = await makeKeys();
     const verifier = await createTokenVerifier({ keys: parseKeys(keys.json), clock: systemClock });
@@ -26,6 +35,7 @@ describe('token verification', () => {
       userId: 'u1',
       audience: 'vouch:user',
       mfa: false,
+      pendingReview: false,
       sessionId: 's1',
       expiresAt: expect.any(Date),
     });

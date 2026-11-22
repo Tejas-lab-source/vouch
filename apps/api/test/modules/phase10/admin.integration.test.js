@@ -162,6 +162,17 @@ describe('admin backend: sign-in, roles, audit, flags, panels (Phase 10)', () =>
     });
     expect(unblock.body).toEqual({ unblocked: true });
 
+    const active = await b.call('GET', '/v1/admin/bans', { token: adminToken });
+    expect(active.body.items.some((/** @type {any} */ x) => x.banId === ban.body.banId)).toBe(
+      false,
+    );
+    const all = await b.call('GET', '/v1/admin/bans?active=false', { token: adminToken });
+    expect(all.body.items.find((/** @type {any} */ x) => x.banId === ban.body.banId)).toMatchObject(
+      {
+        userId: target.publicId,
+        liftedAt: expect.any(String),
+      },
+    );
     const rows = (await b.auditRows()).slice(start);
     expect(rows.map((r) => r.action)).toEqual([
       'ban.create',

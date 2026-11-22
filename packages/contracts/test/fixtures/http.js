@@ -431,7 +431,8 @@ export const httpFixtures = {
   'adminListVerificationReviews.response': {
     valid: [{ items: [s.review], nextCursor: null }],
     invalid: [
-      { items: [{ ...s.review, idImageUrl: 'http://insecure.example.com/x' }], nextCursor: null },
+      { items: [{ ...s.review, idImageUrl: 'ftp://files.example.com/x' }], nextCursor: null },
+      { items: [{ ...s.review, selfieImageUrl: 'not a url' }], nextCursor: null },
     ],
   },
   'adminDecideVerification.params': { valid: [{ id: s.ID }], invalid: [{ id: null }] },

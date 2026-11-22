@@ -1,5 +1,6 @@
 // @ts-check
 import { randomUUID } from 'node:crypto';
+import { ENDPOINTS } from '@vouch/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createConsistencyCheck } from '../../../src/platform/jobs/consistency.js';
 import { eventually, HOOK_TIMEOUT_MS } from '../../platform/helpers.js';
@@ -152,6 +153,18 @@ describe('full backend scenario: sign-up → profile → photos → deck → mat
     kabirSocket.disconnect();
     ashaSocket.disconnect();
   }, 300_000);
+
+  it('every endpoint in the contracts (openapi.json) is registered', () => {
+    const missing = ENDPOINTS.filter(
+      (e) =>
+        !b.app.http.hasRoute({
+          method: e.method,
+          url: e.path.replace(/\{([a-zA-Z]+)\}/g, ':$1'),
+        }),
+    ).map((e) => `${e.method} ${e.path}`);
+    expect(missing).toEqual([]);
+    step(`routes: all ${ENDPOINTS.length} contract endpoints registered`);
+  });
 
   it('account deletion leaves no rows in any module (except anonymised matches); the consistency job agrees', async () => {
     const [x, y] = [await b.signUp(), await b.signUp()];
