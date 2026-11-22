@@ -46,6 +46,7 @@
  *   findByEmailHmac(emailHmac: Buffer): Promise<UserRecord | null>,
  *   findById(id: string): Promise<UserRecord | null>,
  *   findManyByIds(ids: readonly string[]): Promise<UserRecord[]>,
+ *   findManyByPublicIds(publicIds: readonly string[]): Promise<UserRecord[]>,
  *   insert(user: { id: string, publicId: string, collegeId: string, emailHmac: Buffer, status: 'active', birthDate: string, gradYear: number | null, createdAt: Date }): Promise<void>,
  *   markDeleted(id: string, at: Date): Promise<void>,
  *   setStatus(id: string, status: UserRecord['status']): Promise<void>,

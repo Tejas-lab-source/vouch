@@ -18,6 +18,7 @@ import { Timestamp, Uuidv7 } from '../common/ids.js';
 /** A candidate as discovery's filters and scorers see it (from `profiles.candidates_v`). */
 export const Candidate = z.strictObject({
   userId: Uuidv7,
+  collegeId: Uuidv7.optional().describe('Added in Phase 7 for deck diversification.'),
   gender: Gender,
   interestedIn: InterestedIn,
   age: z.int().min(AGE.MIN).max(AGE.MAX),
@@ -83,6 +84,12 @@ export const PIPELINES = Object.freeze(
           kind: z.enum(['photo']),
           objectKey: z.string().min(1).max(300),
           contentType: ImageContentType,
+          image: z
+            .instanceof(Uint8Array)
+            .optional()
+            .describe(
+              'The processed image bytes (Phase 7): providers cannot read private storage.',
+            ),
         }),
         output: z.strictObject({
           verdict: z.enum(['approve', 'reject', 'review']),

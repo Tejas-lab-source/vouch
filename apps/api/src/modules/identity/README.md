@@ -5,11 +5,12 @@ devices, consent records, account deletion and data export.
 
 ## Public API (`api.js`)
 
-| Function             | Returns                                                    |
-| -------------------- | ---------------------------------------------------------- |
-| `getUser(id)`        | `{ id, publicId, collegeId, status, birthDate }` or `null` |
-| `getUsersByIds(ids)` | The same view for many users                               |
-| `assertActive(id)`   | Throws `FORBIDDEN` unless the account is `active`          |
+| Function                         | Returns                                                    |
+| -------------------------------- | ---------------------------------------------------------- |
+| `getUser(id)`                    | `{ id, publicId, collegeId, status, birthDate }` or `null` |
+| `getUsersByIds(ids)`             | The same view for many users                               |
+| `getUsersByPublicIds(publicIds)` | The same view, looked up by public id                      |
+| `assertActive(id)`               | Throws `FORBIDDEN` unless the account is `active`          |
 
 ## HTTP routes (contracts in `packages/contracts/src/http/identity.js`)
 

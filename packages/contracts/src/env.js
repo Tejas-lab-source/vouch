@@ -131,8 +131,40 @@ export const EnvSchema = z
       .string()
       .regex(/^[a-z0-9_-]+$/)
       .default('dev')
-      .describe('Chosen in Phase 7.'),
-    MODERATION_API_KEY: z.string().min(1).optional(),
+      .describe("'dev' or 'rekognition' (Phase 7, ADR 0013)."),
+    MODERATION_API_KEY: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('For rekognition: the AWS secret access key.'),
+
+    // Photo moderation (ADR 0013). Confidence values are percentages.
+    MODERATION_AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
+    MODERATION_AWS_REGION: z
+      .string()
+      .regex(/^[a-z]{2}-[a-z]{4,10}-[0-9]$/)
+      .default('ap-south-1'),
+    MODERATION_ENDPOINT: z.url().optional().describe('Test-only endpoint override.'),
+    MODERATION_REJECT_CONFIDENCE: z.coerce.number().min(1).max(100).default(80),
+    MODERATION_REVIEW_CONFIDENCE: z.coerce.number().min(1).max(100).default(50),
+    MODERATION_FACE_AGE_CHECK: z.stringbool().default(true),
+    MODERATION_MINOR_AGE: z.coerce
+      .number()
+      .int()
+      .min(13)
+      .max(25)
+      .default(18)
+      .describe('Review a photo when a face’s estimated AgeRange.High is below this.'),
+
+    // Discovery ranking (ADR 0014). Weights are relative and need not sum to 1.
+    DISCOVERY_WEIGHT_BASE: z.coerce.number().min(0).max(10).default(0.25),
+    DISCOVERY_WEIGHT_RECENCY: z.coerce.number().min(0).max(10).default(0.35),
+    DISCOVERY_WEIGHT_COMPLETENESS: z.coerce.number().min(0).max(10).default(0.15),
+    DISCOVERY_WEIGHT_NEW_USER: z.coerce.number().min(0).max(10).default(0.25),
+    DISCOVERY_RECENCY_HALF_LIFE_HOURS: z.coerce.number().min(1).max(720).default(72),
+    DISCOVERY_NEW_USER_DAYS: z.coerce.number().int().min(1).max(60).default(7),
+    DISCOVERY_EXPOSURE_CAP: z.coerce.number().int().min(1).max(100_000).default(300),
+    DISCOVERY_MAX_NEW_USERS_TOP10: z.coerce.number().int().min(0).max(10).default(3),
 
     // Observability
     SENTRY_DSN: z.url().optional(),
@@ -158,12 +190,19 @@ export const EnvSchema = z
     if (env.MODERATION_PROVIDER !== 'dev' && !env.MODERATION_API_KEY) {
       fail('MODERATION_API_KEY', 'required for a real moderation provider');
     }
+    if (env.MODERATION_PROVIDER === 'rekognition' && !env.MODERATION_AWS_ACCESS_KEY_ID) {
+      fail('MODERATION_AWS_ACCESS_KEY_ID', 'required for rekognition');
+    }
+    if (env.MODERATION_REVIEW_CONFIDENCE > env.MODERATION_REJECT_CONFIDENCE) {
+      fail('MODERATION_REVIEW_CONFIDENCE', 'must not exceed MODERATION_REJECT_CONFIDENCE');
+    }
 
     if (env.NODE_ENV !== 'production') return;
     if (env.EMAIL_PROVIDER === 'console') fail('EMAIL_PROVIDER', 'console is development-only');
     if (env.CAPTCHA_PROVIDER === 'dev') fail('CAPTCHA_PROVIDER', 'dev is development-only');
     if (env.PUSH_PROVIDER === 'log') fail('PUSH_PROVIDER', 'log is development-only');
     if (env.MODERATION_PROVIDER === 'dev') fail('MODERATION_PROVIDER', 'dev is development-only');
+    if (env.MODERATION_ENDPOINT) fail('MODERATION_ENDPOINT', 'the endpoint override is test-only');
     if (env.R2_ENDPOINT) fail('R2_ENDPOINT', 'the local S3 endpoint is development-only');
   });
 

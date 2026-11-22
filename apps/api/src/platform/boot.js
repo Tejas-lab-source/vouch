@@ -45,6 +45,7 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
     max: config.DATABASE_POOL_MAX,
     prepare: config.DATABASE_PREPARE,
     extraModules: extraDbModules,
+    replicaUrl: config.DATABASE_REPLICA_URL,
   });
   const redis = createRedis({ url: config.REDIS_URL });
   const metrics = createMetrics();

@@ -6,11 +6,12 @@ Cloudflare R2 in production and SeaweedFS locally (ADR 0012).
 
 ## Public API (`api.js`)
 
-| Function                          | What it does                                                                          |
-| --------------------------------- | ------------------------------------------------------------------------------------- |
-| `deleteObjects(keys)`             | Deletes objects under `photos/` or `uploads/` (other keys are refused). Idempotent    |
-| `releaseUpload(uploadId, userId)` | Forgets one upload (a deleted photo) and deletes all its objects, even mid-processing |
-| `photoUrl(key)`                   | `CDN_BASE_URL` + key                                                                  |
+| Function                            | What it does                                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `deleteObjects(keys)`               | Deletes objects under `photos/` or `uploads/` (other keys are refused). Idempotent             |
+| `releaseUpload(uploadId, userId)`   | Forgets one upload (a deleted photo) and deletes all its objects, even mid-processing          |
+| `resolveReview(uploadId, decision)` | The moderation queue's decision (`approve` or `reject`) on a photo held for review; idempotent |
+| `photoUrl(key)`                     | `CDN_BASE_URL` + key                                                                           |
 
 ## HTTP routes (contracts in `packages/contracts/src/http/media.js`)
 
@@ -40,8 +41,9 @@ refuses with `UPLOAD_NOT_UPLOADED` unless the stored object matches.
      (EXIF including GPS, XMP, ICC); WebP at 1080 and 400 px wide, never upscaled, quality
      `IMAGE_WEBP_QUALITY`. Each width is its own pipeline, so JPEG and WebP use shrink-on-load.
   4. Write both variants to the private `uploads/processed/` prefix and run the `ContentCheck`
-     port on the 1080 px one (development adapter: approve; Phase 7: `safety.contentChecks`).
-     `review` leaves the upload `processing` until Phase 7 adds human review.
+     port on the 1080 px one, with its bytes: the `safety.contentChecks` pipeline (Phase 7).
+     `review` keeps the variants under the private `review/` prefix and marks the upload
+     `in_review` (its owner sees the photo as pending) until `resolveReview` decides.
   5. Approved: write `photos/{photoKey}/{photoId}_{1080|400}.webp` (immutable cache headers),
      then mark approved and emit, then delete the private objects. Rejected: mark rejected and
      emit, then delete the private objects; nothing is ever written under `photos/`.
@@ -57,7 +59,7 @@ refuses with `UPLOAD_NOT_UPLOADED` unless the stored object matches.
 ## Tables owned (schema `media`)
 
 `uploads`: one row per presigned upload, with its status (`pending → uploaded → processing →
-approved | rejected`), the signed size (`max_bytes`) and the random `photo_key`.
+in_review → approved | rejected`; `in_review` since Phase 7), the signed size (`max_bytes`) and the random `photo_key`.
 
 ## Object keys
 
@@ -65,6 +67,7 @@ approved | rejected`), the signed size (`max_bytes`) and the random `photo_key`.
 | ------------------------------------------ | ---------------------------- | -------------------------------------- |
 | `uploads/raw/{uploadId}`                   | The file as uploaded         | Private; R2 lifecycle deletes at 1 day |
 | `uploads/processed/{uploadId}_{size}.webp` | Variants awaiting moderation | Private; same lifecycle                |
+| `review/{uploadId}_{size}.webp`            | Variants held for review     | Private; kept until the decision       |
 | `photos/{photoKey}/{photoId}_{size}.webp`  | Approved variants            | Public through the CDN                 |
 
 `photoKey` is 16 random bytes (base64url) per photo, so a URL never contains an internal user
@@ -84,5 +87,6 @@ id and cannot be linked to the account or to the user's other photos.
 
 - `storage/s3.js`: `StorageProvider` on `@aws-sdk/client-s3` (R2 or SeaweedFS). Checksums only
   when required (a default checksum in a presigned URL breaks uploads), timeouts on every call.
-- `image/sharp.js`: `ImageProcessor`. `content-check/dev.js`: approves everything.
+- `image/sharp.js`: `ImageProcessor`. `content-check/pipeline.js`: `ContentCheck` through
+  `safety.contentChecks` (Phase 7): the strictest verdict wins; no verdict throws.
 - `pg/stores.js`, `http/routes.js`, `events/consumers.js`, `jobs/process-image.js`.

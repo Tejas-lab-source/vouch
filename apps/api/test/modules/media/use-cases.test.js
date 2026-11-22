@@ -144,18 +144,74 @@ describe('image processing', () => {
     expect(await s.h.processing.processUpload({ uploadId: id })).toBe('rejected');
   });
 
-  it('moderation reject removes the staged variants; review keeps the upload processing', async () => {
+  it('moderation reject removes the staged variants', async () => {
     const rejecting = setup({ verdict: 'reject' });
     const id = await upload(rejecting, await jpegWithGps());
     expect(await rejecting.h.processing.processUpload({ uploadId: id })).toBe('rejected');
     expect(rejecting.state.events.at(-1)?.payload.reason).toBe('moderation');
     expect(rejecting.state.objects.size).toBe(0);
+  });
 
+  it('review: the photo waits in_review with its variants under review/, nothing public', async () => {
     const review = setup({ verdict: 'review' });
     const held = await upload(review, await jpegWithGps());
     expect(await review.h.processing.processUpload({ uploadId: held })).toBe('review');
-    expect(review.state.uploads.get(held)?.status).toBe('processing');
-    expect([...review.state.objects.keys()].some((k) => k.startsWith('photos/'))).toBe(false);
+    expect(review.state.uploads.get(held)?.status).toBe('in_review');
+    expect([...review.state.objects.keys()].sort()).toEqual([
+      `review/${held}_1080.webp`,
+      `review/${held}_400.webp`,
+    ]);
+    expect(review.state.events.map((e) => e.name)).toEqual(['photo.uploaded.v1']);
+    // It still counts toward the limit, and confirming again reports processing.
+    expect(await review.h.confirmUpload({ id: held }, CTX)).toEqual({
+      uploadId: held,
+      status: 'processing',
+    });
+  });
+
+  it('resolveReview approve publishes the held variants; reject records moderation; both idempotent', async () => {
+    const approving = setup({ verdict: 'review' });
+    const a = await upload(approving, await jpegWithGps());
+    await approving.h.processing.processUpload({ uploadId: a });
+    expect(await approving.h.processing.resolveReview(a, 'approve')).toBe('approved');
+    expect([...approving.state.objects.keys()].sort()).toEqual([
+      `photos/${'R'.repeat(22)}/${a}_1080.webp`,
+      `photos/${'R'.repeat(22)}/${a}_400.webp`,
+    ]);
+    expect(approving.state.events.at(-1)?.name).toBe('photo.approved.v1');
+    expect(await approving.h.processing.resolveReview(a, 'approve')).toBe('finished');
+
+    const rejecting = setup({ verdict: 'review' });
+    const r = await upload(rejecting, await jpegWithGps());
+    await rejecting.h.processing.processUpload({ uploadId: r });
+    expect(await rejecting.h.processing.resolveReview(r, 'reject')).toBe('rejected');
+    expect(rejecting.state.events.at(-1)?.payload).toMatchObject({ reason: 'moderation' });
+    expect(rejecting.state.objects.size).toBe(0);
+    expect(await rejecting.h.processing.resolveReview(r, 'reject')).toBe('finished');
+  });
+
+  it('releasing a photo held for review deletes its review objects', async () => {
+    const s = setup({ verdict: 'review' });
+    const id = await upload(s, await jpegWithGps());
+    await s.h.processing.processUpload({ uploadId: id });
+    await createMediaApi(s.deps).releaseUpload(id, USER);
+    expect(s.state.objects.size).toBe(0);
+    expect(await s.h.processing.resolveReview(id, 'approve')).toBe('released');
+  });
+
+  it('the pipeline content check picks the strictest verdict and never approves without one', async () => {
+    const { createPipelineContentCheck } =
+      await import('../../../src/modules/media/adapters/content-check/pipeline.js');
+    /** @param {any[]} values */
+    const check = (values) =>
+      createPipelineContentCheck({
+        collect: async () => values.map((value, i) => ({ id: `s${i}`, value })),
+      }).check(/** @type {any} */ ({}));
+    const v = (/** @type {string} */ verdict) => ({ verdict, reasons: [verdict], provider: 'p' });
+    expect((await check([v('approve'), v('review')])).verdict).toBe('review');
+    expect((await check([v('review'), v('reject'), v('approve')])).verdict).toBe('reject');
+    expect((await check([v('approve')])).verdict).toBe('approve');
+    await expect(check([])).rejects.toThrow('no verdict');
   });
 
   it('a photo deleted while it is processed is discarded: nothing is left in storage', async () => {

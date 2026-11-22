@@ -27,6 +27,7 @@ const DEFAULT_STATEMENT_TIMEOUT_MS = 5_000;
  * @property {boolean} [prepare]  false behind a transaction pooler.
  * @property {number} [statementTimeoutMs]  Applied to every module transaction.
  * @property {readonly string[]} [extraModules]  Additional module roles (tests only).
+ * @property {string} [replicaUrl]  A read replica; `read(..., { replica: true })` uses it.
  */
 
 /**
@@ -34,8 +35,10 @@ const DEFAULT_STATEMENT_TIMEOUT_MS = 5_000;
  * @property {import('postgres').Sql} sql  Raw client. Module code never uses it directly.
  * @property {<T>(module: string, fn: (tx: import('postgres').TransactionSql) => Promise<T>) => Promise<T>} transaction
  *   Runs `fn` in a read-write transaction as `vouch_<module>`.
- * @property {<T>(module: string, fn: (tx: import('postgres').TransactionSql) => Promise<T>) => Promise<T>} read
- *   Runs `fn` in a read-only transaction as `vouch_<module>`.
+ * @property {<T>(module: string, fn: (tx: import('postgres').TransactionSql) => Promise<T>, options?: { replica?: boolean }) => Promise<T>} read
+ *   Runs `fn` in a read-only transaction as `vouch_<module>`. With `{ replica: true }` it runs
+ *   on the read replica when one is configured, and on the primary otherwise. Replica reads can
+ *   lag, so only paths that tolerate slightly stale data use them (the deck builder).
  * @property {() => Promise<void>} end  Closes the pool, waiting up to 5 s for queries.
  */
 
@@ -53,16 +56,21 @@ export function createDatabase({
   prepare = true,
   statementTimeoutMs = DEFAULT_STATEMENT_TIMEOUT_MS,
   extraModules = [],
+  replicaUrl,
 }) {
-  const sql = postgres(url, {
-    max,
-    idle_timeout: 20,
-    connect_timeout: 10,
-    prepare,
-    transform: postgres.camel,
-    onnotice: () => {},
-    connection: { application_name: 'vouch-api' },
-  });
+  /** @param {string} target @param {string} name */
+  const pool = (target, name) =>
+    postgres(target, {
+      max,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      prepare,
+      transform: postgres.camel,
+      onnotice: () => {},
+      connection: { application_name: name },
+    });
+  const sql = pool(url, 'vouch-api');
+  const replica = replicaUrl ? pool(replicaUrl, 'vouch-api-replica') : sql;
   const allowed = new Set([...DB_MODULES, ...extraModules]);
 
   /**
@@ -88,12 +96,13 @@ export function createDatabase({
    * @param {string} module
    * @param {boolean} readOnly
    * @param {(tx: import('postgres').TransactionSql) => Promise<T>} fn
+   * @param {import('postgres').Sql} [client]
    * @returns {Promise<T>}
    */
-  const run = async (module, readOnly, fn) => {
+  const run = async (module, readOnly, fn, client = sql) => {
     const statements = preamble(module, readOnly);
     return /** @type {Promise<T>} */ (
-      sql.begin(async (tx) => {
+      client.begin(async (tx) => {
         await tx.unsafe(statements);
         return fn(tx);
       })
@@ -103,7 +112,12 @@ export function createDatabase({
   return {
     sql,
     transaction: (module, fn) => run(module, false, fn),
-    read: (module, fn) => run(module, true, fn),
-    end: () => sql.end({ timeout: 5 }),
+    read: (module, fn, options = {}) => run(module, true, fn, options.replica ? replica : sql),
+    end: async () => {
+      await Promise.all([
+        sql.end({ timeout: 5 }),
+        replica === sql ? null : replica.end({ timeout: 5 }),
+      ]);
+    },
   };
 }

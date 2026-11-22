@@ -20,8 +20,9 @@ describe('object keys', () => {
   });
 
   it('lists every object an upload can own', () => {
-    expect(objectsOf({ id: UPLOAD_ID, photoKey: null })).toHaveLength(3);
-    expect(objectsOf({ id: UPLOAD_ID, photoKey: 'k'.repeat(22) })).toHaveLength(5);
+    expect(objectsOf({ id: UPLOAD_ID, photoKey: null })).toHaveLength(5);
+    expect(objectsOf({ id: UPLOAD_ID, photoKey: 'k'.repeat(22) })).toHaveLength(7);
+    expect(keys.review(UPLOAD_ID, 'w1080')).toBe(`review/${UPLOAD_ID}_1080.webp`);
   });
 });
 

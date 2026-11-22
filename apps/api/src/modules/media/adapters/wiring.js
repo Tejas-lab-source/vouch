@@ -5,7 +5,7 @@ import { makeProcessing } from '../application/process.js';
 import { makeRelease } from '../application/release.js';
 import { makeRetention } from '../application/retention.js';
 import { makeUploadUseCases } from '../application/uploads.js';
-import { createDevContentCheck } from './content-check/dev.js';
+import { createPipelineContentCheck } from './content-check/pipeline.js';
 import { createSharpProcessor } from './image/sharp.js';
 import { createMediaStores } from './pg/stores.js';
 import { createS3Storage } from './storage/s3.js';
@@ -42,7 +42,7 @@ export function buildMediaDeps(ctx) {
       maxPixels: config.IMAGE_MAX_PIXELS,
       quality: config.IMAGE_WEBP_QUALITY,
     }),
-    contentCheck: overrides.contentCheck ?? createDevContentCheck(),
+    contentCheck: overrides.contentCheck ?? createPipelineContentCheck(ctx.pipelines),
     settings: {
       photosMax: config.PHOTOS_MAX,
       uploadMaxBytes: config.UPLOAD_MAX_BYTES,
