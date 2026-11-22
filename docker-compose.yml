@@ -30,3 +30,21 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # Local S3 (stands in for Cloudflare R2 and its CDN; ADR 0012). Credentials and the anonymous
+  # read rule for photos/ live in infra/seaweedfs/s3.json (development-only values). Create the
+  # bucket with `pnpm storage:init`.
+  storage:
+    image: chrislusf/seaweedfs:4.54
+    command: ['server', '-s3', '-s3.config=/etc/vouch/s3.json', '-dir=/data', '-volume.max=10']
+    ports:
+      - '127.0.0.1:${STORAGE_PORT:-8333}:8333'
+    volumes:
+      - ./infra/seaweedfs/s3.json:/etc/vouch/s3.json:ro
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8333/healthz']
+      interval: 2s
+      timeout: 3s
+      retries: 30

@@ -1,0 +1,13 @@
+{
+  "identities": [
+    {
+      "name": "vouch-local",
+      "credentials": [{ "accessKey": "vouch-local", "secretKey": "vouch-local-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    },
+    {
+      "name": "anonymous",
+      "actions": ["Read:vouch/photos/*"]
+    }
+  ]
+}
