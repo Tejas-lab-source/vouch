@@ -125,3 +125,42 @@ All notable changes are recorded here, grouped by roadmap phase.
   image, checks `/health`, `/ready` and `/metrics`, and stops with a 30 s limit.
 - `.env.example` lists every required variable, with placeholder secrets and a public-only
   development JWT key.
+
+## Phase 5 — Identity and authentication module
+
+### Added
+
+- `modules/identity` (see its README):
+  - college-email OTP sign-up and sign-in, with `SIGNUP_DETAILS_REQUIRED` that does not consume
+    the code
+  - 15-minute EdDSA access tokens, and 30-day rotating refresh tokens with reuse detection
+    (ADR 0011)
+  - logout, devices (list and remote sign-out), push-token registration
+  - account deletion (`user.deleted.v1` once) and data export through the registry's exports
+    hooks
+  - a `user.banned.v1` consumer, and nightly retention of sessions, devices and erased accounts
+- `POST /v1/auth/otp` fails closed: when Redis or the rate limiter is unavailable it returns 503
+  `TEMPORARILY_UNAVAILABLE` and sends nothing.
+- Email normalisation (trim, lowercase, drop `+tag`) and exact college-domain matching; no
+  subdomains, so `alumni.<college domain>` is rejected.
+- Configurable identity rate limits (`RATE_LIMIT_*`), with per-IP limits sized for shared campus
+  IPs.
+- `pnpm dev:keys` (`scripts/dev-keys.js`): local Ed25519 signing keys (`--write`, `--rotate`).
+  It uses only Node's built-in crypto, so CI runs it before installing dependencies.
+- Contracts (additive):
+  - routes `POST /v1/auth/logout`, `GET /v1/me/devices` and `DELETE /v1/me/devices/{id}`
+  - the error code `TEMPORARILY_UNAVAILABLE` (503), an optional `deviceId` on OTP requests, the
+    `identity.retention` job and the `RATE_LIMIT_*` env variables
+  - `ServiceError`, a pure coded error that application layers can throw
+- Kernel additions:
+  - `platform/rate-limit.js`, a Redis limiter with a fail-closed mode
+  - `platform/routes.js`, a contract endpoint → Fastify route helper
+  - registry `exports` collection and manifest `schedules`
+  - readable messages for every identity error code
+- ADR 0011 (token strategy and rate limits).
+
+### Changed
+
+- The idempotency store reports Redis outages as `TEMPORARILY_UNAVAILABLE` (it was a 500).
+- `.env.example` documents the providers and limits. The CI Docker job generates signing keys
+  with `node scripts/dev-keys.js --write`.
