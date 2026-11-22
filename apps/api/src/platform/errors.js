@@ -28,8 +28,22 @@ const DEFAULT_MESSAGES = /** @type {const} */ ({
   REFRESH_TOKEN_INVALID: 'Your session has ended. Sign in again.',
   REFRESH_TOKEN_REUSED: 'Your session has ended. Sign in again.',
   ACCOUNT_BANNED: 'This account has been suspended.',
+  CONFLICT: 'This conflicts with the current state. Refresh and try again.',
+  ACCOUNT_PENDING_REVIEW: 'Your account is being reviewed. We will let you know soon.',
+  UNKNOWN_SECTION_TYPE: 'This profile section is not available.',
+  PROFILE_INCOMPLETE: 'Finish your profile first.',
+  UNSUPPORTED_MEDIA_TYPE: 'Upload a JPEG, PNG or WebP image.',
+  FILE_TOO_LARGE: 'This file is too large.',
+  PHOTO_LIMIT_REACHED: 'You have reached the photo limit. Remove one to add another.',
+  UPLOAD_NOT_UPLOADED: 'The upload did not finish. Try uploading again.',
   NOT_SERVED: 'Swipe on people from your deck.',
   NOT_MATCHED: 'This match has ended.',
+  BLOCKED: 'This action is not available.',
+  CONVERSATION_CLOSED: 'This conversation has ended.',
+  NOT_A_MEMBER: 'You are not part of this conversation.',
+  MESSAGE_REJECTED: 'This message could not be sent.',
+  MFA_REQUIRED: 'Two-factor authentication is required.',
+  IP_NOT_ALLOWED: 'Access from this network is not allowed.',
 });
 
 const MESSAGES_BY_CODE = new Map(Object.entries(DEFAULT_MESSAGES));
