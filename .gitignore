@@ -4,6 +4,7 @@ node_modules/
 # Build and tool output
 .turbo/
 coverage/
+.vitest/
 dist/
 *.log
 
