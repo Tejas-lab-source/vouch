@@ -1,4 +1,5 @@
 // @ts-check
+import { ENDPOINTS as CONTRACT_ENDPOINTS } from '@vouch/contracts';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
@@ -45,7 +46,8 @@ const BASE = 'https://api.test';
 
 describe('api client', () => {
   it('generated functions cover every contract endpoint', () => {
-    expect(Object.keys(ENDPOINTS)).toHaveLength(45);
+    // One generated function per contract endpoint, by id (no count to keep in sync).
+    expect(Object.keys(ENDPOINTS).sort()).toEqual(CONTRACT_ENDPOINTS.map((e) => e.id).sort());
     expect(ENDPOINTS.reportUser).toEqual({
       id: 'reportUser',
       method: 'POST',
