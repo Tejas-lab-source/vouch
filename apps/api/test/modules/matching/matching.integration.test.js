@@ -148,6 +148,20 @@ describe('matching (ROLE=all, the 2,000-user seed)', () => {
     expect(await swipeRows(a, b)).toHaveLength(1);
   });
 
+  it('two concurrent likes from the same user (different swipeIds) after a like back emit one match.created.v1', async () => {
+    const [a, b] = [fresh(), fresh()];
+    await serve(a, b);
+    await serve(b, a);
+    await swipe(b, a, 'like');
+    const replies = await Promise.all(Array.from({ length: 5 }, () => swipe(a, b, 'like')));
+    const ids = new Set(replies.map((r) => r.body.matchId));
+    expect(ids.size).toBe(1);
+    expect(replies.every((r) => r.body.matched)).toBe(true);
+    const events = await infra.admin`SELECT 1 FROM platform.outbox
+      WHERE name = 'match.created.v1' AND payload->>'matchId' = ${[...ids][0]}`;
+    expect(events).toHaveLength(1);
+  });
+
   it('refuses unserved targets, unknown users and incomplete profiles', async () => {
     const [a, b] = [fresh(), fresh()];
     const notServed = await swipe(a, b, 'like');
