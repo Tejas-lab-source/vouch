@@ -1612,6 +1612,260 @@
         "additionalProperties": false
       }
     },
+    "deleteMyPhoto": {
+      "module": "profiles",
+      "method": "DELETE",
+      "path": "/v1/me/photos/{id}",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "description": "Photo id (UUIDv7)."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,32}$",
+            "description": "Random public id of a user. Internal user UUIDs are never exposed."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "hidden"
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  0,
+                  1,
+                  2
+                ],
+                "description": "0 = woman, 1 = man, 2 = non-binary."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interestedIn": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "number",
+              "enum": [
+                0,
+                1,
+                2
+              ],
+              "description": "0 = woman, 1 = man, 2 = non-binary."
+            }
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "age": {
+            "type": "integer",
+            "minimum": 18,
+            "maximum": 99
+          },
+          "minAge": {
+            "type": "integer",
+            "minimum": 18,
+            "maximum": 99
+          },
+          "maxAge": {
+            "type": "integer",
+            "minimum": 18,
+            "maximum": 99
+          },
+          "photos": {
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                  "description": "Photo id (UUIDv7)."
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "approved",
+                    "rejected"
+                  ]
+                },
+                "urls": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "w400": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "400 px variant, used in decks."
+                        },
+                        "w1080": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "1080 px variant, used in detail views."
+                        }
+                      },
+                      "required": [
+                        "w400",
+                        "w1080"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Null until the photo is approved."
+                }
+              },
+              "required": [
+                "id",
+                "position",
+                "status",
+                "urls"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,39}$"
+                },
+                "schemaVersion": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "data": {
+                  "description": "Validated against the zod schema registered for `type`."
+                }
+              },
+              "required": [
+                "type",
+                "schemaVersion",
+                "position",
+                "data"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "name",
+                "gender",
+                "interestedIn",
+                "photos"
+              ]
+            },
+            "description": "Empty when the profile is complete."
+          }
+        },
+        "required": [
+          "userId",
+          "status",
+          "name",
+          "gender",
+          "interestedIn",
+          "bio",
+          "age",
+          "minAge",
+          "maxAge",
+          "photos",
+          "sections",
+          "missing"
+        ],
+        "additionalProperties": false
+      }
+    },
     "createUpload": {
       "module": "media",
       "method": "POST",
@@ -7018,6 +7272,14 @@
           "uploadId",
           "userId"
         ],
+        "additionalProperties": false
+      }
+    },
+    "media.retentionTick": {
+      "queue": "media",
+      "payload": {
+        "type": "object",
+        "properties": {},
         "additionalProperties": false
       }
     },

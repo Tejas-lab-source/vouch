@@ -20,6 +20,7 @@
     "db:migrate": "pnpm --filter @vouch/api db:migrate",
     "db:migrate:down": "pnpm --filter @vouch/api db:migrate:down",
     "db:seed": "pnpm --filter @vouch/api db:seed",
+    "storage:init": "pnpm --filter @vouch/api storage:init",
     "contracts:generate": "node scripts/contracts-generate.js",
     "contracts:check": "node scripts/contracts-generate.js --check",
     "contracts:diff": "node scripts/contracts-diff.js",

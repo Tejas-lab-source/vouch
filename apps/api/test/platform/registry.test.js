@@ -1,6 +1,7 @@
 // @ts-check
 import pino from 'pino';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { createPipelines } from '../../src/platform/pipelines.js';
 import { bootModules, defineModule, sortModules } from '../../src/platform/registry.js';
 
@@ -74,6 +75,42 @@ describe('bootModules', () => {
     const result = await bootModules({ modules: modules(), role, platform: { logger }, pipelines });
     return { result, pipelines };
   }
+
+  it('collects section types from manifests and refuses duplicates or a mismatched type', async () => {
+    const pipelines = createPipelines({ logger });
+    const section = (/** @type {string} */ type) => async () => ({
+      type,
+      schemaVersion: 1,
+      owner: 'clubs',
+      data: z.strictObject({ name: z.string() }),
+    });
+    const ok = await bootModules({
+      modules: [mod('clubs', [], { sections: { clubs: section('clubs') } })],
+      role: 'api',
+      platform: { logger },
+      pipelines,
+    });
+    expect([...ok.sections.keys()]).toEqual(['clubs']);
+    await expect(
+      bootModules({
+        modules: [
+          mod('a', [], { sections: { clubs: section('clubs') } }),
+          mod('b', [], { sections: { clubs: section('clubs') } }),
+        ],
+        role: 'api',
+        platform: { logger },
+        pipelines,
+      }),
+    ).rejects.toThrow('duplicate section type: clubs');
+    await expect(
+      bootModules({
+        modules: [mod('c', [], { sections: { prompts: section('clubs') } })],
+        role: 'api',
+        platform: { logger },
+        pipelines,
+      }),
+    ).rejects.toThrow('declares type clubs');
+  });
 
   it('injects dependency APIs in order', async () => {
     const { result } = await boot('api');

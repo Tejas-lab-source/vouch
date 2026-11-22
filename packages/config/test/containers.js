@@ -4,6 +4,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 /** Keep these tags in sync with docker-compose.yml. */
 export const POSTGRES_IMAGE = 'postgres:17-alpine';
 export const REDIS_IMAGE = 'redis:7-alpine';
+export const STORAGE_IMAGE = 'chrislusf/seaweedfs:4.54';
 
 const STARTUP_TIMEOUT_MS = 120_000;
 
@@ -92,6 +93,57 @@ export async function startTestContainers() {
     redisContainerId: redis.getId(),
     stop: async () => {
       await Promise.all([postgres.stop(), redis.stop()]);
+    },
+  };
+}
+
+/** Development-only S3 credentials, the same as infra/seaweedfs/s3.json and .env.example. */
+export const TEST_STORAGE = Object.freeze({
+  accessKeyId: 'vouch-local',
+  secretAccessKey: 'vouch-local-secret',
+  bucket: 'vouch',
+});
+
+const STORAGE_CONFIG = JSON.stringify({
+  identities: [
+    {
+      name: 'vouch-local',
+      credentials: [
+        { accessKey: TEST_STORAGE.accessKeyId, secretKey: TEST_STORAGE.secretAccessKey },
+      ],
+      actions: ['Admin', 'Read', 'Write', 'List', 'Tagging'],
+    },
+    { name: 'anonymous', actions: [`Read:${TEST_STORAGE.bucket}/photos/*`] },
+  ],
+});
+
+/**
+ * @typedef {object} TestStorage
+ * @property {string} endpoint  S3 endpoint, for example `http://127.0.0.1:32768`.
+ * @property {string} publicBaseUrl  Anonymous read base for the bucket (stands in for the CDN).
+ * @property {() => Promise<void>} stop
+ */
+
+/**
+ * Starts a SeaweedFS S3 server (the local stand-in for R2). The bucket is not created: the
+ * caller creates it through the storage adapter.
+ * @returns {Promise<TestStorage>}
+ */
+export async function startTestStorage() {
+  const container = await new GenericContainer(STORAGE_IMAGE)
+    .withCommand(['server', '-s3', '-s3.config=/etc/vouch/s3.json', '-dir=/data', '-volume.max=5'])
+    .withCopyContentToContainer([{ content: STORAGE_CONFIG, target: '/etc/vouch/s3.json' }])
+    .withTmpFs({ '/data': 'rw' })
+    .withExposedPorts(8333)
+    .withWaitStrategy(Wait.forHttp('/healthz', 8333))
+    .withStartupTimeout(STARTUP_TIMEOUT_MS)
+    .start();
+  const endpoint = `http://${container.getHost()}:${container.getMappedPort(8333)}`;
+  return {
+    endpoint,
+    publicBaseUrl: `${endpoint}/${TEST_STORAGE.bucket}`,
+    stop: async () => {
+      await container.stop();
     },
   };
 }

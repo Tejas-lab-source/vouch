@@ -41,6 +41,25 @@ describe('seed script', () => {
     expect(row).toEqual({ candidates: 2000, min_photos: 2, clusters: 1 });
   });
 
+  it('builds photo keys as photos/{photoKey}/{photoId}_{size}.webp, never with a user id', () => {
+    const { users, photos } = /** @type {{ users: any[], photos: any[] }} */ (buildSeedData());
+    const userIds = new Set(users.map((u) => u.id));
+    const keyPattern = /^photos\/[A-Za-z0-9_-]{22}\/[0-9a-f-]{36}_(1080|400)\.webp$/;
+    const photoKeys = new Set();
+    for (const photo of photos) {
+      for (const key of [photo.key_1080, photo.key_400]) {
+        expect(key).toMatch(keyPattern);
+        expect(key).toContain(photo.id);
+        expect(key).not.toContain(photo.user_id);
+        const [, photoKey = '', file = ''] = key.split('/');
+        expect(userIds.has(photoKey) || userIds.has(file.split('_')[0] ?? '')).toBe(false);
+      }
+      photoKeys.add(photo.key_1080.split('/')[1]);
+    }
+    expect(photoKeys.size).toBe(photos.length); // one random key per photo
+    expect(userIds.size).toBe(2000);
+  });
+
   it('stores no plaintext email and uses only reserved example domains', async () => {
     const colleges = await db.sql`SELECT email_domains FROM platform.colleges`;
     for (const { email_domains: domains } of colleges) {

@@ -1,6 +1,7 @@
 // @ts-check
 import { z } from 'zod';
 import { AGE, Gender, InterestedIn } from '../common/codes.js';
+import { PhotoId } from '../common/ids.js';
 import { OwnProfile, SectionEntry } from '../common/entities.js';
 import { SectionType } from '../sections/index.js';
 import { defineEndpoint } from './endpoint.js';
@@ -60,4 +61,17 @@ export const putProfileSection = defineEndpoint({
   errors: ['UNKNOWN_SECTION_TYPE'],
 });
 
-export const profilesEndpoints = [getMyProfile, updateMyProfile, putProfileSection];
+export const deleteMyPhoto = defineEndpoint({
+  id: 'deleteMyPhoto',
+  module: 'profiles',
+  method: 'DELETE',
+  path: '/v1/me/photos/{id}',
+  auth: 'user',
+  summary: 'Remove one of your photos (pending, approved or rejected) and its stored files.',
+  description:
+    'Idempotent: deleting a photo that is already gone returns the current profile. A photo still being processed is discarded when processing ends.',
+  params: z.strictObject({ id: PhotoId }),
+  response: { status: 200, schema: OwnProfile },
+});
+
+export const profilesEndpoints = [getMyProfile, updateMyProfile, putProfileSection, deleteMyPhoto];

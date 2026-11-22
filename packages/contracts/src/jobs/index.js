@@ -61,6 +61,13 @@ export const JOBS = Object.freeze(
         payload: z.strictObject({ uploadId: Uuidv7, userId: Uuidv7 }),
       }),
       defineJob({
+        name: 'media.retentionTick',
+        queue: 'media',
+        description:
+          'Nightly: delete upload rows of rejected or never-confirmed uploads older than 7 days.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
         name: 'notifications.sendPush',
         queue: 'external',
         description: 'Send one push through the push provider and log the delivery.',

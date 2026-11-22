@@ -122,6 +122,56 @@ describe('event bus: outbox → relay → per-consumer queues → inbox', () => 
     expect(calls).toBe(1);
   });
 
+  it('a consumer can emit in its transaction; after-commit hooks run only once it commits', async () => {
+    /** @type {string[]} */
+    const hooks = [];
+    let fail = true;
+    const process = createConsumer({
+      db,
+      consumer: 'safety',
+      event: thingHappened,
+      handler: async (payload, { emit, afterCommit }) => {
+        await emit(thingHappened, { n: payload.n + 1000 });
+        afterCommit(() => hooks.push(`committed ${payload.n}`));
+        afterCommit(() => {
+          throw new Error('hooks are best-effort');
+        });
+        if (fail) throw new Error('transient');
+      },
+    });
+    const job = {
+      data: {
+        id: 434343,
+        name: thingHappened.name,
+        version: 1,
+        occurredAt: new Date().toISOString(),
+        traceId: 'trace-1',
+        payload: { n: 8 },
+      },
+    };
+    await expect(process(job)).rejects.toThrow('transient');
+    expect(hooks).toEqual([]);
+    const emitted = () =>
+      infra.admin`SELECT trace_id FROM platform.outbox WHERE payload->>'n' = '1008'`;
+    expect(await emitted()).toHaveLength(0);
+    fail = false;
+    expect(await process(job)).toBe('processed');
+    expect(hooks).toEqual(['committed 8']);
+    expect((await emitted()).map((r) => r.trace_id)).toEqual(['trace-1']);
+  });
+
+  it('jobs: a per-queue concurrency override replaces the policy default', async () => {
+    prefix += 1;
+    jobs = createJobs({
+      connection: redis.bullmq,
+      logger,
+      prefix: `t${prefix}`,
+      concurrency: { media: 1 },
+    });
+    expect(jobs.process('media', {}).opts.concurrency).toBe(1);
+    expect(jobs.process('bulk', {}).opts.concurrency).toBe(2);
+  });
+
   it('a handler failure rolls back its inbox row, so a retry processes it again', async () => {
     let attempts = 0;
     const process = createConsumer({

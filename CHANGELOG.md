@@ -165,3 +165,43 @@ All notable changes are recorded here, grouped by roadmap phase.
 - The idempotency store reports Redis outages as `TEMPORARILY_UNAVAILABLE` (it was a 500).
 - `.env.example` documents the providers and limits. The CI Docker job generates signing keys
   with `node scripts/dev-keys.js --write`.
+
+## Phase 6 — Profiles, media and photo pipeline
+
+### Added
+
+- `modules/profiles` (see its README): own profile read and edit, sections validated against
+  the `sections` registry (empty in v1), profile completeness and `pending ↔ active` status,
+  `profile.updated.v1` on every change, cached profile cards (`api.getCards`, Redis
+  `profiles:card:{userId}`, 10 minutes, invalidated on change), the `profiles.cardFields`
+  pipeline, consumers of `user.created.v1`, `user.deleted.v1` and the photo events, and data
+  export.
+- `modules/media` (see its README): presigned uploads with the exact size and type signed,
+  confirm, the image worker (magic bytes, 50 MP limit, EXIF and GPS stripped, WebP at 1080 and
+  400 px with shrink-on-load, content-check port with a development adapter), publish under
+  `photos/{photoKey}/{photoId}_{size}.webp`, release on photo deletion, erase on account
+  deletion, nightly retention of finished upload rows, and data export.
+- `DELETE /v1/me/photos/{id}` (additive contract, owner decision): idempotent; the files are
+  deleted, including a photo still being processed.
+- SeaweedFS (`chrislusf/seaweedfs:4.54`) as the local S3 server in Compose and Testcontainers,
+  `infra/seaweedfs/s3.json`, and `pnpm storage:init` to create the local bucket.
+- Env: `PHOTOS_MAX`, `UPLOAD_MAX_BYTES`, `UPLOAD_URL_TTL_SECONDS`, `IMAGE_WEBP_QUALITY`,
+  `IMAGE_MAX_PIXELS`; the `media.retentionTick` job contract.
+- Migrations (expand-only): `profiles.photos` status `deleted` (tombstones), and
+  `media.uploads.photo_key`.
+- Kernel additions: event consumers can `emit` into the outbox and register `afterCommit`
+  hooks; the registry collects section types; `lockKey` advisory locks; a per-queue worker
+  concurrency override (`media` from `IMAGE_WORKER_CONCURRENCY`).
+- Dependencies (approved): `sharp@0.35.5`, `@aws-sdk/client-s3@3.1175.0`,
+  `@aws-sdk/s3-request-presigner@3.1175.0`.
+- ADR 0012 (media storage, photo keys and the image pipeline).
+
+### Changed
+
+- `IMAGE_WORKER_CONCURRENCY` defaults to 1 (was 2), for a 512 MB instance.
+- Production requires `R2_ACCOUNT_ID` unless `R2_ENDPOINT` is set (and `R2_ENDPOINT` stays
+  refused in production).
+- The seed builds photo keys as `photos/{photoKey}/{photoId}_{size}.webp` with a random key per
+  photo, never the user id. It stays deterministic, but its generated values differ from Phase 5's
+  because the generator now also draws the photo keys.
+- The modules list is now identity, profiles, media.

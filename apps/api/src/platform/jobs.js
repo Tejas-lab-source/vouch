@@ -61,10 +61,19 @@ function policyFor(queueName) {
  *   logger: import('pino').Logger,
  *   prefix?: string,
  *   random?: () => number,
- * }} options
+ *   concurrency?: Partial<Record<PolicyName, number>>,
+ * }} options  `concurrency` overrides a policy's default per process (for example the
+ *   `media` queue from `IMAGE_WORKER_CONCURRENCY`).
  * @returns {JobRunner}
  */
-export function createJobs({ connection, logger, prefix = 'bull', random = Math.random }) {
+export function createJobs({
+  connection,
+  logger,
+  prefix = 'bull',
+  random = Math.random,
+  concurrency = {},
+}) {
+  const overrides = new Map(Object.entries(concurrency));
   /** @type {Map<string, Queue>} */
   const queues = new Map();
   /** @type {Worker[]} */
@@ -111,7 +120,7 @@ export function createJobs({ connection, logger, prefix = 'bull', random = Math.
       {
         connection,
         prefix,
-        concurrency: policy.concurrency,
+        concurrency: overrides.get(policyFor(queueName)) ?? policy.concurrency,
         settings: { backoffStrategy: (attemptsMade) => backoffDelay(attemptsMade, policy, random) },
       },
     );
