@@ -69,7 +69,7 @@ export function createApiClient({
   fetch: fetchImpl = globalThis.fetch.bind(globalThis),
   tokens,
   onSessionEnded = () => {},
-  newKey = () => globalThis.crypto.randomUUID(),
+  newKey = () => /** @type {any} */ (globalThis).crypto.randomUUID(),
   credentials = 'same-origin',
 }) {
   const base = baseUrl.replace(/\/+$/, '');

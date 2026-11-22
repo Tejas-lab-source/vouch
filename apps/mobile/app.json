@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Vouch",
+    "slug": "vouch",
+    "scheme": "vouch",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": { "bundleIdentifier": "app.vouch.mobile", "supportsTablet": false },
+    "android": { "package": "app.vouch.mobile" },
+    "plugins": [
+      ["expo-router", { "root": "./src/routes" }],
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "dark": { "backgroundColor": "#121216" },
+          "imageWidth": 120
+        }
+      ]
+    ],
+    "experiments": { "typedRoutes": false },
+    "extra": { "apiUrl": "http://localhost:3000" }
+  }
+}

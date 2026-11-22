@@ -32,9 +32,16 @@ export const keys = Object.freeze({
  * The session's tokens. The access token lives in memory only. The refresh token travels as
  * an httpOnly cookie on the web (`transport: 'cookie'`) or is kept in secure storage on mobile
  * (`transport: 'body'`). `refresh()` rotates both.
- * @param {{ transport: 'cookie' | 'body', storage?: TokenStorage, baseUrl: string, appVersion: string, fetch?: typeof fetch }} options
+ * @param {{ transport: 'cookie' | 'body', storage?: TokenStorage, baseUrl: string, appVersion: string, fetch?: typeof fetch, newKey?: () => string }} options
  */
-export function createSession({ transport, storage, baseUrl, appVersion, fetch: fetchImpl }) {
+export function createSession({
+  transport,
+  storage,
+  baseUrl,
+  appVersion,
+  fetch: fetchImpl,
+  newKey,
+}) {
   if (transport === 'body' && !storage) throw new Error('body transport needs a token storage');
   /** @type {{ token: string, expiresAt: number } | null} */
   let access = null;
@@ -48,6 +55,7 @@ export function createSession({ transport, storage, baseUrl, appVersion, fetch: 
     appVersion,
     fetch: fetchImpl,
     credentials: transport === 'cookie' ? 'include' : 'omit',
+    ...(newKey ? { newKey } : {}),
     tokens: { get: () => null, refresh: () => Promise.reject(new Error('not used')) },
   });
 
@@ -106,13 +114,15 @@ export function createSession({ transport, storage, baseUrl, appVersion, fetch: 
 /**
  * The client bound to a session: signed-in calls carry its access token and refresh it once
  * on a 401; a failed refresh ends the session.
- * @param {{ session: Session, baseUrl: string, appVersion: string, fetch?: typeof fetch }} options
+ * `newKey` makes idempotency keys (React Native has no `crypto.randomUUID`; pass expo-crypto's).
+ * @param {{ session: Session, baseUrl: string, appVersion: string, fetch?: typeof fetch, newKey?: () => string }} options
  */
-export function createSessionClient({ session, baseUrl, appVersion, fetch: fetchImpl }) {
+export function createSessionClient({ session, baseUrl, appVersion, fetch: fetchImpl, newKey }) {
   return createApiClient({
     baseUrl,
     appVersion,
     fetch: fetchImpl,
+    ...(newKey ? { newKey } : {}),
     credentials: session.transport === 'cookie' ? 'include' : 'omit',
     tokens: { get: () => session.accessToken(), refresh: () => session.refresh() },
     onSessionEnded: () => void session.end(),

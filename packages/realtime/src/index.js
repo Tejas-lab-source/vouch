@@ -72,7 +72,7 @@ export function createRealtime({
   onMessage = () => {},
   onEvent = () => {},
   onStatus = () => {},
-  newId = () => globalThis.crypto.randomUUID(),
+  newId = () => /** @type {any} */ (globalThis).crypto.randomUUID(),
   now = () => Date.now(),
 }) {
   /** @type {Set<string>} Delivered (conversation, seq) pairs. */

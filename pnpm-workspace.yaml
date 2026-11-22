@@ -9,3 +9,9 @@ ignoredBuiltDependencies:
   - msgpackr-extract
   - protobufjs
   - ssh2
+
+# Expo SDK 58: pin the CLI and its router-server to releases at least two weeks old, which
+# accept the pinned expo-constants 58.0.15 (newer ones want 58.0.16, released 2026-11-11).
+overrides:
+  '@expo/cli': 58.1.19
+  '@expo/router-server': 58.0.21

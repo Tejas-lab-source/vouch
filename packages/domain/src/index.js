@@ -50,5 +50,20 @@ export function relativeTime(at, now) {
   return at.toISOString().slice(0, 10);
 }
 
+/**
+ * Compares two `x.y.z` versions (the forced-update check against `minSupportedVersion`).
+ * @param {string} a
+ * @param {string} b
+ * @returns {number} negative, zero or positive
+ */
+export function compareVersions(a, b) {
+  const [x, y] = [a, b].map((v) => v.split('.').map((n) => Number.parseInt(n, 10) || 0));
+  for (let i = 0; i < 3; i += 1) {
+    const diff = (x?.at(i) ?? 0) - (y?.at(i) ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 /** A badge count: "99+" above 99. @param {number} n */
 export const formatCount = (n) => (n > 99 ? '99+' : String(Math.max(0, Math.trunc(n))));

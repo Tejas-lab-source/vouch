@@ -1,0 +1,49 @@
+{
+  "name": "@vouch/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Vouch on iOS and Android (Expo SDK 58, Expo Router, Feature-Sliced Design).",
+  "type": "module",
+  "main": "expo-router/entry",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "expo start",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "export:check": "expo export --platform android --platform ios --output-dir dist --no-minify"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.107.1",
+    "@vouch/api-client": "workspace:*",
+    "@vouch/domain": "workspace:*",
+    "@vouch/features-core": "workspace:*",
+    "@vouch/i18n": "workspace:*",
+    "@vouch/realtime": "workspace:*",
+    "@vouch/ui-native": "workspace:*",
+    "@vouch/ui-tokens": "workspace:*",
+    "expo": "58.0.23",
+    "expo-constants": "58.0.15",
+    "expo-crypto": "58.0.7",
+    "expo-linking": "58.0.16",
+    "expo-router": "58.0.30",
+    "expo-secure-store": "58.0.2",
+    "expo-splash-screen": "58.0.13",
+    "expo-status-bar": "58.0.4",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "5.11.1",
+    "react-native-screens": "4.30.1",
+    "socket.io-client": "4.8.4"
+  },
+  "devDependencies": {
+    "@babel/core": "7.29.13",
+    "@types/react": "19.3.0",
+    "@vouch/config": "workspace:*",
+    "babel-preset-expo": "58.0.24",
+    "eslint": "9.39.5",
+    "vitest": "5.1.1"
+  }
+}
