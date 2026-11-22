@@ -13,13 +13,104 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-06.md |
 | 7   | Safety core and discovery engine                                        | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-07.md |
 | 8   | Matching                                                                | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-08.md |
-| 9   | Realtime chat                                                           | Plan sent   | —              | —                  | —                  |
+| 9   | Realtime chat                                                           | In progress | 2026-11-22     | —                  | phases/PHASE-09.md |
 | 10  | Notifications, moderation and admin backend                             | Not started | —              | —                  | —                  |
 | 11  | Frontend foundation                                                     | Not started | —              | —                  | —                  |
 | 12  | Frontend features I (onboarding, profile, discovery, matching)          | Not started | —              | —                  | —                  |
 | 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Not started | —              | —                  | —                  |
 | 14  | End-to-end testing, security, privacy and performance                   | Not started | —              | —                  | —                  |
 | 15  | Deployment, observability and closed beta launch                        | Not started | —              | —                  | —                  |
+
+## Batch run: Phases 9–13
+
+**Authorisation (owner, 2026-11-22, verbatim intent):** a direct owner instruction that overrides
+Part A.1 (per-phase approval) for Phases 9, 10, 11, 12 and 13 only. Every other rule in
+`docs/ROADMAP.md` and `CLAUDE.md` still applies. Phase 14 and later return to normal: after
+Phase 13, stop and wait for "Approved: start Phase 14".
+
+**How the batch runs:**
+
+1. Strictly in order, 9 → 10 → 11 → 12 → 13, one at a time, never skipping.
+2. For each phase: write the Start Plan into `docs/phases/PHASE-NN.md` (no waiting); build to
+   the roadmap scope plus its "Notes for later phases"; verify everything (lint, format,
+   typecheck, boundaries, both contract checks, all tests, clean clone, repeated runs, mutation
+   checks, Docker checks; every check unpiped or with `set -o pipefail`); push and wait for CI
+   green on the phase's final commit before the next phase; write the Completion Report (D.2)
+   into `PHASE-NN.md`; mark the phase "Complete — pending owner review"; continue.
+3. Focused Conventional Commits per phase. Never rewrite pushed history, force-push or merge.
+4. At the end: one PR "Phases 9–13 — Chat, notifications, admin backend and frontend" linking
+   all five reports, then a final summary, then stop.
+5. No questions during the batch. Decisions: the most secure and privacy-preserving, simplest,
+   within the approved stack, consistent with ARCHITECTURE.md and earlier ADRs; contract
+   changes additive only. Each recorded in an ADR and listed under "Decisions taken without the
+   owner" in that phase's report.
+6. **Stop and wait only if:** a real account, credential, API key, payment or paid service is
+   needed; a breaking contract change, destructive migration or change to an approved security
+   or privacy rule seems necessary; CI or a check stays red after 3 serious fix attempts; an
+   action would merge to main, force-push, delete branches or touch production; or the roadmap
+   and ARCHITECTURE.md conflict in a way that changes product scope. Then write the blocker
+   here, commit a clean state and stop.
+
+**Dependencies:** pre-approved: the approved stack (B.2); `socket.io@4.8.4`,
+`@socket.io/redis-adapter@8.3.0`, `@socket.io/redis-emitter@5.1.0`, `socket.io-client@4.8.4`;
+official Expo SDK and Expo-recommended React Native packages; React, Vite, React Router,
+TanStack Query; Playwright, `@axe-core/playwright`, Testing Library; one list-virtualisation
+library and one gesture/animation library that Expo supports. Anything else only if
+well-maintained, widely used and clearly necessary, justified in an ADR and listed in the
+report. Prefer `node:crypto` and plain `fetch` over SDKs (TOTP, Expo push).
+
+**Phase 9 decisions:**
+
+- First task: a readable message for every `AppErrorCode` from Phases 3–8, plus a test that
+  fails if any code lacks one or just repeats the code.
+
+1. Additive client event `auth.refresh { token }`: the server verifies it and extends the
+   socket's expiry without disconnecting. Only if no valid refresh arrives by expiry plus a
+   60 s grace, disconnect with `token_expired`; the client reconnects and syncs. Test both.
+2. Spread socket disconnects over about 20 s within `SHUTDOWN_DRAIN_MS`.
+3. `@socket.io/redis-emitter` for worker roles.
+4. Conversation id = match id, created by the consumer or on first send.
+5. At most 2 links per message, none in a sender's first 3 messages per conversation, both
+   configurable, rejected with a readable `MESSAGE_REJECTED` reason.
+6. 60 messages per minute per user, failing open.
+7. The blocker gets reason `blocked`; the other person gets `unmatched` for blocks and bans
+   (moderation is never revealed); deletion sends `deleted`; sending to any closed conversation
+   returns `CONVERSATION_CLOSED`. Test that a blocked or banned user's `conversation.closed` is
+   identical to an ordinary unmatch.
+8. Ack after commit, best-effort live delivery, replay through `sync`, proven by the failover
+   invariant.
+
+- Targets: failover invariant exactly-once and in order; 500-socket smoke with zero loss;
+  delivery p95 under 1 s.
+
+**Phase 10 guidance:** Expo push over plain HTTPS (chunks of 100, receipts, invalid tokens
+removed; payloads never contain message bodies). Admin accounts created by a script only; admin
+MFA is TOTP (RFC 6238) with `node:crypto`, secret encrypted at rest; audience `vouch:admin`;
+optional IP allowlist. Include the Phase 10 notes (ID-card fallback, `user.unbanned.v1`, ban
+evasion across deletion via a minimal ban record keyed on the email HMAC, the moderation queue
+using `media.resolveReview`, the 48-hour `in_review` alert). Auto-hide at 3 distinct reporters in
+7 days (configurable). Every admin action writes `audit_log`. Bans close conversations with
+reason `unmatched` for the other person.
+
+**Phases 11–13 guidance:** brand not decided: name "Vouch", neutral accessible placeholder
+palette and type scale in `packages/ui-tokens`, light and dark themes. Include the Phase 11/12
+and 13 notes (likes count, photo reordering, client resizing to 2048 px, real-photo variant
+sizes if possible, R2 CORS documented and applied locally on SeaweedFS, blocked-users list and
+unblock routes). Web push out of scope unless no new dependency. Mobile: no simulators here, so
+the Expo app must build and type-check, shared logic is tested in `packages/features-core`, web
+flows run in Playwright where possible, and the Phase 12 and 13 reports carry an "Owner manual
+checks" list. Accessibility: axe, no serious violations. Web bundle: initial JS under 200 KB
+gzipped.
+
+**Running log** (updated as the batch goes; resume from the last row after an interruption):
+
+| Phase | Status      | Last commit | CI run | Next step                               |
+| ----- | ----------- | ----------- | ------ | --------------------------------------- |
+| 9     | In progress | —           | —      | Error messages, then the socket gateway |
+| 10    | Not started | —           | —      | —                                       |
+| 11    | Not started | —           | —      | —                                       |
+| 12    | Not started | —           | —      | —                                       |
+| 13    | Not started | —           | —      | —                                       |
 
 ## Notes for later phases
 
