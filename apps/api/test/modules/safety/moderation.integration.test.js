@@ -193,8 +193,13 @@ describe('photo moderation through safety.contentChecks (Rekognition adapter, fa
     mode = 'minor';
     const minor = await upload(token);
     await uploadReaches(minor, 'in_review');
-    const profile = (await app.http.inject({ url: '/v1/me/profile', headers: auth(token) })).json();
-    expect(profile.photos.map((/** @type {any} */ p) => p.status)).toEqual(['pending', 'pending']);
+    // The profile view is eventually consistent: profiles consumes photo.uploaded.v1 on its
+    // own queue, so the worker may finish before the second pending photo is recorded.
+    const statuses = await eventually(async () => {
+      const p = (await app.http.inject({ url: '/v1/me/profile', headers: auth(token) })).json();
+      return p.photos.length === 2 ? p.photos.map((/** @type {any} */ x) => x.status) : null;
+    }, WAIT_MS);
+    expect(statuses).toEqual(['pending', 'pending']);
     // The moderation queue (Phase 10) resolves it.
     expect(await app.boot.apis.get('media').resolveReview(minor, 'approve')).toBe('approved');
     await eventually(async () => {

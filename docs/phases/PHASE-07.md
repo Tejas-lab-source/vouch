@@ -141,6 +141,11 @@ Mutation checks (each reverted afterwards):
 | No exposure gate                        | 1 test fails |
 | No job dedupe (no `deck-{uid}` id)      | 1 test fails |
 
+CI's first push run failed once in the moderation integration suite. The upload reached
+`in_review` before the profiles consumer had recorded the second pending photo; the two are
+separate consumers, so this is correct, eventually consistent behaviour. The test now waits for
+the profile view instead of reading it once, and passed 3 consecutive runs locally and in CI.
+
 The moderation integration suite found a real bug that the in-memory fakes could not:
 `resolveReview` locked a row inside a read-only transaction. It now uses a write transaction.
 
