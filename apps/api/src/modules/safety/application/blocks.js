@@ -117,7 +117,15 @@ export function makeBlocks(deps) {
     };
   });
 
-  return { block, unblock, listBlocked, blockPolicy };
+  /**
+   * Who, of the two, has blocked the other (both, one or none). For wording notices only: the
+   * blocked person is never told (ARCHITECTURE.md 11; owner decision, Phase 9).
+   * @param {string} a
+   * @param {string} b
+   */
+  const blockersBetween = (a, b) => read((stores) => stores.blocks.blockersBetween(a, b));
+
+  return { block, unblock, listBlocked, blockPolicy, blockersBetween };
 }
 
 /**

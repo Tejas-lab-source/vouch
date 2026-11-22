@@ -26,6 +26,11 @@ export function createSafetyStores(tx) {
         (await tx`SELECT other_id FROM safety.block_pairs_v WHERE user_id = ${userId}`).map(
           (row) => /** @type {string} */ (row.otherId),
         ),
+      blockersBetween: async (a, b) =>
+        (
+          await tx`SELECT blocker_id FROM safety.blocks
+            WHERE (blocker_id = ${a} AND blocked_id = ${b}) OR (blocker_id = ${b} AND blocked_id = ${a})`
+        ).map((row) => /** @type {string} */ (row.blockerId)),
       exists: async (a, b) =>
         (
           await tx`SELECT 1 FROM safety.block_pairs_v WHERE user_id = ${a} AND other_id = ${b} LIMIT 1`

@@ -8,6 +8,7 @@
  *   blockedBy(blockerId: string): Promise<{ blockedId: string, createdAt: Date }[]>,
  *   othersOf(userId: string): Promise<string[]>,
  *   exists(a: string, b: string): Promise<boolean>,
+ *   blockersBetween(a: string, b: string): Promise<string[]>,
  * }} blocks  `othersOf` and `exists` are symmetric (either direction).
  * @property {{ activeAmong(userIds: readonly string[], now: Date): Promise<string[]> }} bans
  */
