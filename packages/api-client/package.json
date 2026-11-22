@@ -4,6 +4,9 @@
   "private": true,
   "description": "Typed fetch client generated from @vouch/contracts, with refresh rotation and query keys.",
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "exports": {
     ".": "./src/index.js"
   },

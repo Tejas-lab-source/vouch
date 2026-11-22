@@ -162,7 +162,17 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: NPM },
-    exclude: { path: ['/coverage/', '/\\.turbo/', '/test/boundaries/fixtures/'] },
+    exclude: {
+      path: [
+        '/coverage/',
+        '/\\.turbo/',
+        '/test/boundaries/fixtures/',
+        '/dist/',
+        '/\\.expo/',
+        '/test-results/',
+        '/playwright-report/',
+      ],
+    },
     moduleSystems: ['es6', 'cjs'],
     combinedDependencies: false,
     enhancedResolveOptions: {

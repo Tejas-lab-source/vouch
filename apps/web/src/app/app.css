@@ -1,0 +1,77 @@
+/* Web layout (Phase 11). Component styles come from @vouch/ui-web/styles.css. */
+.w-page {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+.w-page--narrow {
+  max-width: 26rem;
+}
+.w-brand {
+  margin: 0 0 var(--space-1);
+  font-size: var(--type-display-size);
+  line-height: var(--type-display-line);
+  color: var(--color-accent);
+}
+.w-brand--small {
+  font-size: var(--type-title-size);
+}
+.w-tagline {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-muted);
+}
+.w-title {
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-line);
+}
+.w-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.w-check {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  min-height: var(--touch-target);
+  margin-bottom: var(--space-4);
+}
+.w-check input {
+  width: 24px;
+  height: 24px;
+}
+.w-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+.w-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.w-main {
+  padding: var(--space-4);
+}
+.w-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.w-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-weight: var(--type-label-weight);
+}
+.w-tab--active {
+  color: var(--color-accent);
+  box-shadow: inset 0 3px 0 var(--color-accent);
+}

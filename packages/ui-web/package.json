@@ -4,6 +4,9 @@
   "private": true,
   "description": "Accessible React DOM components on the design tokens.",
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "exports": {
     ".": "./src/index.js",
     "./styles.css": "./styles.css"

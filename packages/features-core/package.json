@@ -4,6 +4,9 @@
   "private": true,
   "description": "Session, config and flags hooks; the client feature registry and slots.",
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "exports": {
     ".": "./src/index.js"
   },

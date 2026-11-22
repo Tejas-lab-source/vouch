@@ -4,6 +4,9 @@
   "private": true,
   "description": "Socket.IO client: auth refresh, reconnect, sync, outgoing queue, query-cache adapter.",
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "exports": {
     ".": "./src/index.js"
   },

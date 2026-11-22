@@ -4,6 +4,9 @@
   "private": true,
   "description": "Pure rules shared by the apps (age, validators, formatting).",
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "exports": {
     ".": "./src/index.js"
   },
