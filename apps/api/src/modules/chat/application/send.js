@@ -6,7 +6,8 @@ import { messageView, otherMember } from './views.js';
 const MINUTE_MS = 60_000;
 
 /**
- * `message.send` (ADR 0017). Checks, then one transaction under the conversation row lock: a
+ * `message.send` (ADR 0017). Checks (blocks are judged by the `chat.blockCheck` filter step),
+ * then one transaction under the conversation row lock: a
  * repeated `clientMsgId` returns the original message without using a seq; otherwise the next
  * gapless seq is taken and the message inserted. The ack and the live `message.new` happen only
  * after commit; a recipient who misses the live event gets the message through `sync`.
@@ -16,7 +17,7 @@ const MINUTE_MS = 60_000;
  * }} deps
  */
 export function makeSend(deps) {
-  const { uow, presence, sockets, rateLimiter, pipelines, safety, settings, clock } = deps;
+  const { uow, presence, sockets, rateLimiter, pipelines, settings, clock } = deps;
   const { memberConversation, publicIdsOf } = deps;
 
   /**
@@ -31,9 +32,6 @@ export function makeSend(deps) {
     const conversation = await memberConversation(input.conversationId, me);
     const recipient = otherMember(conversation, me);
     if (conversation.closedAt) throw new ServiceError('CONVERSATION_CLOSED');
-    if (await safety.blockPolicy.isBlocked(me, recipient)) {
-      throw new ServiceError('CONVERSATION_CLOSED');
-    }
 
     const verdicts = await pipelines.collect(MESSAGE_FILTERS, {
       conversationId: conversation.id,

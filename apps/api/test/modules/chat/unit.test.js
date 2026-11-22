@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, expect, it } from 'vitest';
 import { messageFilterSteps } from '../../../src/modules/chat/application/filters.js';
+import { makeSend } from '../../../src/modules/chat/application/send.js';
 import { closeNotices } from '../../../src/modules/chat/domain/closing.js';
 import { countLinks, linkRule } from '../../../src/modules/chat/domain/messages.js';
 
@@ -105,5 +106,51 @@ describe('message filter steps', () => {
       allow: false,
       code: 'CONVERSATION_CLOSED',
     });
+  });
+});
+
+describe('send: the closed check under the row lock', () => {
+  it('refuses a send when the conversation closes after the pre-checks but before the lock', async () => {
+    const open = { id: 'c1', userLow: LOW, userHigh: HIGH, closedAt: null };
+    /** @type {unknown[]} */
+    const inserted = [];
+    /** @type {unknown[]} */
+    const emitted = [];
+    const deps = /** @type {any} */ ({
+      rateLimiter: { hit: async () => {} },
+      presence: { isOnline: async () => false },
+      sockets: { emitToUser: (/** @type {unknown[]} */ ...args) => emitted.push(args) },
+      pipelines: { collect: async () => [{ value: { allow: true } }] },
+      settings: { messagesPerMinute: 60 },
+      clock: { now: () => new Date() },
+      memberConversation: async () => open,
+      publicIdsOf: async () => new Map(),
+      uow: {
+        run: (/** @type {any} */ fn) =>
+          fn({
+            emit: async () => {},
+            stores: {
+              // Closed by an unmatch that committed between the pre-check and this lock.
+              conversations: {
+                findForUpdate: async () => ({ ...open, closedAt: new Date() }),
+                nextSeq: async () => 1,
+              },
+              messages: {
+                byClientId: async () => null,
+                insert: async (/** @type {unknown} */ m) => inserted.push(m),
+              },
+            },
+          }),
+      },
+    });
+    const { send } = makeSend(deps);
+    await expect(
+      send(
+        { conversationId: 'c1', clientMsgId: 'm1', kind: 'text', body: 'hi' },
+        { actor: { userId: LOW } },
+      ),
+    ).rejects.toMatchObject({ code: 'CONVERSATION_CLOSED' });
+    expect(inserted).toEqual([]);
+    expect(emitted).toEqual([]);
   });
 });
