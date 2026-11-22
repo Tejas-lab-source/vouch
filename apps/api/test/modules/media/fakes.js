@@ -42,6 +42,15 @@ export function fakeMediaDeps({ verdict = 'approve', onCheck } = {}) {
       markRejected: async (id, reason) =>
         void Object.assign(state.uploads.get(id), { status: 'rejected', errorCode: reason }),
       remove: async (id) => void state.uploads.delete(id),
+      purgeFinished: async (olderThan, limit) => {
+        const gone = [...state.uploads.values()]
+          .filter(
+            (u) => ['rejected', 'expired', 'pending'].includes(u.status) && u.createdAt < olderThan,
+          )
+          .slice(0, limit);
+        gone.forEach((u) => state.uploads.delete(u.id));
+        return gone.map((u) => ({ id: u.id, photoKey: u.photoKey }));
+      },
       removeForUser: async (userId) => {
         let n = 0;
         for (const [id, u] of state.uploads)

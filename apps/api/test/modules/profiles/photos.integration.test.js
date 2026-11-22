@@ -504,6 +504,20 @@ describe('profiles and media (ROLE=all, real Postgres, Redis and S3)', () => {
     ).toHaveLength(0);
   });
 
+  it('retention SQL deletes only finished rows older than 7 days', async () => {
+    const user = await signUp();
+    const { uploadId } = await uploadPhoto(user.token, Buffer.from('not an image'));
+    await photoReaches(user.token, uploadId, 'rejected');
+    const kept = await uploadPhoto(user.token, await jpegWithGps());
+    await photoReaches(user.token, kept.uploadId, 'approved');
+    await infra.admin`UPDATE media.uploads SET created_at = now() - interval '8 days'
+      WHERE user_id = ${user.userId}`;
+    const job = app.boot.jobs.find((/** @type {any} */ j) => j.name === 'media.retentionTick');
+    expect(await job.handler()).toEqual({ deleted: 1 });
+    const rows = await infra.admin`SELECT id FROM media.uploads WHERE user_id = ${user.userId}`;
+    expect(rows.map((r) => r.id)).toEqual([kept.uploadId]);
+  });
+
   it('putSection: no section types exist in v1', async () => {
     const user = await signUp();
     const response = await app.http.inject({

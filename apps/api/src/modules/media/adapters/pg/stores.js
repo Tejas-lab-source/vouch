@@ -48,6 +48,14 @@ export function createMediaStores(tx) {
       },
       removeForUser: async (userId) =>
         (await tx`DELETE FROM media.uploads WHERE user_id = ${userId}`).count,
+      purgeFinished: async (olderThan, limit) =>
+        /** @type {any} */ (
+          await tx`DELETE FROM media.uploads WHERE id IN (
+              SELECT id FROM media.uploads
+              WHERE status IN ('rejected', 'expired', 'pending') AND created_at < ${olderThan}
+              ORDER BY created_at LIMIT ${limit})
+            RETURNING id, photo_key`
+        ),
     },
   };
 }

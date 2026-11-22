@@ -28,6 +28,8 @@
  * @property {(id: string, reason: string, at: Date) => Promise<void>} markRejected
  * @property {(id: string) => Promise<void>} remove
  * @property {(userId: string) => Promise<number>} removeForUser
+ * @property {(olderThan: Date, limit: number) => Promise<{ id: string, photoKey: string | null }[]>} purgeFinished
+ *   Deletes up to `limit` rejected, expired or never-confirmed rows created before `olderThan`.
  */
 
 /** @typedef {{ uploads: UploadStore }} MediaStores */

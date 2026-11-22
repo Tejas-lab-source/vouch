@@ -47,6 +47,13 @@ export function objectsOf(upload) {
   ];
 }
 
+/**
+ * Upload rows that ended without a photo (rejected, or presigned and never confirmed) are
+ * deleted after 7 days (docs/data-model.md, Retention). Approved rows stay while the photo
+ * exists: they hold its photo key and count toward the limit.
+ */
+export const UPLOAD_ROW_RETENTION_MS = 7 * 24 * 3600 * 1000;
+
 /** Only these prefixes may be deleted through the public API. */
 export const DELETABLE_PREFIXES = Object.freeze(['photos/', 'uploads/']);
 

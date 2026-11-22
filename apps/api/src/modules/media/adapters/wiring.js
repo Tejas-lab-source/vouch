@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { lockKey } from '../../../platform/locks.js';
 import { makeProcessing } from '../application/process.js';
 import { makeRelease } from '../application/release.js';
+import { makeRetention } from '../application/retention.js';
 import { makeUploadUseCases } from '../application/uploads.js';
 import { createDevContentCheck } from './content-check/dev.js';
 import { createSharpProcessor } from './image/sharp.js';
@@ -62,5 +63,6 @@ export function buildMediaHandlers(deps) {
     ...makeUploadUseCases(deps),
     processing: makeProcessing(deps),
     release: makeRelease(deps),
+    purgeUploads: makeRetention(deps),
   };
 }

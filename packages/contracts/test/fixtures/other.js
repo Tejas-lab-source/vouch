@@ -280,6 +280,7 @@ export const jobFixtures = {
     valid: [{ partition: 15, olderThan: s.TS }],
     invalid: [{ partition: 16, olderThan: s.TS }],
   },
+  'job.media.retentionTick': { valid: [{}], invalid: [{ olderThan: 'now' }] },
   'job.media.processImage': {
     valid: [{ uploadId: s.ID, userId: s.ID2 }],
     invalid: [{ uploadId: s.ID }],

@@ -48,7 +48,12 @@ export default defineModule({
         const { deps, handlers } = await handlersOf(ctx);
         return processImageJob({ processing: handlers.processing, logger: deps.logger });
       },
+      'media.retentionTick': async (/** @type {any} */ ctx) => {
+        const { handlers } = await handlersOf(ctx);
+        return () => handlers.purgeUploads();
+      },
     },
   },
+  schedules: [{ id: 'media.retention-tick', cron: '53 3 * * *', job: 'media.retentionTick' }],
   migrations: new URL('./migrations', import.meta.url),
 });

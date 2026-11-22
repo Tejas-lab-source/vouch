@@ -228,3 +228,23 @@ describe('media API', () => {
     expect(s.state.objects.size).toBe(0);
   });
 });
+
+describe('retention', () => {
+  it('deletes rejected and never-confirmed uploads older than 7 days, keeping approved ones', async () => {
+    const s = setup();
+    const { makeRetention } = await import('../../../src/modules/media/application/retention.js');
+    const rejected = await upload(s, Buffer.from('not an image'));
+    await s.h.processing.processUpload({ uploadId: rejected });
+    const approved = await upload(s, await jpegWithGps());
+    await s.h.processing.processUpload({ uploadId: approved });
+    const abandoned = await s.h.createUpload({ contentType: 'image/jpeg', sizeBytes: 10 }, CTX);
+    s.state.objects.set(`uploads/raw/${abandoned.uploadId}`, {
+      body: Buffer.from('x'),
+      contentType: 'image/jpeg',
+    });
+    s.state.uploads.forEach((u) => (u.createdAt = new Date('2026-11-01T00:00:00Z')));
+    expect(await makeRetention(s.deps)()).toEqual({ deleted: 2 });
+    expect([...s.state.uploads.keys()]).toEqual([approved]);
+    expect(s.state.objects.has(`uploads/raw/${abandoned.uploadId}`)).toBe(false);
+  });
+});

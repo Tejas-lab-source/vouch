@@ -7275,6 +7275,14 @@
         "additionalProperties": false
       }
     },
+    "media.retentionTick": {
+      "queue": "media",
+      "payload": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
     "notifications.sendPush": {
       "queue": "external",
       "payload": {
