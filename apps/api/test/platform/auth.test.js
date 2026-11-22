@@ -27,7 +27,10 @@ describe('token verification', () => {
       audience: 'vouch:user',
       mfa: false,
       sessionId: 's1',
+      expiresAt: expect.any(Date),
     });
+    // 15-minute tokens: the expiry comes from `exp`.
+    expect(principal.expiresAt?.getTime()).toBeGreaterThan(Date.now() + 14 * 60_000);
   });
 
   it('rejects the wrong audience in both directions', async () => {

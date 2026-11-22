@@ -20,6 +20,7 @@ import { createRedis } from './redis.js';
 import { bootModules, capabilitiesOf } from './registry.js';
 import { createUnitOfWork } from './uow.js';
 import { createUseCaseFactory } from './use-case.js';
+import { createSocketEmitter, createSocketGateway } from './ws.js';
 
 /** Nightly retention of event bookkeeping, 03:17 UTC (off the hour). */
 const RETENTION_CRON = '17 3 * * *';
@@ -30,6 +31,7 @@ const RETENTION_CRON = '17 3 * * *';
  * @property {import('fastify').FastifyInstance} metricsServer  Internal /metrics server.
  * @property {Record<string, any>} platform  The services injected into modules.
  * @property {import('./registry.js').BootResult} boot
+ * @property {import('./ws.js').SocketGateway | null} gateway  The socket gateway (`ws`, `all`).
  * @property {(drainMs: number) => Promise<void>} stop  Graceful shutdown.
  */
 
@@ -76,6 +78,8 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
     rateLimiter,
     useCase,
     verifier,
+    /** Server events to users' rooms, from any role (`emitToUser`). */
+    sockets: createSocketEmitter({ redis: redis.command }),
     /**
      * A unit of work for one module (its role, its stores).
      * @template S
@@ -198,6 +202,20 @@ export async function startRole({
     routes: boot.routes,
   });
   const relay = capabilities.workers ? await startWorkers(platform, boot, events) : null;
+  const gateway = capabilities.socket
+    ? createSocketGateway({
+        server: http.server,
+        config,
+        logger,
+        verifier: platform.verifier,
+        redis: platform.redis,
+        clock: platform.clock,
+        modules: boot.socketHandlers.map(({ module, handlers }) => ({
+          module,
+          handlers: /** @type {import('./ws.js').SocketHandlers} */ (handlers),
+        })),
+      })
+    : null;
 
   if (listen) await http.listen({ port: config.PORT, host: config.HOST });
   const metricsServer = await startMetricsServer({
@@ -212,8 +230,10 @@ export async function startRole({
     metricsServer,
     platform,
     boot,
+    gateway,
     stop: async (drainMs) => {
       const steps = (async () => {
+        await gateway?.drain(drainMs); // sockets leave gradually before HTTP closes
         await http.close(); // stops accepting; waits for in-flight requests
         await relay?.stop();
         await platform.jobs.close(); // waits for running jobs
