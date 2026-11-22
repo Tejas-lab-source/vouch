@@ -131,6 +131,9 @@ export function capabilitiesOf(role) {
  *   Module name → personal-data exporter (filled during boot; read at call time).
  * @property {Map<string, Readonly<import('@vouch/contracts').SectionDefinition>>} sections
  *   Section type → definition (manifest key `sections`, extension point 9; filled during boot).
+ * @property {Map<string, any>} templates  Notification template name → definition (manifest key
+ *   `templates`, Phase 10; filled during boot, read at send time).
+ * @property {any[]} adminPanels  Admin panel definitions (manifest key `admin.panels`, Phase 10).
  */
 
 /**
@@ -157,6 +160,8 @@ export async function bootModules({ modules, role, platform, pipelines }) {
     schedules: [],
     exporters: new Map(),
     sections: new Map(),
+    templates: new Map(),
+    adminPanels: [],
   };
 
   for (const module of sortModules(modules)) {
@@ -167,6 +172,8 @@ export async function bootModules({ modules, role, platform, pipelines }) {
       deps,
       exporters: result.exporters,
       sections: result.sections,
+      templates: result.templates,
+      adminPanels: result.adminPanels,
     };
     if (module.api) result.apis.set(module.name, await module.api(ctx));
     if (module.exports) result.exporters.set(module.name, await module.exports(ctx));
@@ -179,6 +186,11 @@ export async function bootModules({ modules, role, platform, pipelines }) {
       }
       result.sections.set(type, definition);
     }
+    for (const [name, load] of Object.entries(module.templates ?? {})) {
+      if (result.templates.has(name)) throw new Error(`duplicate notification template: ${name}`);
+      result.templates.set(name, await load(ctx));
+    }
+    if (module.admin) result.adminPanels.push(...(await module.admin.panels(ctx)));
     for (const [pipeline, load] of Object.entries(module.contribute ?? {})) {
       pipelines.contribute(pipeline, await load(ctx));
     }

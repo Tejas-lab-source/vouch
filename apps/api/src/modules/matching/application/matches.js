@@ -97,5 +97,12 @@ export function makeMatches(deps) {
   /** @param {string} matchId */
   const getMatch = (matchId) => read((stores) => stores.matches.find(matchId));
 
-  return { unmatch, listMatches, likesIn, areMatched, getMatch };
+  /**
+   * Users with unanswered likes, in id order, for the daily digest (counts only, Phase 10).
+   * @param {{ afterId: string | null, limit: number }} page
+   * @returns {Promise<{ userId: string, likes: number }[]>}
+   */
+  const pendingLikes = ({ afterId, limit }) =>
+    read((stores) => stores.swipes.pendingLikesBatch(afterId, limit));
+  return { unmatch, listMatches, likesIn, pendingLikes, areMatched, getMatch };
 }
