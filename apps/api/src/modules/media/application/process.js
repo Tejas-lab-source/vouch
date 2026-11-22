@@ -219,7 +219,7 @@ export function makeProcessing(deps) {
    * @returns {Promise<'approved' | 'rejected' | 'released' | 'finished'>}
    */
   async function resolveReview(uploadId, decision) {
-    const upload = await deps.read((stores) => stores.uploads.findForUpdate(uploadId));
+    const upload = await uow.run(({ stores }) => stores.uploads.findForUpdate(uploadId));
     if (!upload) return 'released';
     if (upload.status !== 'in_review') return 'finished';
     if (decision === 'reject') {
