@@ -280,6 +280,8 @@ export const jobFixtures = {
     valid: [{ partition: 15, olderThan: s.TS }],
     invalid: [{ partition: 16, olderThan: s.TS }],
   },
+  'job.matching.flushPasses': { valid: [{}], invalid: [{ now: true }] },
+  'job.matching.retentionTick': { valid: [{}], invalid: [{ partition: 1 }] },
   'job.media.retentionTick': { valid: [{}], invalid: [{ olderThan: 'now' }] },
   'job.media.processImage': {
     valid: [{ uploadId: s.ID, userId: s.ID2 }],
