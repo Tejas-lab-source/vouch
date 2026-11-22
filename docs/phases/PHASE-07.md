@@ -268,5 +268,5 @@ pnpm --filter @vouch/api bench:deck --requests 1000 --concurrency 10 --users 50
 pnpm --filter @vouch/api exec vitest run test/modules/discovery test/modules/safety
 ```
 
-**Pull request:** see the PR "Phase 7 — Safety core and discovery engine" · Branch:
+**Pull request:** [Tejas-lab-source/vouch#7](https://github.com/Tejas-lab-source/vouch/pull/7) · Branch:
 `claude/lucid-rubin-foq2uj` (ADR 0002)
