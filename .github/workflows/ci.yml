@@ -68,8 +68,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Create .env from the example
-        run: cp .env.example .env
+      - name: Create .env from the example, with local signing keys
+        run: |
+          cp .env.example .env
+          node scripts/dev-keys.js --write
 
       - name: Start Postgres and Redis and wait until healthy
         run: docker compose up -d --wait --wait-timeout 120
