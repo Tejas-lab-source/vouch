@@ -232,5 +232,5 @@ pnpm test:invariants
 pnpm --filter @vouch/api exec vitest run test/modules/matching test/platform/client-ip.test.js
 ```
 
-**Pull request:** see the PR "Phase 8 — Matching module" · Branch: `claude/lucid-rubin-foq2uj`
+**Pull request:** [Tejas-lab-source/vouch#8](https://github.com/Tejas-lab-source/vouch/pull/8) · Branch: `claude/lucid-rubin-foq2uj`
 (ADR 0002)
