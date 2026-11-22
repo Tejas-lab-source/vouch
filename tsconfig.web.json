@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "apps/web/**/*.js",
+    "apps/web/**/*.jsx",
+    "apps/admin/**/*.js",
+    "apps/admin/**/*.jsx",
+    "packages/features-core/**/*.js",
+    "packages/features-core/**/*.jsx",
+    "packages/ui-web/**/*.js",
+    "packages/ui-web/**/*.jsx"
+  ],
+  "exclude": ["**/node_modules/**", "**/dist/**", "**/coverage/**"]
+}
