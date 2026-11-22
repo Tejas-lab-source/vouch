@@ -11,7 +11,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 4   | Backend platform kernel                                                 | Approved    | 2026-11-21     | 2026-11-21         | phases/PHASE-04.md |
 | 5   | Identity and authentication                                             | Approved    | 2026-11-21     | 2026-11-22         | phases/PHASE-05.md |
 | 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-06.md |
-| 7   | Safety core and discovery engine                                        | Plan sent   | —              | —                  | —                  |
+| 7   | Safety core and discovery engine                                        | In progress | 2026-11-22     | —                  | —                  |
 | 8   | Matching                                                                | Not started | —              | —                  | —                  |
 | 9   | Realtime chat                                                           | Not started | —              | —                  | —                  |
 | 10  | Notifications, moderation and admin backend                             | Not started | —              | —                  | —                  |
@@ -38,6 +38,9 @@ Owner instructions recorded here so the phase that owns them picks them up.
 - **Phase 7 — photo moderation (owner, 2026-11-22, from the Phase 6 report):** connect the real
   `safety.contentChecks` pipeline in place of media's development `ContentCheck`, and the
   needs-review path for photos (a `review` verdict currently leaves the upload `processing`).
+- **Phase 10 — photo review alert (owner, 2026-11-22, Phase 7 plan):** alert if any photo has
+  been `in_review` for more than 48 hours (Phase 7 holds photos for review with no automatic
+  decision; the moderation queue resolves them through `media.api.resolveReview`).
 - **Phase 10 — identity follow-ups (owner, 2026-11-22, from the Phase 5 report):**
   - The ID-card fallback route for students without a college email.
   - Admin login with MFA (`vouch:admin` audience).
@@ -50,6 +53,9 @@ Owner instructions recorded here so the phase that owns them picks them up.
 - **Phase 11/12 — web uploads and real photos (owner, 2026-11-22, from the Phase 6 report):**
   - An R2 CORS rule so browsers can PUT presigned uploads from the web origin.
   - Measure variant sizes on real photos (Phase 6 only had synthetic images).
+- **Phase 13 — blocked users screen (owner, 2026-11-22, Phase 7 plan):** user routes for
+  `listBlocked` (and admin `unblock` in Phase 10) are not built yet; add them additively when
+  the settings screen needs them.
 - **Phase 14 — session revocation (owner, 2026-11-22):** check the session on sensitive routes,
   so a revoked session's access token (valid up to 15 minutes) cannot use them.
 - **Phase 15 — deploy and runtime (owner, 2026-11-21, from the Phase 4 report):**
@@ -65,3 +71,6 @@ Owner instructions recorded here so the phase that owns them picks them up.
     `uploads/` after 1 day; a CDN that serves `photos/` only; testing the storage adapter
     against real R2; faster event delivery (a shorter idle relay poll or Postgres
     `LISTEN/NOTIFY`; photo approval waits up to about 4 s on an idle system).
+  - Moderation (owner, 2026-11-22, Phase 7 plan): with real AWS keys, confirm that Rekognition
+    content moderation (`DetectModerationLabels`, `DetectFaces`) runs in `ap-south-1` (Mumbai)
+    and confirm its current pricing.

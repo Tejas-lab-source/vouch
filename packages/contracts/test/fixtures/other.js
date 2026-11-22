@@ -421,8 +421,9 @@ export const envFixtures = {
         CAPTCHA_PROVIDER: 'turnstile',
         TURNSTILE_SECRET_KEY: 'ts',
         PUSH_PROVIDER: 'expo',
-        MODERATION_PROVIDER: 'sightengine',
+        MODERATION_PROVIDER: 'rekognition',
         MODERATION_API_KEY: 'mk',
+        MODERATION_AWS_ACCESS_KEY_ID: 'AKIAEXAMPLE',
       },
     ],
     invalid: [
@@ -434,6 +435,9 @@ export const envFixtures = {
       { ...baseEnv, IMAGE_WORKER_CONCURRENCY: '0' },
       { ...baseEnv, UPLOAD_MAX_BYTES: '20000000' },
       { ...baseEnv, PHOTOS_MAX: '7' },
+      { ...baseEnv, MODERATION_PROVIDER: 'rekognition', MODERATION_API_KEY: 'k' },
+      { ...baseEnv, MODERATION_REVIEW_CONFIDENCE: '90' },
+      { ...baseEnv, MODERATION_AWS_REGION: 'mumbai' },
     ],
   },
 };
