@@ -104,13 +104,13 @@ gzipped.
 
 **Running log** (updated as the batch goes; resume from the last row after an interruption):
 
-| Phase | Status                          | Last commit                            | CI run                                                                                                   | Next step           |
-| ----- | ------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------- |
-| 9     | Complete — pending owner review | `9d5e6b7` (code), this report's commit | [run 57](https://github.com/Tejas-lab-source/vouch/actions/runs/44996229923) (code); report commit below | Phase 10 start plan |
-| 10    | Not started                     | —                                      | —                                                                                                        | —                   |
-| 11    | Not started                     | —                                      | —                                                                                                        | —                   |
-| 12    | Not started                     | —                                      | —                                                                                                        | —                   |
-| 13    | Not started                     | —                                      | —                                                                                                        | —                   |
+| Phase | Status                          | Last commit | CI run                                                                          | Next step                      |
+| ----- | ------------------------------- | ----------- | ------------------------------------------------------------------------------- | ------------------------------ |
+| 9     | Complete — pending owner review | `f8519dd`   | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan            |
+| 10    | In progress                     | —           | —                                                                               | Start plan, then notifications |
+| 11    | Not started                     | —           | —                                                                               | —                              |
+| 12    | Not started                     | —           | —                                                                               | —                              |
+| 13    | Not started                     | —           | —                                                                               | —                              |
 
 ## Notes for later phases
 
