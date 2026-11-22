@@ -10,7 +10,8 @@
   "main": "src/main.js",
   "files": [
     "src",
-    "migrations"
+    "migrations",
+    "scripts/admin-create.js"
   ],
   "scripts": {
     "dev": "node --watch src/main.js",

@@ -5,12 +5,15 @@ devices, consent records, account deletion and data export.
 
 ## Public API (`api.js`)
 
-| Function                         | Returns                                                    |
-| -------------------------------- | ---------------------------------------------------------- |
-| `getUser(id)`                    | `{ id, publicId, collegeId, status, birthDate }` or `null` |
-| `getUsersByIds(ids)`             | The same view for many users                               |
-| `getUsersByPublicIds(publicIds)` | The same view, looked up by public id                      |
-| `assertActive(id)`               | Throws `FORBIDDEN` unless the account is `active`          |
+| Function                         | Returns                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `getUser(id)`                    | `{ id, publicId, collegeId, status, birthDate }` or `null`                             |
+| `getUsersByIds(ids)`             | The same view for many users                                                           |
+| `getUsersByPublicIds(publicIds)` | The same view, looked up by public id                                                  |
+| `assertActive(id)`               | Throws `FORBIDDEN` unless `active` (`ACCOUNT_PENDING_REVIEW` while an ID review waits) |
+| `deletedBefore(cutoff, limit)`   | Accounts deleted before `cutoff`, not yet erased (overdue deletions, Phase 10)         |
+| `pushTokensOf(userId)`           | Push tokens of the user's signed-in devices (Phase 10)                                 |
+| `removePushToken(token)`         | Forgets a token the push provider reported invalid                                     |
 
 ## HTTP routes (contracts in `packages/contracts/src/http/identity.js`)
 
@@ -29,7 +32,12 @@ devices, consent records, account deletion and data export.
 ## Events
 
 - **Emits:** `user.created.v1` (on sign-up), `user.deleted.v1` (on deletion, once).
-- **Consumes:** `user.banned.v1` revokes every session and sets the status to `banned`.
+- **Consumes:**
+  - `user.banned.v1`: revokes every session, sets the status to `banned` and keeps the email
+    HMAC in `banned_emails` while the ban lasts (ban evasion across deletion, Phase 10)
+  - `user.unbanned.v1`: `banned` → `active`; the record goes
+  - `verification.decided.v1`: an approved ID-card review activates a `pending_review`
+    account
 
 ## Jobs
 
@@ -56,6 +64,17 @@ No plaintext email is stored: `email_hmac` is HMAC-SHA256 of the normalised addr
   nor counts an attempt.
 - **Age:** 18 or older on the day of sign-up. An under-18 attempt stores nothing.
 - **Tokens:** see ADR 0011.
+
+## ID-card sign-up (Phase 10, ADR 0020)
+
+- `requestOtp` and `verifyOtp` with `verification: 'id_card'` accept any email (when
+  `ID_CARD_FALLBACK` is on) and need `signup.collegeId`. The account starts `pending_review`.
+- Its access tokens carry `pr: true`. The platform then allows only the routes in
+  `PENDING_REVIEW_ROUTES` (the verification uploads, devices, logout, deletion, export and
+  config). The socket handshake is refused.
+- After approval, the next refresh issues a token without the claim.
+- A new sign-up whose email belongs to an erased account still under an active ban gets
+  `ACCOUNT_BANNED`, and the code is consumed.
 
 ## Adapters
 

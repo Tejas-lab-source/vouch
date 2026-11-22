@@ -13,6 +13,15 @@ Cloudflare R2 in production and SeaweedFS locally (ADR 0012).
 | `resolveReview(uploadId, decision)` | The moderation queue's decision (`approve` or `reject`) on a photo held for review; idempotent |
 | `photoUrl(key)`                     | `CDN_BASE_URL` + key                                                                           |
 
+Phase 10 adds:
+
+- `listInReview({ afterId, limit })`: photos waiting for review, with 5-minute signed URLs of
+  the held variants
+- `privateObjects`: presign, exists, a signed read and delete, only under `verification/`
+  (ID-card images). They are never public.
+- The job `media.reviewAlert` (hourly): `vouch_photo_reviews_overdue` and an error log while
+  any photo has been in review for more than 48 hours.
+
 ## HTTP routes (contracts in `packages/contracts/src/http/media.js`)
 
 | Route                                 | Auth | Use case                                                             |

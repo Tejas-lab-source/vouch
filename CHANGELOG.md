@@ -326,3 +326,74 @@ All notable changes are recorded here, grouped by roadmap phase.
 - `listMatches` returns `conversationId` (equal to the match id).
 - The access-token principal carries `expiresAt`.
 - The modules list is now identity, profiles, media, safety, discovery, matching, chat.
+
+## Phase 10 — Notifications, moderation and admin backend
+
+### Added
+
+- **`modules/notifications`** (ADR 0019):
+  - Expo push over `fetch` (chunks of 100, receipts, invalid tokens removed) and a development
+    log provider
+  - the templates registry: `match.new`, `message.new`, `likes.digest`. Pushes never carry a
+    body, a name or an internal id.
+  - preferences and time-zone-aware quiet hours
+  - at most one message push per conversation per 30 s
+  - a block cancels queued pushes
+  - a staff alert email for new reports
+  - the daily likes digest
+  - a delivery log, kept 90 days
+- **Safety part 2** (ADR 0020):
+  - reports with evidence snapshots, with chat's last 20 messages through the new fail-closed
+    `safety.reportEvidence` pipeline
+  - auto-hide at 3 distinct reporters in 7 days
+  - moderation actions: dismiss, warn, hide, unhide, ban
+  - bans and lifting them (`user.unbanned.v1`), plus nightly expiry
+  - the ID-card fallback: private uploads, review and `verification.decided.v1`
+  - the photo review queue, and the 48-hour review alert (`media.reviewAlert`)
+  - repeat-offence system reports
+  - erasure and retention
+- **Identity:**
+  - the ID-card sign-up (`pending_review`), with a `pr` token claim that limits such accounts
+    to the verification routes (HTTP and sockets)
+  - the ban-evasion record (`identity.banned_emails`)
+  - `user.unbanned.v1` and `verification.decided.v1` consumers
+  - push-token API
+- **`modules/admin`** (ADR 0018):
+  - `admin:create` (scrypt password and an AES-256-GCM-sealed TOTP secret)
+  - sign-in with email, password and RFC 6238 TOTP (`node:crypto`, replay refused)
+  - every admin route from the contracts, plus panels, overdue deletions and unblock
+  - per-call account and role checks
+  - one audit entry per action, purged after 2 years
+  - panels from module manifests (`admin.panels`)
+  - flags with a `config.changed` broadcast
+- **Platform:**
+  - `GET /v1/config`
+  - the nightly consistency job (`vouch_consistency_violations`), with column-level grants for
+    `vouch_platform`
+  - `user.deleted.v1` completion recorded in `platform.deletion_tasks`
+  - socket `broadcast`
+  - generic gauges
+  - the template and panel registries
+  - job queues taken from the contracts
+- **Matching:** `user.banned.v1` ends the banned user's matches; `pendingLikes` for the digest.
+- **Contracts (additive):**
+  - the admin login, panels, overdue-deletion and unblock endpoints
+  - the ID-card endpoints
+  - `verification` and `signup.collegeId` on sign-in
+  - `selfieImageUrl` on verification reviews
+  - two events, six jobs and the `safety.reportEvidence` pipeline
+  - env: `ADMIN_TOTP_KEY`, `ADMIN_TOKEN_TTL_MINUTES`, `PUSH_MESSAGE_BATCH_SECONDS`,
+    `ADMIN_ALERT_EMAIL`, `REPORT_AUTOHIDE_*`, `REPORTS_PER_DAY`, `PHOTO_REJECTIONS_FOR_REVIEW`
+    and `ID_CARD_FALLBACK`
+- **Tests:** the full backend scenario, and admin, safety and notifications integration on a
+  shared harness; RFC 6238 vectors and the semaphore.
+
+### Changed
+
+- **Fix (kernel):** concurrent consumer transactions are bounded to half the database pool.
+  Without that, consumers that read through another module's API could exhaust the pool and
+  deadlock (seen with notifications and chat consumers under load).
+- **Fix (discovery):** a deck rebuild keeps the served set, so cards served just before a refill
+  stay swipeable. Before, swipes on them failed with `NOT_SERVED`.
+- `pnpm dev:keys --write` also writes `ADMIN_TOTP_KEY`.
+- The modules list now ends with notifications and admin.

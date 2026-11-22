@@ -64,6 +64,13 @@ conversation opens), and `conversation.closed { conversationId, reason }`. The p
 
 A block or ban is never revealed: the other person sees exactly what an unmatch shows.
 
+## Report evidence (Phase 10)
+
+Chat contributes the step `chat.reportEvidence` to safety's `safety.reportEvidence` pipeline.
+For a chat report, it returns the last 20 messages, but only when the reporter and the target
+are that conversation's two members (`NOT_A_MEMBER` otherwise). This is the only way staff
+can read messages.
+
 ## Data and retention
 
 - Tables `chat.conversations`, `chat.messages` (16 hash partitions) and `chat.read_cursors`

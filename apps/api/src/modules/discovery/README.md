@@ -59,6 +59,12 @@ new users in the first 10; no two cards in a row from the same college when anot
 - `discovery:served:{uid}` (set, 24 h): ids served, for swipe validation.
 - `discovery:exposure:{yyyymmdd}:{uid}` (counter, 48 h): times shown today.
 
+## Served set (fix, Phase 10)
+
+A deck rebuild no longer deletes `discovery:served:{uid}`: the set keeps its own 24-hour TTL.
+Before the fix, a refill queued right after a page was served could make those cards fail
+with `NOT_SERVED`.
+
 ## Adapters
 
 `pg/candidate-source.js`, `redis/deck-store.js`, `ranker/hand-tuned.js`, `jobs/builds.js`,

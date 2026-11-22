@@ -71,12 +71,13 @@ View `platform.colleges_v`: active colleges (`id, name, email_domains, cluster_i
 
 ### `identity`
 
-| Table           | Purpose                                             | Key                                           | Notable constraints and indexes                                                                                                  |
-| --------------- | --------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `users`         | Account                                             | `id`; `public_id` unique; `email_hmac` unique | `status` in `pending, pending_review, active, banned, deleted`; 18+ CHECK; `status = 'deleted'` exactly when `deleted_at` is set |
-| `devices`       | Signed-in device, push token                        | `id`                                          | FK `user_id` → `users`; unique active `push_token`                                                                               |
-| `auth_sessions` | Refresh token (hash only), rotation chain           | `id`; `token_hash` unique                     | FK `user_id`, `device_id`; indexes on `family_id`, `user_id`, `expires_at`                                                       |
-| `consents`      | Privacy-notice version and purposes accepted (DPDP) | `id`                                          | FK `user_id`; at least one purpose                                                                                               |
+| Table           | Purpose                                                       | Key                                           | Notable constraints and indexes                                                                                                  |
+| --------------- | ------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `users`         | Account                                                       | `id`; `public_id` unique; `email_hmac` unique | `status` in `pending, pending_review, active, banned, deleted`; 18+ CHECK; `status = 'deleted'` exactly when `deleted_at` is set |
+| `devices`       | Signed-in device, push token                                  | `id`                                          | FK `user_id` → `users`; unique active `push_token`                                                                               |
+| `auth_sessions` | Refresh token (hash only), rotation chain                     | `id`; `token_hash` unique                     | FK `user_id`, `device_id`; indexes on `family_id`, `user_id`, `expires_at`                                                       |
+| `consents`      | Privacy-notice version and purposes accepted (DPDP)           | `id`                                          | FK `user_id`; at least one purpose                                                                                               |
+| `banned_emails` | Email HMAC of a banned account while the ban lasts (Phase 10) | `ban_id`                                      | No user id (outlives erasure); index on `email_hmac`; removed when the ban is lifted or expires                                  |
 
 View `identity.active_users_v`: users who may appear to others (`id, public_id, college_id`).
 
@@ -107,12 +108,16 @@ Codes and meaning (owner decisions, Phase 3; defined in `packages/contracts/src/
 
 ### `safety`
 
-| Table                  | Purpose                                      | Key                        | Notable constraints and indexes                                                                                                                                                           |
-| ---------------------- | -------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `blocks`               | Directional block (symmetric for visibility) | `(blocker_id, blocked_id)` | No self-block; index on `blocked_id`                                                                                                                                                      |
-| `reports`              | Report with evidence snapshot                | `id`                       | `context` in `profile, chat`; `status` in `open, actioned, dismissed`; `closed_at` set exactly when not open; queue index `(status, created_at)`; `(target_id, created_at)` for auto-hide |
-| `bans`                 | Ban with optional expiry                     | `id`                       | One active ban per user                                                                                                                                                                   |
-| `verification_reviews` | ID-card fallback queue                       | `id`                       | One pending review per user; decision fields set together                                                                                                                                 |
+| Table                  | Purpose                                               | Key                        | Notable constraints and indexes                                                                                                                                                           |
+| ---------------------- | ----------------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blocks`               | Directional block (symmetric for visibility)          | `(blocker_id, blocked_id)` | No self-block; index on `blocked_id`                                                                                                                                                      |
+| `reports`              | Report with evidence snapshot                         | `id`                       | `context` in `profile, chat`; `status` in `open, actioned, dismissed`; `closed_at` set exactly when not open; queue index `(status, created_at)`; `(target_id, created_at)` for auto-hide |
+| `bans`                 | Ban with optional expiry                              | `id`                       | One active ban per user                                                                                                                                                                   |
+| `verification_reviews` | ID-card fallback queue                                | `id`                       | One pending review per user; decision fields set together; `id_image_key` and `selfie_image_key` (Phase 10) point to private `verification/` objects                                      |
+| `photo_rejections`     | Moderation rejections, for repeat offences (Phase 10) | `upload_id`                | Index `(user_id, rejected_at)`; 30-day window                                                                                                                                             |
+
+Phase 10 adds `reports.resolution`, `resolved_by` and `resolution_note` (the staff outcome), and
+indexes for reporter erasure and ban expiry.
 
 View `safety.block_pairs_v`: every block in both directions (`user_id, other_id`).
 
@@ -151,10 +156,10 @@ delivered cursors only move forward and never pass `last_seq`.
 
 ### `admin`
 
-| Table         | Purpose                             | Key                       | Notable constraints and indexes                                                                                               |
-| ------------- | ----------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `admin_users` | Moderator and admin accounts        | `id`; unique `email_hmac` | MFA enabled only with a stored (encrypted) TOTP secret                                                                        |
-| `audit_log`   | Append-only record of admin actions | `id`                      | `details` must be a JSON object; the admin role cannot `UPDATE` it; no FK to `admin_users` so entries survive account removal |
+| Table         | Purpose                             | Key                       | Notable constraints and indexes                                                                                                |
+| ------------- | ----------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `admin_users` | Moderator and admin accounts        | `id`; unique `email_hmac` | MFA enabled only with a stored (encrypted) TOTP secret; `password_hash` (scrypt) and `last_totp_step` (replay guard, Phase 10) |
+| `audit_log`   | Append-only record of admin actions | `id`                      | `details` must be a JSON object; the admin role cannot `UPDATE` it; no FK to `admin_users` so entries survive account removal  |
 
 ## Retention
 
@@ -163,30 +168,32 @@ delivered cursors only move forward and never pass `last_seq`.
 > and accepted by the owner on 2026-11-21 pending that review. The jobs that enforce retention are built in the phase that
 > owns each table.
 
-| Data                                                              | Kept for                                                                                     | Mechanism                                                      |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Passes (`swipes`, `direction = 0`)                                | 30 days                                                                                      | Nightly batched delete per partition (Phase 8)                 |
-| Likes (`swipes`, `direction = 1`)                                 | Account lifetime                                                                             | Deleted on account deletion                                    |
-| Matches                                                           | Account lifetime                                                                             | Anonymised on account deletion (tombstone id, `anonymised_at`) |
-| Messages                                                          | Until account deletion, or conversation closed (unmatch or block) + 30 days                  | Erase handler and nightly purge (Phase 9)                      |
-| Report evidence (`reports`)                                       | 1 year after `closed_at`                                                                     | Nightly purge (Phase 10)                                       |
-| Bans                                                              | While active                                                                                 | Removed once lifted or expired (Phase 10)                      |
-| Audit log                                                         | 2 years                                                                                      | Nightly purge (Phase 10)                                       |
-| Published outbox rows                                             | 7 days                                                                                       | Nightly job (Phase 4)                                          |
-| Inbox rows                                                        | 30 days                                                                                      | Nightly job (Phase 4)                                          |
-| Expired or revoked sessions                                       | 30 days after expiry or revocation                                                           | Nightly job (Phase 5)                                          |
-| Revoked devices                                                   | 30 days after revocation (_accepted for now_)                                                | Nightly job (Phase 5)                                          |
-| Consent records                                                   | Account lifetime (_accepted for now_)                                                        | Erased with the account                                        |
-| Notification deliveries                                           | 90 days                                                                                      | Nightly job (Phase 10)                                         |
-| ID-card images (`verification_reviews.id_image_key`)              | 30 days after the decision                                                                   | R2 delete + key cleared (Phase 10)                             |
-| Upload rows (`media.uploads`)                                     | 7 days for rejected and never-confirmed uploads; approved rows stay while their photo exists | Nightly job `media.retentionTick` (Phase 6)                    |
-| Raw upload objects (R2 `uploads/raw/`)                            | 1 day                                                                                        | R2 lifecycle rule (Phase 15)                                   |
-| OTP codes                                                         | 10 minutes                                                                                   | Redis TTL (Phase 5)                                            |
-| Deleted accounts                                                  | Hard-deleted 30 days after soft delete                                                       | `user.deleted.v1` drives every module's erase handler          |
-| Account deletion tasks                                            | 90 days after completion (_accepted for now_)                                                | Nightly job (Phase 10)                                         |
-| Disabled admin accounts                                           | 2 years, matching the audit log (_accepted for now_)                                         | Manual (Phase 10)                                              |
-| Profiles, photos, sections, prefs, blocks, verification decisions | Account lifetime                                                                             | Erased on account deletion                                     |
-| Colleges, clusters, feature flags                                 | Indefinitely (not personal data)                                                             | —                                                              |
+| Data                                                                     | Kept for                                                                                     | Mechanism                                                                               |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Passes (`swipes`, `direction = 0`)                                       | 30 days                                                                                      | Nightly batched delete per partition (Phase 8)                                          |
+| Likes (`swipes`, `direction = 1`)                                        | Account lifetime                                                                             | Deleted on account deletion                                                             |
+| Matches                                                                  | Account lifetime                                                                             | Anonymised on account deletion (tombstone id, `anonymised_at`)                          |
+| Messages                                                                 | Until account deletion, or conversation closed (unmatch or block) + 30 days                  | Erase handler and nightly purge (Phase 9)                                               |
+| Report evidence (`reports`)                                              | 1 year after `closed_at`                                                                     | Nightly purge (`safety.retentionTick`)                                                  |
+| Bans                                                                     | While active, then 30 days                                                                   | Expired bans lifted nightly; rows deleted 30 days after ending (`safety.retentionTick`) |
+| Banned-email records (`identity.banned_emails`)                          | While the ban is active                                                                      | Deleted when lifted; expired ones purged with the erasure pass (`identity.retention`)   |
+| Photo rejection counts (`safety.photo_rejections`)                       | 30 days                                                                                      | Nightly (`safety.retentionTick`)                                                        |
+| Audit log                                                                | 2 years                                                                                      | Nightly purge (`admin.retentionTick`)                                                   |
+| Published outbox rows                                                    | 7 days                                                                                       | Nightly job (Phase 4)                                                                   |
+| Inbox rows                                                               | 30 days                                                                                      | Nightly job (Phase 4)                                                                   |
+| Expired or revoked sessions                                              | 30 days after expiry or revocation                                                           | Nightly job (Phase 5)                                                                   |
+| Revoked devices                                                          | 30 days after revocation (_accepted for now_)                                                | Nightly job (Phase 5)                                                                   |
+| Consent records                                                          | Account lifetime (_accepted for now_)                                                        | Erased with the account                                                                 |
+| Notification deliveries                                                  | 90 days                                                                                      | Nightly job (`notifications.retentionTick`)                                             |
+| ID-card images (`verification_reviews.id_image_key`, `selfie_image_key`) | 30 days after the decision                                                                   | R2 delete + keys cleared (`safety.retentionTick`)                                       |
+| Upload rows (`media.uploads`)                                            | 7 days for rejected and never-confirmed uploads; approved rows stay while their photo exists | Nightly job `media.retentionTick` (Phase 6)                                             |
+| Raw upload objects (R2 `uploads/raw/`)                                   | 1 day                                                                                        | R2 lifecycle rule (Phase 15)                                                            |
+| OTP codes                                                                | 10 minutes                                                                                   | Redis TTL (Phase 5)                                                                     |
+| Deleted accounts                                                         | Hard-deleted 30 days after soft delete                                                       | `user.deleted.v1` drives every module's erase handler                                   |
+| Account deletion tasks (`platform.deletion_tasks`)                       | 90 days after completion (_accepted for now_)                                                | Nightly `platform.retention` task `deletionTasks`                                       |
+| Disabled admin accounts                                                  | 2 years, matching the audit log (_accepted for now_)                                         | Manual (Phase 10)                                                                       |
+| Profiles, photos, sections, prefs, blocks, verification decisions        | Account lifetime                                                                             | Erased on account deletion                                                              |
+| Colleges, clusters, feature flags                                        | Indefinitely (not personal data)                                                             | —                                                                                       |
 
 ## Object storage keys (Phase 6, ADR 0012)
 
@@ -210,3 +217,18 @@ tests only. It refuses to run with `NODE_ENV=production`.
   follow the Phase 6 layout (`photos/{photoKey}/{photoId}_{size}.webp`); no files exist for them.
 - Deterministic: one fixed seed drives a seeded generator, so ids and values never change.
 - Idempotent: every insert uses `ON CONFLICT DO NOTHING`; running it twice changes nothing.
+
+## Cross-module checks (Phase 10)
+
+The nightly `platform.consistencyCheck` job runs as `vouch_platform`. Its column-level grants
+cover ids, statuses and timestamps only (migration
+`20261122100400_platform_consistency_grants`). It counts:
+
+- active matches with no conversation
+- conversations with no match
+- accounts deleted more than 24 h ago that still have rows in any module (reports and active
+  bans are kept on purpose)
+- (account, module) erasures not finished within 24 h, from `platform.deletion_tasks`, which
+  the kernel fills when each `user.deleted.v1` consumer commits
+
+Each count is the gauge `vouch_consistency_violations{check}`; a count above 0 logs an error.

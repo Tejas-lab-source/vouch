@@ -15,6 +15,9 @@ Cards are cached in Redis as `profiles:card:{userId}` for 10 minutes and invalid
 change. The `profiles.cardFields` pipeline (owned here, empty in v1) runs on every read, after
 the cache.
 
+Phase 10 adds `hide(userId)` and `unhide(userId)` (moderation; idempotent; `profile.updated.v1`
+only when the status changes), `statusOf(userId)` and `minApprovedPhotos` (client limits).
+
 ## HTTP routes (contracts in `packages/contracts/src/http/profiles.js`)
 
 | Route                                | Auth | Use case                                                                |
