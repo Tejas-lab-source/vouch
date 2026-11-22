@@ -82,6 +82,7 @@ export async function buildIdentityDeps(ctx) {
     clock,
     newId: ctx.newId,
     privacyNoticeVersion: config.PRIVACY_NOTICE_VERSION,
+    idCardFallback: config.ID_CARD_FALLBACK,
     exporters: ctx.exporters,
   };
 }

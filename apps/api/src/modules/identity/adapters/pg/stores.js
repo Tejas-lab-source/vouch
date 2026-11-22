@@ -92,6 +92,29 @@ export function createIdentityStores(tx) {
       touch: async (id, at) => {
         await tx`UPDATE identity.devices SET last_seen_at = ${at} WHERE id = ${id}`;
       },
+      pushTokensOf: async (userId) =>
+        (
+          await tx`SELECT push_token FROM identity.devices
+            WHERE user_id = ${userId} AND revoked_at IS NULL AND push_token IS NOT NULL
+            ORDER BY last_seen_at DESC LIMIT 10`
+        ).map((r) => /** @type {string} */ (r.pushToken)),
+      clearPushToken: async (pushToken) =>
+        (await tx`UPDATE identity.devices SET push_token = NULL WHERE push_token = ${pushToken}`)
+          .count,
+    },
+    bannedEmails: {
+      insert: async ({ banId, emailHmac, expiresAt }) => {
+        await tx`INSERT INTO identity.banned_emails (ban_id, email_hmac, expires_at)
+          VALUES (${banId}, ${emailHmac}, ${expiresAt}) ON CONFLICT (ban_id) DO NOTHING`;
+      },
+      removeByBan: async (banId) => {
+        await tx`DELETE FROM identity.banned_emails WHERE ban_id = ${banId}`;
+      },
+      isBanned: async (emailHmac, now) =>
+        (
+          await tx`SELECT 1 FROM identity.banned_emails WHERE email_hmac = ${emailHmac}
+            AND (expires_at IS NULL OR expires_at > ${now}) LIMIT 1`
+        ).length > 0,
     },
     consents: {
       insert: async (c) => {
@@ -118,6 +141,9 @@ function retentionQueries(tx) {
       (
         await tx`DELETE FROM identity.auth_sessions WHERE expires_at < ${olderThan} OR revoked_at < ${olderThan}`
       ).count,
+    /** Ban records of bans that expired before the cutoff. @param {Date} olderThan */
+    purgeExpiredBannedEmails: async (olderThan) =>
+      (await tx`DELETE FROM identity.banned_emails WHERE expires_at <= ${olderThan}`).count,
     /** Devices revoked before the cutoff. @param {Date} olderThan */
     purgeDevices: async (olderThan) =>
       (await tx`DELETE FROM identity.devices WHERE revoked_at < ${olderThan}`).count,

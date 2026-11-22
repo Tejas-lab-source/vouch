@@ -22,10 +22,11 @@ export function makeRequestOtp({
   crypto,
   otpStore,
   email,
+  idCardFallback,
 }) {
   return useCase(
     'identity.requestOtp',
-    /** @param {{ email: string, turnstileToken: string, deviceId?: string }} input */
+    /** @param {{ email: string, turnstileToken: string, deviceId?: string, verification?: 'college_email' | 'id_card' }} input */
     async (input, ctx) => {
       const normalised = normaliseEmail(input.email);
       if (!normalised)
@@ -53,7 +54,10 @@ export function makeRequestOtp({
 
       if (!(await captcha.verify(input.turnstileToken, ctx.ip ?? '')))
         throw new ServiceError('CAPTCHA_FAILED');
-      if (!findCollegeForDomain(normalised.domain, await colleges.all())) {
+      if (input.verification === 'id_card') {
+        // Any email: the account will wait for a reviewed student ID (Phase 10).
+        if (!idCardFallback) throw new ServiceError('FEATURE_DISABLED');
+      } else if (!findCollegeForDomain(normalised.domain, await colleges.all())) {
         throw new ServiceError('EMAIL_DOMAIN_NOT_ALLOWED');
       }
 

@@ -19,6 +19,7 @@ const EXPECTED_MIGRATIONS = [
   '20261122002100_photo_tombstones',
   '20261122003100_upload_photo_key',
   '20261122003200_upload_in_review',
+  '20261122100000_identity_banned_emails',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */
@@ -29,6 +30,7 @@ const EXPECTED_TABLES = [
   'chat.messages',
   'chat.read_cursors',
   'identity.auth_sessions',
+  'identity.banned_emails',
   'identity.consents',
   'identity.devices',
   'identity.users',

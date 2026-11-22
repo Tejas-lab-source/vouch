@@ -13,7 +13,8 @@ const MINUTE = 60 * 1000;
  * @property {string} email
  * @property {string} code
  * @property {{ platform: 'ios' | 'android' | 'web', appVersion?: string }} device
- * @property {{ birthDate: string, gradYear?: number, consent: { noticeVersion: string, purposes: string[] } }} [signup]
+ * @property {{ birthDate: string, gradYear?: number, collegeId?: string, consent: { noticeVersion: string, purposes: string[] } }} [signup]
+ * @property {'college_email' | 'id_card'} [verification]
  */
 
 /**
@@ -21,7 +22,10 @@ const MINUTE = 60 * 1000;
  * - Wrong code: counts an attempt; the 5th wrong attempt burns the code.
  * - New email without `signup`: SIGNUP_DETAILS_REQUIRED, without consuming the code or counting
  *   an attempt, so the client can retry with the same code until it expires.
- * - Deleted account still being erased: FORBIDDEN. Banned: ACCOUNT_BANNED.
+ * - Deleted account still being erased: FORBIDDEN. Banned: ACCOUNT_BANNED, also for a new
+ *   sign-up whose email belongs to an erased account that is still banned (Phase 10).
+ * - ID-card sign-up (`verification: 'id_card'`, any email, `signup.collegeId`): the account is
+ *   created `pending_review` until staff approve the student ID and selfie (Phase 10).
  * Not replayed through the idempotency store: results hold refresh tokens.
  * @param {import('../ports.js').IdentityDeps} deps
  */
@@ -39,6 +43,7 @@ export function makeVerifyOtp(deps) {
     newId,
     tokens,
     privacyNoticeVersion,
+    idCardFallback,
   } = deps;
   return useCase(
     'identity.verifyOtp',
@@ -74,6 +79,14 @@ export function makeVerifyOtp(deps) {
       }
 
       const existing = await read((stores) => stores.users.findByEmailHmac(emailHmac));
+      if (!existing) {
+        // Only the email owner (who knows the code) learns this.
+        const banned = await read((stores) => stores.bannedEmails.isBanned(emailHmac, clock.now()));
+        if (banned) {
+          await orUnavailable(() => otpStore.consume(key));
+          throw new ServiceError('ACCOUNT_BANNED');
+        }
+      }
       if (!existing && !input.signup) throw new ServiceError('SIGNUP_DETAILS_REQUIRED');
       if (!(await orUnavailable(() => otpStore.consume(key))))
         throw new ServiceError('OTP_INVALID');
@@ -108,8 +121,20 @@ export function makeVerifyOtp(deps) {
       }
       const now = clock.now();
       if (!isAdult(signup.birthDate, now)) throw new ServiceError('UNDERAGE');
-      const college = findCollegeForDomain(normalised.domain, await colleges.all());
-      if (!college) throw new ServiceError('EMAIL_DOMAIN_NOT_ALLOWED');
+      const all = await colleges.all();
+      const byDomain = findCollegeForDomain(normalised.domain, all);
+      const viaIdCard = !byDomain && input.verification === 'id_card';
+      if (viaIdCard && !idCardFallback) throw new ServiceError('FEATURE_DISABLED');
+      const college =
+        byDomain ?? (viaIdCard ? all.find((c) => c.id === signup.collegeId) : undefined);
+      if (!college) {
+        if (viaIdCard) {
+          throw new ServiceError('VALIDATION_FAILED', { message: 'Choose your college.' });
+        }
+        throw new ServiceError('EMAIL_DOMAIN_NOT_ALLOWED');
+      }
+      /** @type {'active' | 'pending_review'} */
+      const status = viaIdCard ? 'pending_review' : 'active';
 
       const userId = newId();
       const publicId = crypto.randomPublicId();
@@ -119,7 +144,7 @@ export function makeVerifyOtp(deps) {
           publicId,
           collegeId: college.id,
           emailHmac,
-          status: 'active',
+          status,
           birthDate: signup.birthDate,
           gradYear: signup.gradYear ?? null,
           createdAt: now,
@@ -145,14 +170,14 @@ export function makeVerifyOtp(deps) {
           collegeId: college.id,
           clusterId: college.clusterId,
           birthDate: signup.birthDate,
-          status: 'active',
+          status,
           createdAt: now.toISOString(),
         });
         return startSession(stores, deps, { userId, deviceId });
       });
       return {
         tokens: await tokenPair(tokens, { userId, ...session }),
-        user: { userId: publicId, status: /** @type {const} */ ('active'), newUser: true },
+        user: { userId: publicId, status, newUser: true },
       };
     },
     { authz: 'public' },

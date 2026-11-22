@@ -29,6 +29,7 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
     sessions: /** @type {Map<string, any>} */ (new Map()),
     devices: /** @type {Map<string, any>} */ (new Map()),
     consents: /** @type {any[]} */ ([]),
+    bannedEmails: /** @type {Map<string, any>} */ (new Map()),
     otp: /** @type {Map<string, { codeHash: string, attempts: number }>} */ (new Map()),
     sent: /** @type {{ to: string, code: string }[]} */ ([]),
     events: /** @type {{ name: string, payload: any }[]} */ ([]),
@@ -79,6 +80,23 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
       setPushToken: async (id, pushToken) =>
         void Object.assign(state.devices.get(id), { pushToken }),
       touch: async (id, at) => void Object.assign(state.devices.get(id), { lastSeenAt: at }),
+      pushTokensOf: async (userId) =>
+        [...state.devices.values()]
+          .filter((d) => d.userId === userId && !d.revokedAt && d.pushToken)
+          .map((d) => d.pushToken),
+      clearPushToken: async (token) => {
+        const holders = [...state.devices.values()].filter((d) => [token].includes(d.pushToken));
+        for (const d of holders) d.pushToken = null;
+        return holders.length;
+      },
+    },
+    bannedEmails: {
+      insert: async (b) => void state.bannedEmails.set(b.banId, b),
+      removeByBan: async (banId) => void state.bannedEmails.delete(banId),
+      isBanned: async (emailHmac, now) =>
+        [...state.bannedEmails.values()].some(
+          (b) => b.emailHmac.equals(emailHmac) && (!b.expiresAt || b.expiresAt > now),
+        ),
     },
     consents: {
       insert: async (c) => void state.consents.push(c),
@@ -170,6 +188,7 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
     clock,
     newId: createIdGenerator({ clock }),
     privacyNoticeVersion: '2026-11',
+    idCardFallback: true,
     exporters: new Map(),
   };
   return { deps, state, advance };
