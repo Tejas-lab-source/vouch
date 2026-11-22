@@ -1,6 +1,7 @@
 // @ts-check
 import { blockUser } from '@vouch/contracts';
 import { contractRoute } from '../../../../platform/routes.js';
+import { clientIpOf } from '../../../../platform/client-ip.js';
 
 /**
  * HTTP adapter for safety (part 1: blocking).
@@ -13,7 +14,7 @@ export function safetyRoutes(handlers) {
       contractRoute(blockUser, async (request) =>
         handlers.block(request.body, {
           actor: /** @type {any} */ (request).user ?? null,
-          ip: request.ip,
+          ip: clientIpOf(request),
         }),
       ),
     );

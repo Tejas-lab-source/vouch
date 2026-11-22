@@ -1,6 +1,7 @@
 // @ts-check
 import { confirmUpload, createUpload } from '@vouch/contracts';
 import { contractRoute } from '../../../../platform/routes.js';
+import { clientIpOf } from '../../../../platform/client-ip.js';
 
 /**
  * @param {any} request
@@ -11,7 +12,7 @@ function contextOf(request) {
   return {
     actor: request.user ?? null,
     idempotencyKey: typeof key === 'string' ? key : undefined,
-    ip: request.ip,
+    ip: clientIpOf(request),
   };
 }
 

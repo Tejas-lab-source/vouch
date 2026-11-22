@@ -13,8 +13,8 @@ import { loadConfig } from '../src/platform/config.js';
  * `--requests` `GET /v1/deck` calls (`--concurrency` at a time) and prints latency
  * percentiles. Development only: refuses NODE_ENV=production and needs a private signing key.
  *
- * Each simulated user sends its own `X-Forwarded-For` address, as real clients behind the CDN
- * would; otherwise the global per-IP rate limit (300/min) throttles the run from one machine.
+ * Requests are signed in, so the global limit applies per user (ADR 0015), not to the one
+ * machine running the benchmark.
  */
 
 /** @param {number[]} sorted @param {number} p */
@@ -57,13 +57,11 @@ async function main() {
   const tokens = await Promise.all(users.map((u) => token(u.id)));
   /** @param {string} bearer */
   const get = async (bearer) => {
-    const client = tokens.indexOf(bearer);
     const started = performance.now();
     const response = await fetch(`${values.url}/v1/deck`, {
       headers: {
         authorization: `Bearer ${bearer}`,
         'x-app-version': '1.0.0',
-        'x-forwarded-for': `10.77.${Math.floor(client / 250)}.${(client % 250) + 1}`,
       },
       signal: AbortSignal.timeout(5000),
     });

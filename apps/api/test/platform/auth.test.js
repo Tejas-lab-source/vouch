@@ -2,7 +2,7 @@
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 import {
-  authHook,
+  authHooks,
   bearerToken,
   createTokenVerifier,
   RETIRED_KEY_GRACE_MS,
@@ -85,13 +85,15 @@ describe('token verification', () => {
   });
 });
 
-describe('authHook', () => {
+describe('authHooks (authenticate, then enforce)', () => {
   async function app({ adminIpAllowlist = /** @type {string[]} */ ([]) } = {}) {
     const keys = await makeKeys();
     const verifier = await createTokenVerifier({ keys: parseKeys(keys.json), clock: systemClock });
     const server = Fastify({ logger: false });
     server.setErrorHandler(createErrorHandler());
-    server.addHook('onRequest', authHook({ verifier, adminIpAllowlist }));
+    const hooks = authHooks({ verifier, adminIpAllowlist });
+    server.addHook('onRequest', hooks.authenticate);
+    server.addHook('preValidation', hooks.enforce);
     for (const mode of ['public', 'optional', 'user', 'admin']) {
       server.get(`/${mode}`, { config: { auth: mode } }, async (/** @type {any} */ request) => ({
         user: request.user?.userId ?? null,

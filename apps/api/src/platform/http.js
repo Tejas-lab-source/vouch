@@ -13,7 +13,8 @@ import {
   validatorCompiler,
 } from 'fastify-type-provider-zod';
 import { randomUUID } from 'node:crypto';
-import { authHook } from './auth.js';
+import { authHooks } from './auth.js';
+import { clientIpOf, createProxyTrust, resolveClientIp } from './client-ip.js';
 import { enterContext } from './context.js';
 import { AppError, createErrorHandler, notFoundHandler } from './errors.js';
 import { compareVersions } from './flags.js';
@@ -21,8 +22,16 @@ import { registerHealthRoutes } from './health.js';
 
 /** Upper bound for receiving a whole request. */
 const REQUEST_TIMEOUT_MS = 30_000;
-/** Default per-client limit; routes can set their own through `config.rateLimit`. */
-const DEFAULT_RATE_LIMIT = { max: 300, timeWindow: 60_000 };
+/** Global limiter window; the limits come from config (ADR 0015). */
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+/**
+ * The global limiter's key: the user for signed-in requests, the client IP otherwise
+ * (including requests whose token is missing or bad, so floods of bad tokens are throttled).
+ * @param {import('fastify').FastifyRequest & { user?: { userId: string } | null }} request
+ */
+export const rateLimitKey = (request) =>
+  request.user ? `user:${request.user.userId}` : `ip:${clientIpOf(request)}`;
 
 /**
  * @typedef {object} HttpServerOptions
@@ -55,6 +64,7 @@ export async function buildHttpServer({
   apiRoutes = true,
   routes = [],
 }) {
+  const proxyTrust = createProxyTrust(config.TRUSTED_PROXIES);
   // Cast: Fastify types the instance by pino's Logger, which is wider than FastifyBaseLogger.
   const app = /** @type {import('fastify').FastifyInstance} */ (
     /** @type {unknown} */ (
@@ -63,7 +73,7 @@ export async function buildHttpServer({
         requestTimeout: REQUEST_TIMEOUT_MS,
         requestIdHeader: 'x-request-id',
         genReqId: () => randomUUID(),
-        trustProxy: true,
+        trustProxy: config.TRUSTED_PROXIES.length > 0 ? proxyTrust.trustProxy : false,
       })
     )
   );
@@ -72,7 +82,9 @@ export async function buildHttpServer({
   app.setErrorHandler(createErrorHandler(reportError));
   app.setNotFoundHandler(notFoundHandler);
 
+  app.decorateRequest('clientIp', '');
   app.addHook('onRequest', async (request) => {
+    /** @type {any} */ (request).clientIp = resolveClientIp(request, proxyTrust);
     const span = trace.getActiveSpan();
     enterContext({ requestId: request.id, traceId: span?.spanContext().traceId ?? request.id });
   });
@@ -88,9 +100,19 @@ export async function buildHttpServer({
   await app.register(helmet, { global: true });
   await app.register(cors, { origin: config.CORS_ORIGINS, credentials: true });
   await app.register(cookie, { secret: config.COOKIE_SECRET });
+  // The limiter's hook is route-level, so it runs after the app-level `authenticate` hook below
+  // and before `enforce` rejects unauthenticated requests.
+  const auth = authHooks({
+    verifier,
+    adminIpAllowlist: config.ADMIN_IP_ALLOWLIST ?? [],
+    clientIp: clientIpOf,
+  });
   await app.register(rateLimit, {
     global: true,
-    ...DEFAULT_RATE_LIMIT,
+    timeWindow: RATE_LIMIT_WINDOW_MS,
+    keyGenerator: rateLimitKey,
+    max: (_request, key) =>
+      key.startsWith('user:') ? config.RATE_LIMIT_USER_MINUTE : config.RATE_LIMIT_IP_MINUTE,
     redis,
     nameSpace: 'platform:rl:',
     skipOnError: true,
@@ -108,10 +130,8 @@ export async function buildHttpServer({
     await app.register(swaggerUi, { routePrefix: '/docs' });
   }
 
-  app.addHook(
-    'onRequest',
-    authHook({ verifier, adminIpAllowlist: config.ADMIN_IP_ALLOWLIST ?? [] }),
-  );
+  app.addHook('onRequest', auth.authenticate);
+  app.addHook('preValidation', auth.enforce);
   app.addHook('onRequest', async (request) => {
     const version = request.headers['x-app-version'];
     if (typeof version === 'string' && /^\d+\.\d+\.\d+$/.test(version)) {
