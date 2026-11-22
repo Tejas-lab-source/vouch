@@ -104,13 +104,13 @@ gzipped.
 
 **Running log** (updated as the batch goes; resume from the last row after an interruption):
 
-| Phase | Status                          | Last commit   | CI run                                                                          | Next step           |
-| ----- | ------------------------------- | ------------- | ------------------------------------------------------------------------------- | ------------------- |
-| 9     | Complete — pending owner review | `f8519dd`     | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan |
-| 10    | Complete — pending owner review | `62e108d`     | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                   |
-| 11    | Complete — pending owner review | report commit | pending (filled in with the Phase 12 start plan)                                | —                   |
-| 12    | In progress                     | —             | —                                                                               | Start plan          |
-| 13    | Not started                     | —             | —                                                                               | —                   |
+| Phase | Status                          | Last commit  | CI run                                                                          | Next step                |
+| ----- | ------------------------------- | ------------ | ------------------------------------------------------------------------------- | ------------------------ |
+| 9     | Complete — pending owner review | `f8519dd`    | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan      |
+| 10    | Complete — pending owner review | `62e108d`    | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                        |
+| 11    | Complete — pending owner review | `d0c3b16`    | [run 74](https://github.com/Tejas-lab-source/vouch/actions/runs/45055946738) ✅ | —                        |
+| 12    | In progress                     | (start plan) | —                                                                               | Backend additions, hooks |
+| 13    | Not started                     | —            | —                                                                               | —                        |
 
 ## Notes for later phases
 
