@@ -138,16 +138,18 @@ async function startWorkers(platform, boot, events) {
 
   handle('bulk', 'platform.retention', async (/** @type {any} */ job) => {
     const { task, olderThan } = job.data;
-    if (task !== 'outbox' && task !== 'inbox') return { skipped: task };
+    if (task !== 'outbox' && task !== 'inbox' && task !== 'deletionTasks') {
+      return { skipped: task };
+    }
     return { deleted: await purgeEvents(db, task, new Date(olderThan)) };
   });
   handle('bulk', 'platform.retentionTick', async () => {
     const now = platform.clock.now().getTime();
-    for (const task of /** @type {const} */ (['outbox', 'inbox'])) {
+    for (const task of /** @type {const} */ (['outbox', 'inbox', 'deletionTasks'])) {
       await jobs.add('platform.retention', {
         task,
         olderThan: new Date(
-          now - (task === 'outbox' ? EVENT_RETENTION.outbox : EVENT_RETENTION.inbox),
+          now - (new Map(Object.entries(EVENT_RETENTION)).get(task) ?? 0),
         ).toISOString(),
       });
     }
