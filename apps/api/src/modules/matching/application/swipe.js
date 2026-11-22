@@ -37,8 +37,7 @@ export function makeSwipe(deps) {
         const [low, high] = canonicalPair(me, targetId);
         const decision = decideMatch({
           blocked: await safety.blockPolicy.isBlocked(me, targetId, { tx }),
-          reverseLike: await stores.swipes.likes(targetId, me),
-          previouslyUnmatched: Boolean((await stores.matches.findPair(low, high))?.unmatchedAt),
+          ...(await stores.swipes.pairState(me, targetId, low, high)),
         });
         if (decision === 'blocked') throw new BlockedPair();
         if (decision === 'none') return NO_MATCH;

@@ -14,6 +14,7 @@
     "lint": "turbo run lint lint:root",
     "lint:root": "eslint . --max-warnings 0",
     "test": "turbo run test",
+    "test:invariants": "pnpm --filter @vouch/api test:invariants",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json",

@@ -61,6 +61,9 @@ jobs:
       - name: Tests (includes Testcontainers smoke test)
         run: pnpm test
 
+      - name: Invariant tests (run alone; concurrency and timing targets)
+        run: pnpm test:invariants
+
   docker:
     name: Compose services and Docker image
     runs-on: ubuntu-latest

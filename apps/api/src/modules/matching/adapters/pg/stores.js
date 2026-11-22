@@ -18,11 +18,19 @@ export function createMatchingStores(tx) {
           await tx`INSERT INTO matching.swipes (swiper_id, target_id, direction, created_at)
             VALUES (${swiperId}, ${targetId}, 1, ${at}) ON CONFLICT DO NOTHING`
         ).count === 1,
-      likes: async (swiperId, targetId) =>
-        (
-          await tx`SELECT 1 FROM matching.swipes
-            WHERE swiper_id = ${swiperId} AND target_id = ${targetId} AND direction = 1`
-        ).length === 1,
+      // One round trip under the pair lock: the like back, and whether the pair ever unmatched.
+      pairState: async (me, targetId, userLow, userHigh) => {
+        const [row] = await tx`SELECT
+            EXISTS (SELECT 1 FROM matching.swipes
+              WHERE swiper_id = ${targetId} AND target_id = ${me} AND direction = 1) AS reverse_like,
+            EXISTS (SELECT 1 FROM matching.matches
+              WHERE user_low = ${userLow} AND user_high = ${userHigh}
+                AND unmatched_at IS NOT NULL) AS previously_unmatched`;
+        return {
+          reverseLike: Boolean(row?.reverseLike),
+          previouslyUnmatched: Boolean(row?.previouslyUnmatched),
+        };
+      },
       // One statement per batch. Passes by or for accounts that are no longer active are
       // dropped (a deleted user's buffered passes must not come back).
       insertPasses: async (passes) =>

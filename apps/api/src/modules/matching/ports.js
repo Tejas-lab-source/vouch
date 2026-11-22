@@ -14,7 +14,7 @@
  * @typedef {object} MatchingStores
  * @property {{
  *   insertLike(swiperId: string, targetId: string, at: Date): Promise<boolean>,
- *   likes(swiperId: string, targetId: string): Promise<boolean>,
+ *   pairState(me: string, targetId: string, userLow: string, userHigh: string): Promise<{ reverseLike: boolean, previouslyUnmatched: boolean }>,
  *   insertPasses(passes: readonly { swiperId: string, targetId: string, swipedAt: string }[]): Promise<number>,
  *   likesInCount(userId: string): Promise<number>,
  *   forUser(userId: string): Promise<{ targetId: string, direction: number, createdAt: Date }[]>,

@@ -17,6 +17,7 @@
     "start": "node src/main.js",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run --coverage",
+    "test:invariants": "vitest run --config vitest.invariants.config.js",
     "db:migrate": "node --env-file-if-exists=../../.env migrations/run.js up",
     "db:migrate:down": "node --env-file-if-exists=../../.env migrations/run.js down",
     "db:seed": "node --env-file-if-exists=../../.env scripts/seed.js",
