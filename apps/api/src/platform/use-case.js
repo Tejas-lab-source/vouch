@@ -8,6 +8,8 @@ import { AppError } from './errors.js';
  * @property {import('./auth.js').Principal | null} actor
  * @property {string | undefined} [idempotencyKey]
  * @property {import('./flags.js').FlagSubject} [flagSubject]
+ * @property {string} [ip]  Client IP (behind the trusted proxy).
+ * @property {string} [refreshCookie]  The `vouch_refresh` cookie, when present.
  */
 
 /**

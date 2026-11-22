@@ -15,6 +15,7 @@ import { createIdempotencyStore } from './idempotency.js';
 import { createJobs } from './jobs.js';
 import { createMetrics, startMetricsServer } from './metrics.js';
 import { createPipelines } from './pipelines.js';
+import { createRateLimiter } from './rate-limit.js';
 import { createRedis } from './redis.js';
 import { bootModules, capabilitiesOf } from './registry.js';
 import { createUnitOfWork } from './uow.js';
@@ -51,6 +52,7 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
   const flags = createFlags({ db, redis: redis.command, logger });
   const idempotency = createIdempotencyStore({ redis: redis.command });
   const pipelines = createPipelines({ logger });
+  const rateLimiter = createRateLimiter({ redis: redis.command, logger });
   const useCase = createUseCaseFactory({ metrics, flags, idempotency });
   const verifier = await createTokenVerifier({ keys: config.jwtKeys, clock });
 
@@ -66,6 +68,7 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
     flags,
     idempotency,
     pipelines,
+    rateLimiter,
     useCase,
     verifier,
     /**
@@ -132,6 +135,8 @@ async function startWorkers(platform, boot, events) {
     }
   });
   await jobs.schedule('platform.retention-tick', RETENTION_CRON, 'platform.retentionTick', {});
+
+  for (const { id, cron, job } of boot.schedules) await jobs.schedule(id, cron, job, {});
 
   for (const [queue, handlers] of byQueue) jobs.process(queue, handlers);
 

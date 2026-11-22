@@ -30,6 +30,20 @@ function sameHash(a, b) {
   return timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
+/**
+ * Redis failures while claiming a key mean idempotency cannot be guaranteed: refuse clearly.
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+async function unavailableOnError(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    throw new AppError('TEMPORARILY_UNAVAILABLE', { cause: err });
+  }
+}
+
 /** @param {unknown} input */
 export function hashInput(input) {
   return createHash('sha256').update(stableStringify(input)).digest('base64url');
@@ -55,15 +69,11 @@ export function createIdempotencyStore({ redis, ttlMs = IDEMPOTENCY_TTL_MS }) {
     run: async (scope, key, input, fn) => {
       const redisKey = `platform:idem:${scope}:${key}`;
       const hash = hashInput(input);
-      const claimed = await redis.set(
-        redisKey,
-        JSON.stringify({ state: 'pending', hash }),
-        'PX',
-        ttlMs,
-        'NX',
+      const claimed = await unavailableOnError(() =>
+        redis.set(redisKey, JSON.stringify({ state: 'pending', hash }), 'PX', ttlMs, 'NX'),
       );
       if (claimed !== 'OK') {
-        const stored = JSON.parse((await redis.get(redisKey)) ?? '{}');
+        const stored = JSON.parse((await unavailableOnError(() => redis.get(redisKey))) ?? '{}');
         if (!sameHash(stored.hash, hash)) throw new AppError('IDEMPOTENCY_KEY_REUSED');
         if (stored.state !== 'done') {
           throw new AppError('CONFLICT', { message: 'The same request is still being processed.' });
