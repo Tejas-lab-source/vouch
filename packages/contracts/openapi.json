@@ -56,7 +56,8 @@
           "EMAIL_DOMAIN_NOT_ALLOWED",
           "APP_VERSION_UNSUPPORTED",
           "RATE_LIMITED",
-          "INTERNAL"
+          "INTERNAL",
+          "TEMPORARILY_UNAVAILABLE"
         ],
         "parameters": [
           {
@@ -98,6 +99,12 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2048
+                  },
+                  "deviceId": {
+                    "description": "Client-generated install id, for per-device rate limits.",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
@@ -179,6 +186,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Error codes: TEMPORARILY_UNAVAILABLE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -200,12 +217,14 @@
           "OTP_INVALID",
           "VALIDATION_FAILED",
           "ACCOUNT_BANNED",
+          "FORBIDDEN",
           "SIGNUP_DETAILS_REQUIRED",
           "UNDERAGE",
           "APP_VERSION_UNSUPPORTED",
           "OTP_ATTEMPTS_EXHAUSTED",
           "RATE_LIMITED",
-          "INTERNAL"
+          "INTERNAL",
+          "TEMPORARILY_UNAVAILABLE"
         ],
         "parameters": [
           {
@@ -422,7 +441,7 @@
             }
           },
           "403": {
-            "description": "Error codes: ACCOUNT_BANNED.",
+            "description": "Error codes: ACCOUNT_BANNED, FORBIDDEN.",
             "content": {
               "application/json": {
                 "schema": {
@@ -470,6 +489,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Error codes: TEMPORARILY_UNAVAILABLE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -493,7 +522,8 @@
           "ACCOUNT_BANNED",
           "APP_VERSION_UNSUPPORTED",
           "RATE_LIMITED",
-          "INTERNAL"
+          "INTERNAL",
+          "TEMPORARILY_UNAVAILABLE"
         ],
         "parameters": [
           {
@@ -644,6 +674,16 @@
           },
           "500": {
             "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error codes: TEMPORARILY_UNAVAILABLE.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1036,6 +1076,461 @@
           },
           "403": {
             "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Sign out this device: revokes the current session and its refresh-token family.",
+        "description": "Idempotent: logging out an already-revoked session returns the same result.",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "header"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Client-generated key, typically a UUID; reused only for retries of one request.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sign out this device: revokes the current session and its refresh-token family.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "loggedOut": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "loggedOut"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/devices": {
+      "get": {
+        "operationId": "listDevices",
+        "summary": "List the devices signed in to this account.",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List the devices signed in to this account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                            "description": "Device id (UUIDv7); only ever shown to its owner."
+                          },
+                          "platform": {
+                            "type": "string",
+                            "enum": [
+                              "ios",
+                              "android",
+                              "web"
+                            ]
+                          },
+                          "appVersion": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 40
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "lastSeenAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "current": {
+                            "type": "boolean",
+                            "description": "True for the device making this request."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "platform",
+                          "appVersion",
+                          "createdAt",
+                          "lastSeenAt",
+                          "current"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/devices/{id}": {
+      "delete": {
+        "operationId": "revokeDevice",
+        "summary": "Sign out one device remotely: revokes its sessions and push token.",
+        "description": "Idempotent: revoking an already-revoked device returns the same result.",
+        "tags": [
+          "identity"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "NOT_FOUND",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+            }
+          },
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sign out one device remotely: revokes its sessions and push token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revoked": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "revoked"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error codes: NOT_FOUND.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8495,6 +8990,7 @@
                   "RATE_LIMITED",
                   "FEATURE_DISABLED",
                   "INTERNAL",
+                  "TEMPORARILY_UNAVAILABLE",
                   "CAPTCHA_FAILED",
                   "EMAIL_DOMAIN_NOT_ALLOWED",
                   "OTP_INVALID",

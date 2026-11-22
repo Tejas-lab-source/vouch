@@ -25,7 +25,15 @@ export const ManifestSchema = z.strictObject({
   sections: Loaders.optional(),
   messageKinds: Loaders.optional(),
   templates: Loaders.optional(),
-  exports: Fn.optional().describe('(userId) => this module’s personal data for the export'),
+  exports: Fn.optional().describe(
+    '(ctx) => (userId) => this module’s personal data for the export',
+  ),
+  schedules: z
+    .array(
+      z.strictObject({ id: z.string().min(1), cron: z.string().min(9), job: z.string().min(1) }),
+    )
+    .default([])
+    .describe('Repeatable jobs (UTC cron), registered by worker roles; run once across workers'),
   flags: z.array(z.string()).default([]),
   admin: z.strictObject({ panels: Fn }).optional(),
   migrations: z.instanceof(URL).optional(),
@@ -117,6 +125,9 @@ export function capabilitiesOf(role) {
  * @property {{ module: string, handlers: unknown }[]} socketHandlers  (ws, all; used from Phase 9).
  * @property {{ module: string, queue: string, name: string, handler: unknown }[]} jobs  (worker, all).
  * @property {{ module: string, event: string, handler: unknown }[]} consumers  (worker, all).
+ * @property {{ module: string, id: string, cron: string, job: string }[]} schedules  (worker, all).
+ * @property {Map<string, (userId: string) => Promise<Record<string, unknown>>>} exporters
+ *   Module name → personal-data exporter (filled during boot; read at call time).
  */
 
 /**
@@ -140,12 +151,15 @@ export async function bootModules({ modules, role, platform, pipelines }) {
     socketHandlers: [],
     jobs: [],
     consumers: [],
+    schedules: [],
+    exporters: new Map(),
   };
 
   for (const module of sortModules(modules)) {
     const deps = Object.fromEntries(module.dependsOn.map((name) => [name, result.apis.get(name)]));
-    const ctx = { ...platform, module: module.name, deps };
+    const ctx = { ...platform, module: module.name, deps, exporters: result.exporters };
     if (module.api) result.apis.set(module.name, await module.api(ctx));
+    if (module.exports) result.exporters.set(module.name, await module.exports(ctx));
 
     for (const [pipeline, load] of Object.entries(module.contribute ?? {})) {
       pipelines.contribute(pipeline, await load(ctx));
@@ -175,6 +189,8 @@ export async function bootModules({ modules, role, platform, pipelines }) {
       for (const [event, load] of Object.entries(module.subscribe ?? {})) {
         result.consumers.push({ module: module.name, event, handler: await load(ctx) });
       }
+      for (const schedule of module.schedules)
+        result.schedules.push({ module: module.name, ...schedule });
     }
   }
   return result;

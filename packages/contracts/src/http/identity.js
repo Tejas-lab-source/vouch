@@ -1,8 +1,8 @@
 // @ts-check
 import { z } from 'zod';
 import { Platform } from '../common/codes.js';
-import { IsoDate, PublicUserId, Timestamp } from '../common/ids.js';
-import { defineEndpoint } from './endpoint.js';
+import { IsoDate, PublicUserId, Timestamp, Uuidv7 } from '../common/ids.js';
+import { defineEndpoint, EmptyBody } from './endpoint.js';
 
 const Email = z.email().max(254).describe('College email address; never stored in clear.');
 const OtpCode = z
@@ -60,9 +60,16 @@ export const requestOtp = defineEndpoint({
   description:
     'Always answers `{ sent: true }` for an allowed domain, whether or not an account exists, ' +
     'so the endpoint cannot be used to discover accounts. Rate-limited per email, IP and device.',
-  body: z.strictObject({ email: Email, turnstileToken: z.string().min(1).max(2048) }),
+  body: z.strictObject({
+    email: Email,
+    turnstileToken: z.string().min(1).max(2048),
+    deviceId: z
+      .uuid()
+      .optional()
+      .describe('Client-generated install id, for per-device rate limits.'),
+  }),
   response: { status: 200, schema: z.strictObject({ sent: z.literal(true) }) },
-  errors: ['CAPTCHA_FAILED', 'EMAIL_DOMAIN_NOT_ALLOWED'],
+  errors: ['CAPTCHA_FAILED', 'EMAIL_DOMAIN_NOT_ALLOWED', 'TEMPORARILY_UNAVAILABLE'],
 });
 
 export const verifyOtp = defineEndpoint({
@@ -103,6 +110,8 @@ export const verifyOtp = defineEndpoint({
     'SIGNUP_DETAILS_REQUIRED',
     'UNDERAGE',
     'ACCOUNT_BANNED',
+    'FORBIDDEN',
+    'TEMPORARILY_UNAVAILABLE',
   ],
 });
 
@@ -122,7 +131,12 @@ export const refreshTokens = defineEndpoint({
     tokenTransport: TokenTransport,
   }),
   response: { status: 200, schema: z.strictObject({ tokens: TokenPair }) },
-  errors: ['REFRESH_TOKEN_INVALID', 'REFRESH_TOKEN_REUSED', 'ACCOUNT_BANNED'],
+  errors: [
+    'REFRESH_TOKEN_INVALID',
+    'REFRESH_TOKEN_REUSED',
+    'ACCOUNT_BANNED',
+    'TEMPORARILY_UNAVAILABLE',
+  ],
 });
 
 export const deleteAccount = defineEndpoint({
@@ -172,6 +186,51 @@ export const registerDevice = defineEndpoint({
   response: { status: 200, schema: z.strictObject({ registered: z.literal(true) }) },
 });
 
+export const logout = defineEndpoint({
+  id: 'logout',
+  module: 'identity',
+  method: 'POST',
+  path: '/v1/auth/logout',
+  auth: 'user',
+  summary: 'Sign out this device: revokes the current session and its refresh-token family.',
+  description: 'Idempotent: logging out an already-revoked session returns the same result.',
+  body: EmptyBody,
+  response: { status: 200, schema: z.strictObject({ loggedOut: z.literal(true) }) },
+});
+
+/** A signed-in device, as the owner sees it. */
+export const DeviceSummary = z.strictObject({
+  id: Uuidv7.describe('Device id (UUIDv7); only ever shown to its owner.'),
+  platform: Platform,
+  appVersion: z.string().max(40).nullable(),
+  createdAt: Timestamp,
+  lastSeenAt: Timestamp,
+  current: z.boolean().describe('True for the device making this request.'),
+});
+
+export const listDevices = defineEndpoint({
+  id: 'listDevices',
+  module: 'identity',
+  method: 'GET',
+  path: '/v1/me/devices',
+  auth: 'user',
+  summary: 'List the devices signed in to this account.',
+  response: { status: 200, schema: z.strictObject({ items: z.array(DeviceSummary).max(50) }) },
+});
+
+export const revokeDevice = defineEndpoint({
+  id: 'revokeDevice',
+  module: 'identity',
+  method: 'DELETE',
+  path: '/v1/me/devices/{id}',
+  auth: 'user',
+  summary: 'Sign out one device remotely: revokes its sessions and push token.',
+  description: 'Idempotent: revoking an already-revoked device returns the same result.',
+  params: z.strictObject({ id: Uuidv7 }),
+  response: { status: 200, schema: z.strictObject({ revoked: z.literal(true) }) },
+  errors: ['NOT_FOUND'],
+});
+
 export const identityEndpoints = [
   requestOtp,
   verifyOtp,
@@ -179,4 +238,7 @@ export const identityEndpoints = [
   deleteAccount,
   exportData,
   registerDevice,
+  logout,
+  listDevices,
+  revokeDevice,
 ];

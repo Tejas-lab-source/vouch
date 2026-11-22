@@ -1,5 +1,5 @@
 // @ts-check
-import { statusOf } from '@vouch/contracts';
+import { ServiceError, statusOf } from '@vouch/contracts';
 import { hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod';
 import { getContext } from './context.js';
 
@@ -13,24 +13,39 @@ const DEFAULT_MESSAGES = /** @type {const} */ ({
   NOT_FOUND: 'Not found.',
   RATE_LIMITED: 'Too many requests. Try again later.',
   INTERNAL: 'Something went wrong.',
+  TEMPORARILY_UNAVAILABLE: 'The service is temporarily unavailable. Try again shortly.',
+  IDEMPOTENCY_KEY_REUSED: 'This Idempotency-Key was already used for a different request.',
+  APP_VERSION_UNSUPPORTED: 'Update the app to continue.',
+  FEATURE_DISABLED: 'This feature is not available yet.',
+  CAPTCHA_FAILED: 'The security check failed. Try again.',
+  EMAIL_DOMAIN_NOT_ALLOWED: 'Use the email address your college gave you.',
+  OTP_INVALID: 'That code is not right.',
+  OTP_EXPIRED: 'The code has expired. Request a new one.',
+  OTP_ATTEMPTS_EXHAUSTED: 'Too many wrong codes. Request a new one.',
+  SIGNUP_DETAILS_REQUIRED:
+    'Add your date of birth and accept the privacy notice to finish signing up.',
+  UNDERAGE: 'You must be 18 or older to use Vouch.',
+  REFRESH_TOKEN_INVALID: 'Your session has ended. Sign in again.',
+  REFRESH_TOKEN_REUSED: 'Your session has ended. Sign in again.',
+  ACCOUNT_BANNED: 'This account has been suspended.',
 });
 
 const MESSAGES_BY_CODE = new Map(Object.entries(DEFAULT_MESSAGES));
 
-/** A failure that maps to the error envelope with a stable code. */
-export class AppError extends Error {
+/** A failure that maps to the error envelope with a stable code (the kernel's ServiceError). */
+export class AppError extends ServiceError {
   /**
    * @param {AppErrorCodeName} code
    * @param {{ status?: number, message?: string, details?: Record<string, unknown>, cause?: unknown }} [options]
    */
   constructor(code, options = {}) {
-    super(options.message ?? MESSAGES_BY_CODE.get(code) ?? code, {
+    super(code, {
+      message: options.message ?? MESSAGES_BY_CODE.get(code) ?? code,
+      details: options.details,
       cause: options.cause,
     });
     this.name = 'AppError';
-    this.code = code;
     this.status = options.status ?? statusOf(code);
-    this.details = options.details;
   }
 }
 
@@ -68,6 +83,10 @@ export function toErrorResponse(error, requestId) {
  */
 export function normaliseError(error) {
   if (error instanceof AppError) return error;
+  if (error instanceof ServiceError) {
+    const custom = error.message !== error.code ? error.message : undefined;
+    return new AppError(error.code, { message: custom, details: error.details, cause: error });
+  }
   if (hasZodFastifySchemaValidationErrors(error)) {
     return new AppError('VALIDATION_FAILED', {
       details: {

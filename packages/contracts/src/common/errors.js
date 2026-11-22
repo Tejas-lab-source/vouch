@@ -17,6 +17,7 @@ export const ERROR_STATUS = Object.freeze({
   RATE_LIMITED: 429,
   FEATURE_DISABLED: 403,
   INTERNAL: 500,
+  TEMPORARILY_UNAVAILABLE: 503,
   // Identity
   CAPTCHA_FAILED: 400,
   EMAIL_DOMAIN_NOT_ALLOWED: 422,
@@ -68,3 +69,21 @@ export const ErrorBody = z.strictObject({
 
 /** `{ error: { code, message, details?, requestId } }`, returned for every non-2xx response. */
 export const ErrorEnvelope = z.strictObject({ error: ErrorBody });
+
+/**
+ * A failure with a stable error code, thrown by use cases and mapped to the error envelope by
+ * the platform. Pure (no dependencies), so application layers can throw it without importing
+ * the platform. The HTTP status always comes from ERROR_STATUS.
+ */
+export class ServiceError extends Error {
+  /**
+   * @param {AppErrorCodeName} code
+   * @param {{ message?: string, details?: Record<string, unknown>, cause?: unknown }} [options]
+   */
+  constructor(code, options = {}) {
+    super(options.message ?? code, { cause: options.cause });
+    this.name = 'ServiceError';
+    this.code = code;
+    this.details = options.details;
+  }
+}

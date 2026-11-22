@@ -1,0 +1,13 @@
+// @ts-check
+import { makeUserQueries } from './application/users.js';
+
+/**
+ * Public in-process API of identity. Other modules call only this.
+ * - `getUser(id)`: `{ id, publicId, collegeId, status, birthDate }` or null.
+ * - `getUsersByIds(ids)`: the same view for many users.
+ * - `assertActive(id)`: throws FORBIDDEN unless the account is active.
+ * @param {Pick<import('./ports.js').IdentityDeps, 'read'>} deps
+ */
+export function createIdentityApi(deps) {
+  return makeUserQueries(deps);
+}

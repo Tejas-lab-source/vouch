@@ -32,6 +32,12 @@ in [`docs/PROGRESS.md`](docs/PROGRESS.md), and decisions are in [`docs/adr/`](do
    cp .env.example .env
    ```
 
+   Then create local token-signing keys (written into `.env`):
+
+   ```bash
+   pnpm dev:keys --write
+   ```
+
 4. Start Postgres 17 and Redis 7. Persistence is off, so data is lost on `docker compose down`:
 
    ```bash
@@ -69,6 +75,7 @@ in [`docs/PROGRESS.md`](docs/PROGRESS.md), and decisions are in [`docs/adr/`](do
 | `pnpm db:seed`            | Load deterministic synthetic data (refuses in production)         |
 | `pnpm contracts:generate` | Regenerate `packages/contracts/openapi.json` and `schemas.json`   |
 | `pnpm contracts:diff`     | Fail on breaking contract changes against `origin/main`           |
+| `pnpm dev:keys`           | Generate local Ed25519 signing keys (`--write`, `--rotate`)       |
 | `pnpm new-module <name>`  | Scaffold a backend module (see `apps/api/src/platform/README.md`) |
 | `pnpm build`              | No-op: no compile step; the Docker image is the build artifact    |
 | `pnpm dev`                | Runs every package's `dev` task                                   |
