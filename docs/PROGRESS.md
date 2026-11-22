@@ -15,8 +15,8 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 8   | Matching                                                                | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-08.md |
 | 9   | Realtime chat                                                           | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-09.md |
 | 10  | Notifications, moderation and admin backend                             | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-10.md |
-| 11  | Frontend foundation                                                     | Not started                     | —                  | —                  | —                  |
-| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Not started                     | —                  | —                  | —                  |
+| 11  | Frontend foundation                                                     | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-11.md |
+| 12  | Frontend features I (onboarding, profile, discovery, matching)          | In progress                     | 2026-11-22 (batch) | —                  | —                  |
 | 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Not started                     | —                  | —                  | —                  |
 | 14  | End-to-end testing, security, privacy and performance                   | Not started                     | —                  | —                  | —                  |
 | 15  | Deployment, observability and closed beta launch                        | Not started                     | —                  | —                  | —                  |
@@ -104,13 +104,13 @@ gzipped.
 
 **Running log** (updated as the batch goes; resume from the last row after an interruption):
 
-| Phase | Status                          | Last commit | CI run                                                                          | Next step                   |
-| ----- | ------------------------------- | ----------- | ------------------------------------------------------------------------------- | --------------------------- |
-| 9     | Complete — pending owner review | `f8519dd`   | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan         |
-| 10    | Complete — pending owner review | `62e108d`   | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                           |
-| 11    | In progress                     | —           | —                                                                               | Tooling and shared packages |
-| 12    | Not started                     | —           | —                                                                               | —                           |
-| 13    | Not started                     | —           | —                                                                               | —                           |
+| Phase | Status                          | Last commit   | CI run                                                                          | Next step           |
+| ----- | ------------------------------- | ------------- | ------------------------------------------------------------------------------- | ------------------- |
+| 9     | Complete — pending owner review | `f8519dd`     | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan |
+| 10    | Complete — pending owner review | `62e108d`     | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                   |
+| 11    | Complete — pending owner review | report commit | pending (filled in with the Phase 12 start plan)                                | —                   |
+| 12    | In progress                     | —             | —                                                                               | Start plan          |
+| 13    | Not started                     | —             | —                                                                               | —                   |
 
 ## Notes for later phases
 
