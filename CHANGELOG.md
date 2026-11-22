@@ -397,3 +397,47 @@ All notable changes are recorded here, grouped by roadmap phase.
   stay swipeable. Before, swipes on them failed with `NOT_SERVED`.
 - `pnpm dev:keys --write` also writes `ADMIN_TOTP_KEY`.
 - The modules list now ends with notifications and admin.
+
+## Phase 11 — Frontend foundation
+
+### Added
+
+- **Shared packages:**
+  - `i18n`: English strings; `t()` throws on a missing key
+  - `domain`: the 18+ age rule, validators, formatting and version comparison
+  - `ui-tokens`: a neutral palette in light and dark, spacing, type scale, radii and motion,
+    as JS and CSS variables, with a WCAG AA contrast test
+  - `api-client`: fetch functions generated from the contracts (no runtime zod),
+    `X-App-Version`, automatic `Idempotency-Key`, `ApiError`, a single-flight refresh, cookie
+    (web) or body (mobile) transport, and TanStack Query keys
+  - `realtime`: a socket.io-client wrapper with a token refresh before expiry, a reconnect
+    after a server disconnect, `sync` with cursors on every connect, once-only delivery, an
+    outbox retried with the same `clientMsgId`, and a Query cache adapter
+  - `features-core`: the slot registry (`defineClientFeature`, filtered by flags), the sign-in
+    flow, and the React providers and hooks (`useSession`, `useConfig`, `useFlags` and
+    `<Slot>`)
+  - `ui-web` and `ui-native`: the accessible UI kits (Button, Input, OtpInput, Avatar, Card,
+    Modal/Sheet, Toast, EmptyState, Skeleton, ListItem and Badge). The web kit ships a
+    generated `styles.css`.
+- **`apps/web`:**
+  - React 19, Vite 8, React Router and TanStack Query in Feature-Sliced Design
+  - an error boundary, a 404, the lazy `/ui-kit` page, and sign-in with the emailed code
+  - the home shell, with tabs from the `home.tabs` slot
+  - the dev and preview servers proxy `/v1` and `/socket.io` to the API
+- **`apps/mobile`:**
+  - Expo SDK 58 with Expo Router (`src/routes`)
+  - the refresh token in the secure store
+  - the splash screen held until the session is restored
+  - a forced-update screen, the same sign-in flow and the home tabs
+- **`apps/admin`:** staff sign-in (email, password and TOTP; the token is kept in memory
+  only) and the panel list.
+- **`apps/landing`:** a static placeholder.
+- **Checks:**
+  - JSX in `tsc --checkJs` (`tsconfig.web.json`, `apps/mobile/tsconfig.json`) and in ESLint
+  - Feature-Sliced Design boundaries for every app in dependency-cruiser
+  - a jsdom Vitest setup
+  - Playwright end-to-end against the real API (Testcontainers), with axe in light and dark
+  - the 200 KB gzipped initial-JS budget
+  - the Expo export for Android and iOS
+  - new `web` and `mobile` CI jobs
+- **Docs:** ADR 0021 (frontend architecture) and a README for every new package and app.
