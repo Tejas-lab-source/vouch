@@ -48,6 +48,7 @@
  *   findManyByIds(ids: readonly string[]): Promise<UserRecord[]>,
  *   findManyByPublicIds(publicIds: readonly string[]): Promise<UserRecord[]>,
  *   insert(user: { id: string, publicId: string, collegeId: string, emailHmac: Buffer, status: 'active' | 'pending_review', birthDate: string, gradYear: number | null, createdAt: Date }): Promise<void>,
+ *   deletedBefore(cutoff: Date, limit: number): Promise<UserRecord[]>,
  *   markDeleted(id: string, at: Date): Promise<void>,
  *   setStatus(id: string, status: UserRecord['status']): Promise<void>,
  * }} users

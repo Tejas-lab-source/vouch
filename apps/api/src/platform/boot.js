@@ -13,6 +13,8 @@ import { buildHttpServer } from './http.js';
 import { createIdGenerator } from './ids.js';
 import { createIdempotencyStore } from './idempotency.js';
 import { createJobs } from './jobs.js';
+import { configRoute } from './config-route.js';
+import { CONSISTENCY_CRON, createConsistencyCheck } from './jobs/consistency.js';
 import { createMetrics, startMetricsServer } from './metrics.js';
 import { createPipelines } from './pipelines.js';
 import { createRateLimiter } from './rate-limit.js';
@@ -144,6 +146,23 @@ async function startWorkers(platform, boot, events) {
     }
   });
   await jobs.schedule('platform.retention-tick', RETENTION_CRON, 'platform.retentionTick', {});
+  handle(
+    'bulk',
+    'platform.consistencyCheck',
+    createConsistencyCheck({
+      db,
+      logger,
+      metrics: platform.metrics,
+      clock: platform.clock,
+      subscriptions: boot.subscriptions,
+    }),
+  );
+  await jobs.schedule(
+    'platform.consistency-check',
+    CONSISTENCY_CRON,
+    'platform.consistencyCheck',
+    {},
+  );
 
   for (const { id, cron, job } of boot.schedules) await jobs.schedule(id, cron, job, {});
 
@@ -199,7 +218,21 @@ export async function startRole({
     metrics: platform.metrics,
     reportError,
     apiRoutes: capabilities.http,
-    routes: boot.routes,
+    routes: capabilities.http
+      ? [
+          ...boot.routes,
+          {
+            module: 'platform',
+            plugin: configRoute({
+              config,
+              db: platform.db,
+              flags: platform.flags,
+              apis: boot.apis,
+              sections: boot.sections,
+            }),
+          },
+        ]
+      : boot.routes,
   });
   const relay = capabilities.workers ? await startWorkers(platform, boot, events) : null;
   const gateway = capabilities.socket

@@ -49,6 +49,10 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
       markDeleted: async (id, at) =>
         void Object.assign(state.users.get(id), { status: 'deleted', deletedAt: at }),
       setStatus: async (id, status) => void Object.assign(state.users.get(id), { status }),
+      deletedBefore: async (cutoff, limit) =>
+        [...state.users.values()]
+          .filter((u) => u.status === 'deleted' && u.deletedAt < cutoff)
+          .slice(0, limit),
     },
     sessions: {
       insert: async (s) =>

@@ -1,5 +1,5 @@
 // @ts-check
-import { missingRequirements } from '../domain/profile.js';
+import { MIN_APPROVED_PHOTOS, missingRequirements } from '../domain/profile.js';
 import { applyChange } from './changes.js';
 
 /**
@@ -7,9 +7,9 @@ import { applyChange } from './changes.js';
  * `hidden` keeps the profile out of decks, matches and chats' cards; unhiding returns it to
  * `active` when complete, else `pending`. Both are idempotent and emit `profile.updated.v1`
  * only when the status changes.
- * @param {Pick<import('../ports.js').ProfilesDeps, 'uow' | 'cards' | 'clock'>} deps
+ * @param {Pick<import('../ports.js').ProfilesDeps, 'uow' | 'read' | 'cards' | 'clock'>} deps
  */
-export function makeProfileModeration({ uow, cards, clock }) {
+export function makeProfileModeration({ uow, read, cards, clock }) {
   /**
    * @param {string} userId
    * @param {boolean} hidden
@@ -49,5 +49,9 @@ export function makeProfileModeration({ uow, cards, clock }) {
     hide: (userId) => setHidden(userId, true),
     /** @param {string} userId */
     unhide: (userId) => setHidden(userId, false),
+    minApprovedPhotos: MIN_APPROVED_PHOTOS,
+    /** @param {string} userId */
+    statusOf: async (userId) =>
+      (await read((stores) => stores.profiles.find(userId)))?.status ?? null,
   };
 }

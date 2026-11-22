@@ -174,6 +174,7 @@ export async function bootModules({ modules, role, platform, pipelines }) {
       sections: result.sections,
       templates: result.templates,
       adminPanels: result.adminPanels,
+      subscriptions: result.subscriptions,
     };
     if (module.api) result.apis.set(module.name, await module.api(ctx));
     if (module.exports) result.exporters.set(module.name, await module.exports(ctx));

@@ -22,6 +22,8 @@ const EXPECTED_MIGRATIONS = [
   '20261122100000_identity_banned_emails',
   '20261122100100_upload_review_queue',
   '20261122100200_safety_moderation',
+  '20261122100300_admin_auth',
+  '20261122100400_platform_consistency_grants',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */

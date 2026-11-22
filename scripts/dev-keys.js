@@ -11,6 +11,9 @@ import { parseArgs } from 'node:util';
  *   pnpm dev:keys            print JWT_SIGNING_KEYS and JWT_ACTIVE_KID
  *   pnpm dev:keys --write    write them into .env (git-ignored)
  *   pnpm dev:keys --rotate   add a new active key; retire the old one (kept for verification)
+ *
+ * `--write` also sets ADMIN_TOTP_KEY (the key that encrypts admin TOTP secrets, Phase 10) when
+ * .env has none; an existing key is kept, so enrolled admins keep working.
  */
 
 /**
@@ -111,10 +114,15 @@ async function main() {
     const current = JSON.parse(readEnvVar(text, 'JWT_SIGNING_KEYS') ?? '[]');
     ({ keys, activeKid } = rotateKeys(current, readEnvVar(text, 'JWT_ACTIVE_KID') ?? '', now));
   }
+  const totpKey = readEnvVar(text, 'ADMIN_TOTP_KEY') || randomBytes(32).toString('base64');
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- local .env path chosen by the developer
   await writeFile(
     envPath,
-    updateEnvText(text, { JWT_SIGNING_KEYS: JSON.stringify(keys), JWT_ACTIVE_KID: activeKid }),
+    updateEnvText(text, {
+      JWT_SIGNING_KEYS: JSON.stringify(keys),
+      JWT_ACTIVE_KID: activeKid,
+      ADMIN_TOTP_KEY: totpKey,
+    }),
   );
   process.stdout.write(
     `${values.rotate ? 'Rotated' : 'Wrote'} signing keys in ${envPath}; active kid ${activeKid}\n`,

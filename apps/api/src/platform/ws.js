@@ -53,6 +53,16 @@ export function createSocketEmitter({ redis, logger }) {
       if (!definition) throw new Error(`unknown server event: ${event}`);
       emitter.to(userRoom(userId)).emit(event, definition.payload.parse(payload));
     },
+    /**
+     * Emits a server event to every connected socket (`config.changed` after a flag edit).
+     * @param {string} event  A key of `SERVER_EVENTS`.
+     * @param {unknown} payload
+     */
+    broadcast(event, payload) {
+      const definition = serverEvents.get(event);
+      if (!definition) throw new Error(`unknown server event: ${event}`);
+      emitter.emit(event, definition.payload.parse(payload));
+    },
   };
 }
 

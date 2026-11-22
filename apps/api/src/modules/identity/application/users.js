@@ -26,6 +26,12 @@ export function makeUserQueries({ read }) {
     /** @param {readonly string[]} ids */
     getUsersByIds: async (ids) =>
       (await read((stores) => stores.users.findManyByIds(ids))).map(view),
+    /**
+     * Accounts deleted before `cutoff` and not yet erased (admin: overdue deletions).
+     * @param {Date} cutoff @param {number} limit
+     */
+    deletedBefore: async (cutoff, limit) =>
+      (await read((stores) => stores.users.deletedBefore(cutoff, limit))).map(view),
     /** @param {readonly string[]} publicIds */
     getUsersByPublicIds: async (publicIds) =>
       (await read((stores) => stores.users.findManyByPublicIds(publicIds))).map(view),

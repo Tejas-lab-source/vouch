@@ -25,6 +25,9 @@ const PLATFORM_GRANTS_FOR_MODULES = new Map([
   ['platform.deletion_tasks', ['SELECT', 'INSERT', 'UPDATE']],
 ]);
 
+/** Extra grants beyond the defaults (Phase 10: admins edit feature flags, ADR 0018). */
+const EXTRA_GRANTS = new Map([['admin platform.feature_flags', ['SELECT', 'INSERT', 'UPDATE']]]);
+
 /** Tables whose rows may be added and purged but never edited. */
 const APPEND_ONLY = new Set(['admin.audit_log']);
 
@@ -35,6 +38,8 @@ const APPEND_ONLY = new Set(['admin.audit_log']);
  * @returns {string[]}
  */
 function expectedPrivileges(module, relation) {
+  const extra = EXTRA_GRANTS.get(`${module} ${relation}`);
+  if (extra) return extra;
   if (PUBLISHED_VIEWS.includes(relation)) return ['SELECT'];
   const [schema] = relation.split('.');
   if (schema === module) {

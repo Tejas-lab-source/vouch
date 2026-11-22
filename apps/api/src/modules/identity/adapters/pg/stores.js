@@ -27,6 +27,11 @@ export function createIdentityStores(tx) {
         await tx`INSERT INTO identity.users (id, public_id, college_id, email_hmac, status, birth_date, grad_year, created_at, updated_at)
           VALUES (${u.id}, ${u.publicId}, ${u.collegeId}, ${u.emailHmac}, ${u.status}, ${u.birthDate}, ${u.gradYear}, ${u.createdAt}, ${u.createdAt})`;
       },
+      deletedBefore: async (cutoff, limit) =>
+        (
+          await tx`SELECT * FROM identity.users WHERE status = 'deleted' AND deleted_at < ${cutoff}
+            ORDER BY deleted_at LIMIT ${limit}`
+        ).map(user),
       markDeleted: async (id, at) => {
         await tx`UPDATE identity.users SET status = 'deleted', deleted_at = ${at}, updated_at = ${at} WHERE id = ${id}`;
       },
