@@ -42,6 +42,8 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
         [...state.users.values()].find((u) => u.emailHmac.equals(h)) ?? null,
       findById: async (id) => state.users.get(id) ?? null,
       findManyByIds: async (ids) => ids.map((id) => state.users.get(id)).filter(Boolean),
+      findManyByPublicIds: async (publicIds) =>
+        [...state.users.values()].filter((u) => publicIds.includes(u.publicId)),
       insert: async (u) => void state.users.set(u.id, { ...u, deletedAt: null }),
       markDeleted: async (id, at) =>
         void Object.assign(state.users.get(id), { status: 'deleted', deletedAt: at }),

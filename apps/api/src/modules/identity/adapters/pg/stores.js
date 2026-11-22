@@ -19,6 +19,10 @@ export function createIdentityStores(tx) {
         ids.length === 0
           ? []
           : (await tx`SELECT * FROM identity.users WHERE id = ANY(${ids})`).map(user),
+      findManyByPublicIds: async (publicIds) =>
+        publicIds.length === 0
+          ? []
+          : (await tx`SELECT * FROM identity.users WHERE public_id = ANY(${publicIds})`).map(user),
       insert: async (u) => {
         await tx`INSERT INTO identity.users (id, public_id, college_id, email_hmac, status, birth_date, grad_year, created_at, updated_at)
           VALUES (${u.id}, ${u.publicId}, ${u.collegeId}, ${u.emailHmac}, ${u.status}, ${u.birthDate}, ${u.gradYear}, ${u.createdAt}, ${u.createdAt})`;

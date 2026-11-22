@@ -24,6 +24,9 @@ export function makeUserQueries({ read }) {
     /** @param {readonly string[]} ids */
     getUsersByIds: async (ids) =>
       (await read((stores) => stores.users.findManyByIds(ids))).map(view),
+    /** @param {readonly string[]} publicIds */
+    getUsersByPublicIds: async (publicIds) =>
+      (await read((stores) => stores.users.findManyByPublicIds(publicIds))).map(view),
     /**
      * Throws unless the user exists and is active.
      * @param {string} id
