@@ -130,13 +130,17 @@ Views: `matching.seen_v` (`swiper_id, target_id`) and `matching.likes_in_v` (`us
 
 | Table           | Purpose                                                                | Key                          | Notable constraints and indexes                                                                                                    |
 | --------------- | ---------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `conversations` | One per match                                                          | `id`; unique `match_id`      | Pair copied from the match (`user_low < user_high`) for membership checks; `last_seq >= 0`; index on `closed_at` for retention     |
+| `conversations` | One per match; `id` equals the match id (Phase 9)                      | `id`; unique `match_id`      | Pair copied from the match (`user_low < user_high`) for membership checks; `last_seq >= 0`; index on `closed_at` for retention     |
 | `messages`      | `PARTITION BY HASH (conversation_id)`, 16 partitions `messages_p0…p15` | `(conversation_id, seq)`     | Unique `(conversation_id, client_msg_id)`; `kind` is open-ended text; body or media key required; index on `sender_id` for erasure |
 | `read_cursors`  | One read/delivered cursor per user per conversation                    | `(conversation_id, user_id)` | FK `conversation_id` → `conversations`                                                                                             |
 
 **Message identity (owner decision, Phase 3):** a message is identified by
 `(conversation_id, seq)`. There is no separate message id column. The `message.send` ack is
 `{ ok: true, clientMsgId, seq, createdAt }` on success and `{ ok: false, error }` on failure.
+
+**Sending (Phase 9, ADR 0017):** a send locks the conversation row, returns the stored message
+when `client_msg_id` repeats, and otherwise takes `last_seq + 1`, so seqs are gapless. Read and
+delivered cursors only move forward and never pass `last_seq`.
 
 ### `notifications`
 

@@ -16,11 +16,11 @@ arrives in Phase 12.
 
 ## HTTP routes (contracts in `packages/contracts/src/http/matching.js`)
 
-| Route                           | Auth | Use case                                                        |
-| ------------------------------- | ---- | --------------------------------------------------------------- |
-| `POST /v1/swipes`               | user | `swipe`: idempotent on `swipeId`; like or pass a served card    |
-| `GET /v1/matches`               | user | `listMatches`: active matches, newest first, cursor-paginated   |
-| `POST /v1/matches/{id}/unmatch` | user | `unmatch`: permanent and idempotent; members only (`NOT_FOUND`) |
+| Route                           | Auth | Use case                                                                                                      |
+| ------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/swipes`               | user | `swipe`: idempotent on `swipeId`; like or pass a served card                                                  |
+| `GET /v1/matches`               | user | `listMatches`: active matches, newest first, cursor-paginated (`conversationId` equals the match id, Phase 9) |
+| `POST /v1/matches/{id}/unmatch` | user | `unmatch`: permanent and idempotent; members only (`NOT_FOUND`)                                               |
 
 ### Swipe rules
 

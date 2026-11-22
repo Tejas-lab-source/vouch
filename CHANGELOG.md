@@ -281,3 +281,48 @@ All notable changes are recorded here, grouped by roadmap phase.
   `request.clientIp`.
 - `bench:deck` no longer needs per-user forwarded addresses.
 - The modules list is now identity, profiles, media, safety, discovery, matching.
+
+## Phase 9 — Realtime chat and WebSocket gateway
+
+### Added
+
+- Socket gateway (`apps/api/src/platform/ws.js`, roles `ws` and `all`; ADR 0017):
+  - Socket.IO with WebSocket transport only and the Redis adapter
+  - the handshake JWT check, and a `user:{id}` room per socket
+  - every event validated against the contracts, with `{ ok, … }` acks
+  - module handlers through the manifest `socket.handlers` key
+  - `auth.refresh`, and `auth.expired` after expiry plus `SOCKET_REFRESH_GRACE_SECONDS`
+  - a gradual drain on SIGTERM
+  - `platform.sockets.emitToUser` for every role, through the Redis emitter
+- `modules/chat` (see its README):
+  - the conversation id is the match id, opened by the `match.created.v1` consumer
+    (`match.new` to both members)
+  - `message.send` is exactly once per `clientMsgId`, with a gapless seq per conversation
+    under a row lock; the ack and `message.new` go out after commit
+  - `sync` replay, plus read and delivered cursors that only move forward
+  - the fail-closed `chat.messageFilters` pipeline: length, link limiter and block check
+  - `message.created.v1` when the recipient is offline
+  - conversations close on unmatch, block and deletion; blocks are never revealed
+  - nightly purge 30 days after close; export of sent messages
+  - `GET /v1/conversations` and `GET /v1/conversations/{id}/messages`
+  - presence, exposed only as `isActiveRecently`
+- `safety.api.blocks.blockersBetween`, which the closing notices use.
+- Contracts (additive):
+  - the `auth.refresh` client event and the `auth.expired` server event
+  - the `chat.retentionTick` job
+  - an optional `reason` on a `chat.messageFilters` refusal
+  - env `SOCKET_REFRESH_GRACE_SECONDS`, `RATE_LIMIT_MESSAGES_MINUTE`,
+    `CHAT_MAX_LINKS_PER_MESSAGE` and `CHAT_LINKS_AFTER_MESSAGES`
+- Invariants: gateway failover (SIGKILL mid-stream), idempotent send, closed and blocked
+  conversations refused, and a 500-socket load smoke on two gateway processes.
+- ADR 0017 (socket gateway and chat delivery).
+
+### Changed
+
+- **Readable error messages (owner decision):** every `AppErrorCode` now has a readable
+  message, and a test fails when one is missing.
+- Fastify client errors map to stable codes: a wrong content type is
+  `UNSUPPORTED_MEDIA_TYPE` (415), and any other Fastify 4xx is `VALIDATION_FAILED`, never 500.
+- `listMatches` returns `conversationId` (equal to the match id).
+- The access-token principal carries `expiresAt`.
+- The modules list is now identity, profiles, media, safety, discovery, matching, chat.
