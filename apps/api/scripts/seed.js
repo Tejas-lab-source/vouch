@@ -127,13 +127,16 @@ export function buildSeedData() {
     const photoCount = prng.int(2, 4);
     for (let position = 0; position < photoCount; position += 1) {
       const photoId = nextId(prng, createdMs);
+      // Same layout as the media worker (ADR 0012): a random key per photo, never the user id.
+      const photoKey = Buffer.from(prng.bytes(16)).toString('base64url');
       photos.push({
         id: photoId,
         user_id: id,
+        upload_id: photoId,
         status: 'approved',
         position,
-        key_1080: `photos/${id}/${photoId}_1080.webp`,
-        key_400: `photos/${id}/${photoId}_400.webp`,
+        key_1080: `photos/${photoKey}/${photoId}_1080.webp`,
+        key_400: `photos/${photoKey}/${photoId}_400.webp`,
         created_at: new Date(createdMs),
         updated_at: new Date(createdMs),
       });
