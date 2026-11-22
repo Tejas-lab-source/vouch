@@ -85,10 +85,11 @@ export async function startInfra() {
 export async function makeKeys({ kid = 'test-1', retiredAt } = {}) {
   const { publicKey, privateKey } = await generateKeyPair('EdDSA', { extractable: true });
   const publicJwk = await exportJWK(publicKey);
+  const privateJwk = await exportJWK(privateKey);
   return {
     kid,
     privateKey,
-    json: JSON.stringify([{ kid, publicJwk, ...(retiredAt ? { retiredAt } : {}) }]),
+    json: JSON.stringify([{ kid, publicJwk, ...(retiredAt ? { retiredAt } : { privateJwk }) }]),
     sign: (claims = {}, opts = {}) =>
       new SignJWT({ ...claims })
         .setProtectedHeader({ alg: 'EdDSA', kid: opts.kid ?? kid })
