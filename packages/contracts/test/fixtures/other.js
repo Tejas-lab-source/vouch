@@ -389,10 +389,11 @@ const baseEnv = {
   JWT_SIGNING_KEYS: '[]',
   JWT_ACTIVE_KID: 'k1',
   COOKIE_SECRET: 'y'.repeat(32),
-  R2_ACCESS_KEY_ID: 'minio',
-  R2_SECRET_ACCESS_KEY: 'minio-secret',
+  R2_ENDPOINT: 'http://localhost:8333',
+  R2_ACCESS_KEY_ID: 'vouch-local',
+  R2_SECRET_ACCESS_KEY: 'vouch-local-secret',
   R2_BUCKET: 'vouch',
-  CDN_BASE_URL: 'http://localhost:9000/vouch',
+  CDN_BASE_URL: 'http://localhost:8333/vouch',
 };
 
 /** @type {Fixtures} */
@@ -410,6 +411,9 @@ export const envFixtures = {
       {
         ...baseEnv,
         NODE_ENV: 'production',
+        R2_ENDPOINT: undefined,
+        R2_ACCOUNT_ID: 'acct',
+        CDN_BASE_URL: 'https://cdn.example.com',
         EMAIL_PROVIDER: 'resend',
         RESEND_API_KEY: 're_x',
         EMAIL_FROM: 'no-reply@example.com',
@@ -425,6 +429,10 @@ export const envFixtures = {
       { ...baseEnv, EMAIL_HMAC_SECRET: 'short' },
       { ...baseEnv, NODE_ENV: 'production' },
       { ...baseEnv, EMAIL_PROVIDER: 'resend', EMAIL_FROM: 'a@example.com' },
+      { ...baseEnv, R2_ENDPOINT: undefined },
+      { ...baseEnv, IMAGE_WORKER_CONCURRENCY: '0' },
+      { ...baseEnv, UPLOAD_MAX_BYTES: '20000000' },
+      { ...baseEnv, PHOTOS_MAX: '7' },
     ],
   },
 };

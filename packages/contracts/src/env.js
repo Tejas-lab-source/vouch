@@ -90,14 +90,33 @@ export const EnvSchema = z
     CORS_ORIGINS: csv.pipe(z.array(z.url())).default([]),
     ADMIN_IP_ALLOWLIST: csv.optional(),
 
-    // Object storage (Cloudflare R2; MinIO locally)
+    // Object storage (Cloudflare R2; SeaweedFS locally, ADR 0012)
     R2_ACCOUNT_ID: z.string().min(1).optional(),
     R2_ACCESS_KEY_ID: z.string().min(1),
     R2_SECRET_ACCESS_KEY: z.string().min(1),
     R2_BUCKET: z.string().min(1),
-    R2_ENDPOINT: z.url().optional().describe('Override for MinIO in development.'),
-    CDN_BASE_URL: z.url(),
-    IMAGE_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
+    R2_ENDPOINT: z.url().optional().describe('Local S3 endpoint (SeaweedFS) in development.'),
+    CDN_BASE_URL: z.url().describe('Public base URL for photo variants; keys are appended.'),
+    IMAGE_WORKER_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(16)
+      .default(1)
+      .describe('Images processed at once per worker; 1 fits a 512 MB instance.'),
+
+    // Photos and uploads (ADR 0012)
+    PHOTOS_MAX: z.coerce.number().int().min(2).max(6).default(6),
+    UPLOAD_MAX_BYTES: z.coerce.number().int().min(1024).max(10_485_760).default(10_485_760),
+    UPLOAD_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
+    IMAGE_WEBP_QUALITY: z.coerce.number().int().min(1).max(100).default(80),
+    IMAGE_MAX_PIXELS: z.coerce
+      .number()
+      .int()
+      .min(1_000_000)
+      .max(100_000_000)
+      .default(50_000_000)
+      .describe('Larger images are rejected before decoding (decompression bombs).'),
 
     // Third-party providers (development adapters by default)
     EMAIL_PROVIDER: z.enum(['console', 'resend', 'brevo']).default('console'),
@@ -133,6 +152,9 @@ export const EnvSchema = z
     if (env.CAPTCHA_PROVIDER === 'turnstile' && !env.TURNSTILE_SECRET_KEY) {
       fail('TURNSTILE_SECRET_KEY', 'required for turnstile');
     }
+    if (!env.R2_ENDPOINT && !env.R2_ACCOUNT_ID) {
+      fail('R2_ACCOUNT_ID', 'required for Cloudflare R2 (or set R2_ENDPOINT locally)');
+    }
     if (env.MODERATION_PROVIDER !== 'dev' && !env.MODERATION_API_KEY) {
       fail('MODERATION_API_KEY', 'required for a real moderation provider');
     }
@@ -142,7 +164,7 @@ export const EnvSchema = z
     if (env.CAPTCHA_PROVIDER === 'dev') fail('CAPTCHA_PROVIDER', 'dev is development-only');
     if (env.PUSH_PROVIDER === 'log') fail('PUSH_PROVIDER', 'log is development-only');
     if (env.MODERATION_PROVIDER === 'dev') fail('MODERATION_PROVIDER', 'dev is development-only');
-    if (env.R2_ENDPOINT) fail('R2_ENDPOINT', 'MinIO override is development-only');
+    if (env.R2_ENDPOINT) fail('R2_ENDPOINT', 'the local S3 endpoint is development-only');
   });
 
 /** @typedef {z.output<typeof EnvSchema>} Env */

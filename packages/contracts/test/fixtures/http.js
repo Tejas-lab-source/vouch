@@ -132,6 +132,8 @@ export const httpFixtures = {
     ],
   },
   'updateMyProfile.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, age: 17 }] },
+  'deleteMyPhoto.params': { valid: [{ id: s.ID }], invalid: [{ id: 'photo-1' }] },
+  'deleteMyPhoto.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, photos: null }] },
   'putProfileSection.params': { valid: [{ type: 'prompts' }], invalid: [{ type: 'Prompts!' }] },
   'putProfileSection.body': {
     valid: [{ schemaVersion: 1, position: 0, data: { answer: 'x' } }],
