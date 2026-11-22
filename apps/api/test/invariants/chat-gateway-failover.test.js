@@ -1,86 +1,28 @@
 // @ts-check
-import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { createServer } from 'node:net';
-import { fileURLToPath } from 'node:url';
-import { io as connect } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eventually, HOOK_TIMEOUT_MS, testEnv } from '../platform/helpers.js';
+import { eventually, HOOK_TIMEOUT_MS } from '../platform/helpers.js';
 import { startChatStack } from '../modules/chat/harness.js';
 
 const MESSAGES = 200;
 const KILL_AFTER = 60;
-const MAIN = fileURLToPath(new URL('../../src/main.js', import.meta.url));
-
-/** A free local port. */
-const freePort = () =>
-  new Promise((resolve) => {
-    const server = createServer().listen(0, '127.0.0.1', () => {
-      const { port } = /** @type {import('node:net').AddressInfo} */ (server.address());
-      server.close(() => resolve(port));
-    });
-  });
 
 describe('invariant: a gateway dies mid-stream; every acked message arrives exactly once, in seq order', () => {
   /** @type {Awaited<ReturnType<typeof startChatStack>>} */
   let stack;
-  /** @type {import('node:child_process').ChildProcess[]} */
-  const children = [];
-
-  /** Starts `ROLE=ws` as a separate process; resolves with its URL once it serves /ready. */
-  async function gatewayProcess() {
-    const [port, metrics] = [await freePort(), await freePort()];
-    const env = testEnv({
-      ROLE: 'ws',
-      PORT: String(port),
-      METRICS_PORT: String(metrics),
-      DATABASE_URL: stack.infra.appUrl,
-      REDIS_URL: stack.infra.redisUrl,
-      JWT_SIGNING_KEYS: stack.keys.json,
-      JWT_ACTIVE_KID: stack.keys.kid,
-      // One sender sends 200 messages quickly; the per-user limit is not what is tested here.
-      RATE_LIMIT_MESSAGES_MINUTE: '100000',
-    });
-    const child = spawn(process.execPath, [MAIN], {
-      env: { ...process.env, ...env },
-      stdio: 'ignore',
-    });
-    children.push(child);
-    const url = `http://127.0.0.1:${port}`;
-    await eventually(
-      () =>
-        fetch(`${url}/ready`).then(
-          (r) => r.ok,
-          () => false,
-        ),
-      30_000,
-    );
-    return { url, child };
-  }
-
-  /** @param {string} url @param {string} token */
-  const socketAt = (url, token) =>
-    new Promise((resolve, reject) => {
-      const socket = connect(url, {
-        transports: ['websocket'],
-        auth: { token },
-        reconnection: false,
-        forceNew: true,
-      });
-      socket.once('connect', () => resolve(socket));
-      socket.once('connect_error', reject);
-    });
+  // One sender sends 200 messages quickly; the per-user limit is not what is tested here.
+  const env = { RATE_LIMIT_MESSAGES_MINUTE: '100000' };
 
   beforeAll(async () => {
-    stack = await startChatStack({ RATE_LIMIT_MESSAGES_MINUTE: '100000' });
+    stack = await startChatStack(env);
   }, HOOK_TIMEOUT_MS);
   afterAll(async () => {
-    for (const child of children) child.kill('SIGKILL');
     await stack?.stop();
   }, HOOK_TIMEOUT_MS);
 
   it(`${MESSAGES} messages; gateway A is killed after ${KILL_AFTER} acks; both clients move to B`, async () => {
-    const [a, b] = await Promise.all([gatewayProcess(), gatewayProcess()]);
+    const [a, b] = await Promise.all([stack.spawnGateway(), stack.spawnGateway()]);
+    const socketAt = stack.socketAt;
     const { a: senderUser, b: recipientUser, conversationId } = await stack.matchedPair();
     const senderToken = await stack.token(senderUser);
     const recipientToken = await stack.token(recipientUser);

@@ -1,5 +1,8 @@
 // @ts-check
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:net';
+import { fileURLToPath } from 'node:url';
 import { io as connect } from 'socket.io-client';
 import { seed } from '../../../scripts/seed.js';
 import modules from '../../../src/modules/index.js';
@@ -8,6 +11,7 @@ import { loadConfig } from '../../../src/platform/config.js';
 import { createLogger } from '../../../src/platform/logger.js';
 import { eventually, makeKeys, startInfra, testEnv } from '../../platform/helpers.js';
 
+const MAIN = fileURLToPath(new URL('../../../src/main.js', import.meta.url));
 const H = { 'x-app-version': '1.0.0', 'content-type': 'application/json' };
 let metricsPort = 19_500 + Math.floor(Math.random() * 2000);
 
@@ -47,7 +51,7 @@ export async function startChatStack(env = {}) {
   /** @param {any} runtime */
   const urlOf = (runtime) => `http://127.0.0.1:${runtime.http.server.address().port}`;
   const users = await infra.admin`SELECT u.id, u.public_id FROM identity.users u
-    JOIN profiles.profiles p ON p.user_id = u.id WHERE p.status = 'active' ORDER BY u.id LIMIT 200`;
+    JOIN profiles.profiles p ON p.user_id = u.id WHERE p.status = 'active' ORDER BY u.id LIMIT 600`;
   let next = 0;
 
   /** @param {any} user @param {{ expiresIn?: string }} [opts] */
@@ -120,6 +124,59 @@ export async function startChatStack(env = {}) {
     return { status: response.statusCode, body: response.json() };
   };
 
+  /** @type {import('node:child_process').ChildProcess[]} */
+  const children = [];
+
+  /**
+   * Starts `ROLE=ws` as a separate process sharing this stack's Postgres and Redis; resolves
+   * once it serves /ready.
+   * @param {Record<string, string>} [extra]
+   */
+  async function spawnGateway(extra = {}) {
+    const [port, metrics] = [await freePort(), await freePort()];
+    const child = spawn(process.execPath, [MAIN], {
+      env: {
+        ...process.env,
+        ...testEnv({
+          ROLE: 'ws',
+          PORT: String(port),
+          METRICS_PORT: String(metrics),
+          DATABASE_URL: infra.appUrl,
+          REDIS_URL: infra.redisUrl,
+          JWT_SIGNING_KEYS: keys.json,
+          JWT_ACTIVE_KID: keys.kid,
+          ...env,
+          ...extra,
+        }),
+      },
+      stdio: 'ignore',
+    });
+    children.push(child);
+    const url = `http://127.0.0.1:${port}`;
+    await eventually(
+      () =>
+        fetch(`${url}/ready`).then(
+          (r) => r.ok,
+          () => false,
+        ),
+      30_000,
+    );
+    return { url, child, metricsUrl: `http://127.0.0.1:${metrics}/metrics` };
+  }
+
+  /** Connects to a gateway URL; resolves once connected. @param {string} url @param {string} bearer */
+  const socketAt = (url, bearer) =>
+    new Promise((resolve, reject) => {
+      const socket = connect(url, {
+        transports: ['websocket'],
+        auth: { token: bearer },
+        reconnection: false,
+        forceNew: true,
+      });
+      socket.once('connect', () => resolve(socket));
+      socket.once('connect_error', reject);
+    });
+
   return {
     infra,
     keys,
@@ -133,12 +190,24 @@ export async function startChatStack(env = {}) {
     matchedPair,
     rest,
     fresh: () => users[next++],
+    spawnGateway,
+    socketAt,
     stop: async () => {
+      for (const child of children) child.kill('SIGKILL');
       for (const runtime of [gatewayA, gatewayB, app]) await runtime?.stop(10_000).catch(() => {});
       await infra.stop();
     },
   };
 }
+
+/** A free local port. @returns {Promise<number>} */
+const freePort = () =>
+  new Promise((resolve) => {
+    const server = createServer().listen(0, '127.0.0.1', () => {
+      const { port } = /** @type {import('node:net').AddressInfo} */ (server.address());
+      server.close(() => resolve(port));
+    });
+  });
 
 /**
  * Collects a socket's events of one name.
