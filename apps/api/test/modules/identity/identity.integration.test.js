@@ -1,4 +1,5 @@
 // @ts-check
+import { createHash } from 'node:crypto';
 import { Writable } from 'node:stream';
 import {
   listDevices as listDevicesEndpoint,
@@ -179,17 +180,51 @@ describe('identity module (ROLE=all, real Postgres and Redis)', () => {
     expect(listDevicesEndpoint.response.schema.parse(devices.json()).items[0]?.current).toBe(true);
   });
 
-  it('reusing a rotated refresh token revokes the whole family', async () => {
+  /** @param {string} token */
+  const refreshWith = async (token) => post(app, '/v1/auth/refresh', { refreshToken: token });
+  /** @param {string} publicId */
+  const liveSessions = async (publicId) =>
+    (
+      await infra.admin`SELECT s.id FROM identity.auth_sessions s JOIN identity.users u ON u.id = s.user_id
+        WHERE u.public_id = ${publicId} AND s.revoked_at IS NULL`
+    ).length;
+
+  it('reusing a rotated refresh token after its replacement was used revokes the whole family', async () => {
     const { body } = await signUp();
     const first = body.tokens.refreshToken;
-    const second = (await post(app, '/v1/auth/refresh', { refreshToken: first })).json().tokens
-      .refreshToken;
-    expect((await post(app, '/v1/auth/refresh', { refreshToken: first })).json().error.code).toBe(
-      'REFRESH_TOKEN_REUSED',
-    );
-    expect((await post(app, '/v1/auth/refresh', { refreshToken: second })).json().error.code).toBe(
-      'REFRESH_TOKEN_INVALID',
-    );
+    const second = (await refreshWith(first)).json().tokens.refreshToken;
+    const third = (await refreshWith(second)).json().tokens.refreshToken;
+    expect((await refreshWith(first)).json().error.code).toBe('REFRESH_TOKEN_REUSED');
+    expect(await liveSessions(body.user.userId)).toBe(0);
+    expect((await refreshWith(third)).json().error.code).toBe('REFRESH_TOKEN_INVALID');
+  });
+
+  it('a retry within the 30 s grace window gets a fresh pair in the same family', async () => {
+    const { body } = await signUp();
+    const first = body.tokens.refreshToken;
+    const lost = (await refreshWith(first)).json().tokens.refreshToken;
+    const retried = await refreshWith(first);
+    expect(retried.statusCode).toBe(200);
+    expect(await liveSessions(body.user.userId)).toBe(1);
+    const families = await infra.admin`SELECT DISTINCT s.family_id FROM identity.auth_sessions s
+      JOIN identity.users u ON u.id = s.user_id WHERE u.public_id = ${body.user.userId}`;
+    expect(families).toHaveLength(1);
+    expect((await refreshWith(retried.json().tokens.refreshToken)).statusCode).toBe(200);
+    // The lost replacement was retired; presenting it after the new pair was used is reuse.
+    expect((await refreshWith(lost)).json().error.code).toBe('REFRESH_TOKEN_REUSED');
+    expect(await liveSessions(body.user.userId)).toBe(0);
+  });
+
+  it('a retry after the grace window revokes the whole family', async () => {
+    const { body } = await signUp();
+    const first = body.tokens.refreshToken;
+    const second = (await refreshWith(first)).json().tokens.refreshToken;
+    // Move the rotation 31 s into the past instead of waiting.
+    await infra.admin`UPDATE identity.auth_sessions SET revoked_at = now() - interval '31 seconds'
+      WHERE token_hash = ${createHash('sha256').update(first).digest()}`;
+    expect((await refreshWith(first)).json().error.code).toBe('REFRESH_TOKEN_REUSED');
+    expect(await liveSessions(body.user.userId)).toBe(0);
+    expect((await refreshWith(second)).json().error.code).toBe('REFRESH_TOKEN_INVALID');
   });
 
   it('web transport: the refresh token is an httpOnly, Secure, SameSite=Strict cookie on /v1/auth/refresh', async () => {

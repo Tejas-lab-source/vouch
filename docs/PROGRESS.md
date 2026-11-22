@@ -30,9 +30,19 @@ Owner instructions recorded here so the phase that owns them picks them up.
   ids never appear in public CDN URLs. This replaces the `photos/{userId}/…` layout in roadmap
   Phase 6. The Phase 2 seed (`apps/api/scripts/seed.js`) still builds placeholder keys from the
   internal id and must be updated with it.
+- **Phase 10 — identity follow-ups (owner, 2026-11-22, from the Phase 5 report):**
+  - The ID-card fallback route for students without a college email.
+  - Admin login with MFA (`vouch:admin` audience).
+  - `user.unbanned.v1` and the unban flow.
+  - Ban evasion across deletion: a banned user who deletes their account must not be able to
+    sign up again with the same email after the 30-day erasure.
+- **Phase 14 — session revocation (owner, 2026-11-22):** check the session on sensitive routes,
+  so a revoked session's access token (valid up to 15 minutes) cannot use them.
 - **Phase 15 — deploy and runtime (owner, 2026-11-21, from the Phase 4 report):**
   - Start Node with `--import @opentelemetry/auto-instrumentations-node/register`, so ESM
     libraries are auto-instrumented.
   - Set the host's stop timeout to 30 s (the app drains for `SHUTDOWN_DRAIN_MS`, 25 s by
     default).
   - Trim the Docker image (483 MB after Phase 4, mostly OpenTelemetry and Sentry).
+  - Test Resend (email) and Turnstile (captcha) against the real services with real keys
+    (owner, 2026-11-22; Phase 5 only tested them with fakes).

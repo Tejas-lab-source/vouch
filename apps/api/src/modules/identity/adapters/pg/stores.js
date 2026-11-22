@@ -44,6 +44,10 @@ export function createIdentityStores(tx) {
       findById: async (id) =>
         /** @type {any} */ ((await tx`SELECT * FROM identity.auth_sessions WHERE id = ${id}`)[0]) ??
         null,
+      findByIdForUpdate: async (id) =>
+        /** @type {any} */ (
+          (await tx`SELECT * FROM identity.auth_sessions WHERE id = ${id} FOR UPDATE`)[0]
+        ) ?? null,
       markRotated: async (id, replacedBy, at) => {
         await tx`UPDATE identity.auth_sessions SET replaced_by = ${replacedBy}, revoked_at = ${at} WHERE id = ${id}`;
       },

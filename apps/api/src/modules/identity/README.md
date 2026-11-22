@@ -17,7 +17,7 @@ devices, consent records, account deletion and data export.
 | ---------------------------- | ------ | ------------------------------------------------------------------------ |
 | `POST /v1/auth/otp`          | public | `requestOtp`: fails closed when Redis or the rate limiter is unavailable |
 | `POST /v1/auth/verify`       | public | `verifyOtp`: signs in, or signs up with `signup`                         |
-| `POST /v1/auth/refresh`      | public | `refresh`: rotation with reuse detection                                 |
+| `POST /v1/auth/refresh`      | public | `refresh`: rotation with reuse detection and a 30 s retry grace window   |
 | `POST /v1/auth/logout`       | user   | `logout`: revokes this session's family                                  |
 | `GET /v1/me/devices`         | user   | `listDevices`                                                            |
 | `DELETE /v1/me/devices/{id}` | user   | `revokeDevice`: remote sign-out                                          |

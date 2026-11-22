@@ -77,6 +77,7 @@ export async function buildIdentityDeps(ctx) {
       otpDeviceHour: config.RATE_LIMIT_OTP_DEVICE_HOUR,
       verifyIp15m: config.RATE_LIMIT_VERIFY_IP_15M,
       refreshSessionHour: config.RATE_LIMIT_REFRESH_SESSION_HOUR,
+      refreshReuseGraceMs: config.REFRESH_REUSE_GRACE_SECONDS * 1000,
     },
     clock,
     newId: ctx.newId,

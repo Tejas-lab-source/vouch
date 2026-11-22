@@ -2,7 +2,7 @@
 
 **Summary:** Students sign up and sign in with a one-time code sent to their college email. They
 receive a 15-minute EdDSA access token and a 30-day refresh token that rotates on every use,
-with reuse detection. They can list and remotely sign out devices, register a push token, log
+with reuse detection and a 30-second grace window for retried refreshes. They can list and remotely sign out devices, register a push token, log
 out, delete their account and export their data. OTP requests fail closed when Redis or the rate
 limiter is unavailable. Every flow runs through `fastify.inject` and through curl against a real
 `ROLE=all` process.
@@ -16,6 +16,24 @@ limiter is unavailable. Every flow runs through `fastify.inject` and through cur
       debug level and finds no email, code or JWT; the curl run's log has 0 occurrences of the
       test email.
 - [x] **The module README is complete:** `apps/api/src/modules/identity/README.md`.
+
+**Rework (owner, 2026-11-22, phase reopened per A.1):** retried refreshes must not sign users
+out on flaky mobile networks.
+
+- A rotated refresh token presented again within `REFRESH_REUSE_GRACE_SECONDS` (default 30,
+  `0` disables, max 300) of its rotation, whose replacement has never been used, gets a fresh
+  pair in the same family. The unused replacement is retired as rotated, so one token per family
+  stays live.
+- Reuse after the window, or after the replacement was used (rotated or revoked), still revokes
+  the whole family. The window counts from the first rotation, so repeated retries cannot extend
+  it. The presented row and its replacement are both locked `FOR UPDATE`.
+- Recorded in ADR 0011, including the trade-off (a just-stolen token replayed within 30 s is
+  detected one refresh later rather than at once).
+- Tests: a retry within the window succeeds; a retry after the window revokes the family; a
+  retry after the replacement was used revokes the family. Each is covered in the domain rules,
+  the use cases with fakes and the integration suite against real Postgres (there the rotation
+  time is moved 31 s into the past instead of waiting). Also tested: repeated retries do not
+  extend the window, and a window of 0 turns retries off.
 
 **Owner items and decisions:**
 
@@ -52,16 +70,16 @@ and INTERNAL 500. User routes add UNAUTHENTICATED 401 and ACCOUNT_BANNED 403.
 
 **Token lifetimes and rate limits** (ADR 0011):
 
-| Item                | Value                                                                                         |
-| ------------------- | --------------------------------------------------------------------------------------------- |
-| Access token        | 15 minutes, EdDSA, `aud` vouch:user, claims `sub` and `sid`                                   |
-| Refresh token       | 30 days, rotated on every use, stored as SHA-256; reuse of a rotated token revokes the family |
-| Retired signing key | Still verifies for 15 minutes                                                                 |
-| Web cookie          | `vouch_refresh`: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/v1/auth/refresh`             |
-| OTP                 | 6 digits, valid 10 minutes, 5 attempts, stored as an HMAC                                     |
-| OTP request limits  | 3 per 15 min and 10 per day per email; 5 per hour per device; 300 per hour per IP             |
-| Verify limit        | 300 per 15 min per IP                                                                         |
-| Refresh limit       | 60 per hour per session                                                                       |
+| Item                | Value                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Access token        | 15 minutes, EdDSA, `aud` vouch:user, claims `sub` and `sid`                                                                                                |
+| Refresh token       | 30 days, rotated on every use, stored as SHA-256; reuse of a rotated token revokes the family, except a retry within 30 s whose replacement was never used |
+| Retired signing key | Still verifies for 15 minutes                                                                                                                              |
+| Web cookie          | `vouch_refresh`: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/v1/auth/refresh`                                                                          |
+| OTP                 | 6 digits, valid 10 minutes, 5 attempts, stored as an HMAC                                                                                                  |
+| OTP request limits  | 3 per 15 min and 10 per day per email; 5 per hour per device; 300 per hour per IP                                                                          |
+| Verify limit        | 300 per 15 min per IP                                                                                                                                      |
+| Refresh limit       | 60 per hour per session                                                                                                                                    |
 
 **Tests and validation** (clean clone; Node v24.22.3, pnpm 10.34.9):
 
@@ -78,21 +96,23 @@ The API suite also passed two more consecutive runs (206/206 each).
 
 Identity tests:
 
-- **Domain (18):**
+- **Domain (22):**
   - normalisation, including `+tag` and malformed addresses
   - exact domain matching (alumni and staff subdomains rejected)
   - the 18th-birthday boundary and leap days
   - OTP rules and refresh classification
-- **Use cases with fakes (19):**
+- **Use cases with fakes (23):**
   - happy path, wrong code, attempts exhausted, expired code, under-18, notice version
   - banned or being-deleted accounts
   - fail closed on the limiter and on the OTP store
   - limit keys and values
-  - refresh rotation and reuse, logout, devices, push token, deletion emitted once, export
-- **Integration (12, Testcontainers):**
+  - refresh rotation and reuse, the grace window (within, after, after the replacement was
+    used, not extended by retries, disabled at 0), logout, devices, push token, deletion emitted once, export
+- **Integration (14, Testcontainers):**
   - the full OTP → `SIGNUP_DETAILS_REQUIRED` (code kept) → sign-up → refresh cycle; responses
     validated against the contracts
-  - reuse revokes the family; cookie attributes
+  - reuse after the replacement was used revokes the family; a retry within the grace window
+    gets a fresh pair; a retry after the window revokes the family; cookie attributes
   - two devices, remote sign-out, push token, logout
   - deletion emits `user.deleted.v1` once and blocks re-sign-up
   - export contains no email; the ban consumer works through the relay
@@ -112,6 +132,9 @@ Mutation checks (reverted afterwards):
 | ----------------------------------- | ------------ |
 | No family revocation on reuse       | 2 tests fail |
 | Deleted accounts allowed to sign in | 2 tests fail |
+| Rework: grace window removed        | 4 tests fail |
+| Rework: no 30 s limit on the window | 6 tests fail |
+| Rework: replacement use ignored     | 5 tests fail |
 
 curl against `ROLE=all` (Docker Compose, `pnpm db:seed`, `pnpm dev:keys --write`):
 
@@ -129,7 +152,17 @@ curl against `ROLE=all` (Docker Compose, `pnpm db:seed`, `pnpm dev:keys --write`
 11) POST /v1/auth/otp (alumni subdomain) → "EMAIL_DOMAIN_NOT_ALLOWED"
 ```
 
-Push-token registration on a live session is covered by the integration test. After this run,
+Rework, curl against `ROLE=all` (2026-11-22):
+
+```
+1) POST /v1/auth/refresh R1                     → new pair R2
+2) POST /v1/auth/refresh R1 at once, R2 unused  → new pair R3 (same family)
+3) POST /v1/auth/refresh R3                     → new pair R4
+4) POST /v1/auth/refresh R1, replacement used   → "REFRESH_TOKEN_REUSED" (family revoked)
+5) POST /v1/auth/refresh R4                     → "REFRESH_TOKEN_INVALID"
+```
+
+The log contained 0 occurrences of the test email. Push-token registration on a live session is covered by the integration test. After this run,
 readable messages were added for every identity error code: step 2 returned the bare code as
 its message.
 
@@ -169,8 +202,10 @@ image, `/health` ok, `/ready` ready, `POST /v1/auth/otp` → `{"sent":true}`, `d
 
 - **Revoked sessions:** their access tokens stay valid until they expire (up to 15 minutes).
   `POST /v1/devices` checks the session itself; read routes rely on the short lifetime.
-- **Retried refreshes:** reuse detection can sign out a user whose app retried a refresh after
-  a network failure. They sign in again.
+- **Retried refreshes:** fixed in the rework above. A retry more than 30 s after the rotation
+  still signs the user out.
+- **Grace window trade-off:** a thief replaying a just-rotated token within 30 s, before the real
+  app uses its replacement, gets a live pair until the real app's next refresh revokes the family.
 - **Ban evasion:** a banned user can delete their account and, after 30 days, sign up again with
   the same email. Ban evasion across deletions is Phase 10's to handle.
 - **Development console adapter:** it logs codes, by design and for local use only. The env
@@ -179,11 +214,12 @@ image, `/health` ok, `/ready` ready, `POST /v1/auth/otp` → `{"sent":true}`, `d
   which need keys. Their adapters use `fetch` with timeouts, and fall back to "not verified" on a
   network failure.
 
-**Suggested follow-ups (not done, need approval):**
+**Follow-ups (approved 2026-11-22, recorded in `docs/PROGRESS.md` "Notes for later phases"):**
 
-1. Phase 10: ID-card fallback route, admin login with MFA, and `user.unbanned.v1` with status
-   restore.
-2. Phase 14: consider a session-revocation check (Redis denylist) for sensitive routes.
+1. Phase 10: ID-card fallback route, admin login with MFA, `user.unbanned.v1`, and ban evasion
+   across deletion.
+2. Phase 14: a session-revocation check for sensitive routes.
+3. Phase 15: test Resend and Turnstile against the real services with real keys.
 
 **How you can check it yourself:**
 

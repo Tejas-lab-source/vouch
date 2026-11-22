@@ -54,6 +54,7 @@
  *   insert(session: { id: string, userId: string, deviceId: string, familyId: string, tokenHash: Buffer, createdAt: Date, expiresAt: Date }): Promise<void>,
  *   findByTokenHashForUpdate(tokenHash: Buffer): Promise<SessionRecord | null>,
  *   findById(id: string): Promise<SessionRecord | null>,
+ *   findByIdForUpdate(id: string): Promise<SessionRecord | null>,
  *   markRotated(id: string, replacedBy: string, at: Date): Promise<void>,
  *   revokeFamily(familyId: string, at: Date): Promise<number>,
  *   revokeAllForUser(userId: string, at: Date): Promise<number>,
@@ -130,6 +131,7 @@
  * @property {number} otpDeviceHour
  * @property {number} verifyIp15m
  * @property {number} refreshSessionHour
+ * @property {number} refreshReuseGraceMs  A rotated token may be retried this long (ADR 0011).
  */
 
 /**

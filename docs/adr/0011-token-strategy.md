@@ -30,7 +30,21 @@ bombing. Campuses usually sit behind one shared public IP (NAT).
 - One session per sign-in per device. Every refresh rotates the token: the old session is marked
   `replaced_by` the new one, in the same `family_id`.
 - Reuse detection:
-  - Presenting a rotated token revokes the whole family and returns `REFRESH_TOKEN_REUSED`.
+  - Presenting a rotated token revokes the whole family and returns `REFRESH_TOKEN_REUSED`,
+    except a retry inside the grace window (below).
+  - **Grace window for retried refreshes (owner, Phase 5 rework):** mobile networks drop
+    responses, and an app that retries a refresh would otherwise sign the user out. If a rotated
+    token is presented again within `REFRESH_REUSE_GRACE_SECONDS` (default 30, `0` disables, max 300) of its rotation, and its replacement has never been used (not rotated, not revoked),
+    the server issues a fresh pair in the same family. The unused replacement is retired as
+    rotated, so only one token in the family stays live, and presenting the retired one later is
+    judged by the same rules. The window is measured from the first rotation: repeated retries
+    never extend it. Reuse after the window, or after the replacement was used, still revokes the
+    whole family. Both rows are locked (`FOR UPDATE`) so a retry and a use of the replacement
+    cannot both win.
+  - Trade-off: a thief who replays a stolen, just-rotated token within 30 s, before the real app
+    uses its replacement, gets a live pair, and the real app's next refresh then revokes the
+    family (its replacement was retired, so presenting it counts as reuse). Detection is delayed
+    by at most one refresh, not lost.
   - A token revoked by logout, device sign-out, a ban or deletion is simply
     `REFRESH_TOKEN_INVALID`.
 - Transport:
@@ -50,6 +64,7 @@ bombing. Campuses usually sit behind one shared public IP (NAT).
 | OTP requests per IP                  | 300 per hour                              | `RATE_LIMIT_OTP_IP_HOUR`                               |
 | Verify attempts per IP               | 300 per 15 min (plus 5 attempts per code) | `RATE_LIMIT_VERIFY_IP_15M`                             |
 | Refreshes per session family         | 60 per hour                               | `RATE_LIMIT_REFRESH_SESSION_HOUR`                      |
+| Refresh-reuse grace window           | 30 s after rotation                       | `REFRESH_REUSE_GRACE_SECONDS`                          |
 
 - **Shared campus IPs:** a campus usually reaches the internet through one NAT address, so
   thousands of students can share an IP. Per-IP limits are therefore set high, and only stop

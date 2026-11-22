@@ -8,8 +8,8 @@ const DEVICE = { platform: /** @type {const} */ ('ios') };
 
 /** @param {Parameters<typeof fakeDeps>[0]} [options] */
 function setup(options) {
-  const { deps, state } = fakeDeps(options);
-  return { h: buildIdentityHandlers(deps), state, deps };
+  const { deps, state, advance } = fakeDeps(options);
+  return { h: buildIdentityHandlers(deps), state, deps, advance };
 }
 
 /** @param {ReturnType<typeof setup>['h']} h */
@@ -192,10 +192,54 @@ describe('sessions', () => {
     return { ...s, tokens: result.tokens, actor };
   }
 
-  it('refresh rotates the token; reusing the old one revokes the whole family', async () => {
+  it('refresh rotates the token; reusing the old one after the replacement was used revokes the family', async () => {
     const { h, tokens, state } = await signedIn();
     const rotated = await h.refresh({ refreshToken: tokens.refreshToken }, CTX);
     expect(rotated.tokens.refreshToken).not.toBe(tokens.refreshToken);
+    const third = await h.refresh({ refreshToken: rotated.tokens.refreshToken }, CTX);
+    await expect(h.refresh({ refreshToken: tokens.refreshToken }, CTX)).rejects.toMatchObject({
+      code: 'REFRESH_TOKEN_REUSED',
+    });
+    expect([...state.sessions.values()].every((s) => s.revokedAt)).toBe(true);
+    await expect(h.refresh({ refreshToken: third.tokens.refreshToken }, CTX)).rejects.toMatchObject(
+      { code: 'REFRESH_TOKEN_INVALID' },
+    );
+  });
+
+  it('a retry within the grace window gets a fresh pair in the same family', async () => {
+    const { h, tokens, state, advance } = await signedIn();
+    const lost = await h.refresh({ refreshToken: tokens.refreshToken }, CTX);
+    advance(29_000);
+    const retried = await h.refresh({ refreshToken: tokens.refreshToken }, CTX);
+    const live = [...state.sessions.values()].filter((s) => !s.revokedAt);
+    expect(live).toHaveLength(1);
+    expect(new Set([...state.sessions.values()].map((s) => s.familyId)).size).toBe(1);
+    // The fresh pair works; the lost replacement is retired.
+    expect(
+      (await h.refresh({ refreshToken: retried.tokens.refreshToken }, CTX)).tokens,
+    ).toBeTruthy();
+    await expect(h.refresh({ refreshToken: lost.tokens.refreshToken }, CTX)).rejects.toMatchObject({
+      code: 'REFRESH_TOKEN_REUSED',
+    });
+    expect([...state.sessions.values()].every((s) => s.revokedAt)).toBe(true);
+  });
+
+  it('repeated retries never extend the window past 30 s from the first rotation', async () => {
+    const { h, tokens, state, advance } = await signedIn();
+    await h.refresh({ refreshToken: tokens.refreshToken }, CTX);
+    advance(20_000);
+    await h.refresh({ refreshToken: tokens.refreshToken }, CTX);
+    advance(11_000);
+    await expect(h.refresh({ refreshToken: tokens.refreshToken }, CTX)).rejects.toMatchObject({
+      code: 'REFRESH_TOKEN_REUSED',
+    });
+    expect([...state.sessions.values()].every((s) => s.revokedAt)).toBe(true);
+  });
+
+  it('a retry after the grace window revokes the whole family', async () => {
+    const { h, tokens, state, advance } = await signedIn();
+    const rotated = await h.refresh({ refreshToken: tokens.refreshToken }, CTX);
+    advance(30_001);
     await expect(h.refresh({ refreshToken: tokens.refreshToken }, CTX)).rejects.toMatchObject({
       code: 'REFRESH_TOKEN_REUSED',
     });
@@ -203,6 +247,18 @@ describe('sessions', () => {
     await expect(
       h.refresh({ refreshToken: rotated.tokens.refreshToken }, CTX),
     ).rejects.toMatchObject({ code: 'REFRESH_TOKEN_INVALID' });
+  });
+
+  it('a grace window of 0 turns retries off', async () => {
+    const { tokens, deps } = await signedIn();
+    const strict = buildIdentityHandlers({
+      ...deps,
+      limits: { ...deps.limits, refreshReuseGraceMs: 0 },
+    });
+    await strict.refresh({ refreshToken: tokens.refreshToken }, CTX);
+    await expect(strict.refresh({ refreshToken: tokens.refreshToken }, CTX)).rejects.toMatchObject({
+      code: 'REFRESH_TOKEN_REUSED',
+    });
   });
 
   it('refresh accepts the cookie and refuses missing or unknown tokens', async () => {

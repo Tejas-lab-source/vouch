@@ -108,4 +108,37 @@ describe('refresh-token rules', () => {
       'expired',
     );
   });
+
+  describe('grace window for retried refreshes', () => {
+    const graceMs = 30_000;
+    const unused = { replacedBy: null, revokedAt: null, expiresAt: future };
+    /** @param {number} secondsAgo */
+    const rotated = (secondsAgo) => ({
+      replacedBy: 's2',
+      revokedAt: new Date(now.getTime() - secondsAgo * 1000),
+      expiresAt: future,
+    });
+
+    it('a retry within 30 s whose replacement was never used is a retry', () => {
+      expect(judgeRefresh(rotated(0), now, { replacement: unused, graceMs })).toBe('retry');
+      expect(judgeRefresh(rotated(30), now, { replacement: unused, graceMs })).toBe('retry');
+    });
+
+    it('after the window it is reuse', () => {
+      const late = { ...rotated(30), revokedAt: new Date(now.getTime() - 30_001) };
+      expect(judgeRefresh(late, now, { replacement: unused, graceMs })).toBe('reused');
+    });
+
+    it('after the replacement was used (rotated or revoked) it is reuse', () => {
+      const used = { ...unused, replacedBy: 's3', revokedAt: now };
+      const signedOut = { ...unused, revokedAt: now };
+      expect(judgeRefresh(rotated(1), now, { replacement: used, graceMs })).toBe('reused');
+      expect(judgeRefresh(rotated(1), now, { replacement: signedOut, graceMs })).toBe('reused');
+      expect(judgeRefresh(rotated(1), now, { replacement: null, graceMs })).toBe('reused');
+    });
+
+    it('a window of 0 disables retries', () => {
+      expect(judgeRefresh(rotated(0), now, { replacement: unused, graceMs: 0 })).toBe('reused');
+    });
+  });
 });

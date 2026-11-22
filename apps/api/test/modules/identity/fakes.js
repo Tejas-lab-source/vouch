@@ -1,6 +1,5 @@
 // @ts-check
 import { ServiceError } from '@vouch/contracts';
-import { fixedClock } from '../../../src/platform/clock.js';
 import { createIdGenerator } from '../../../src/platform/ids.js';
 import { createIdentityCrypto } from '../../../src/modules/identity/adapters/crypto/node-crypto.js';
 
@@ -16,7 +15,13 @@ export const NOW = new Date('2026-11-21T10:00:00Z');
  * @param {{ codes?: string[], limiter?: 'ok' | 'down' | 'limited', otpDown?: boolean }} [options]
  */
 export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false } = {}) {
-  const clock = fixedClock(NOW);
+  let nowMs = NOW.getTime();
+  /** A clock tests can move forward with `advance(ms)`. */
+  const clock = { now: () => new Date(nowMs) };
+  /** @param {number} ms */
+  const advance = (ms) => {
+    nowMs += ms;
+  };
   const real = createIdentityCrypto({ emailHmacSecret: 'x'.repeat(32) });
   let codeIndex = 0;
   const state = {
@@ -48,6 +53,7 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
       findByTokenHashForUpdate: async (h) =>
         [...state.sessions.values()].find((s) => s.tokenHash.equals(h)) ?? null,
       findById: async (id) => state.sessions.get(id) ?? null,
+      findByIdForUpdate: async (id) => state.sessions.get(id) ?? null,
       markRotated: async (id, replacedBy, at) =>
         void Object.assign(state.sessions.get(id), { replacedBy, revokedAt: at }),
       revokeFamily: async (familyId, at) => revokeWhere((s) => s.familyId === familyId, at),
@@ -157,13 +163,14 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
       otpDeviceHour: 5,
       verifyIp15m: 300,
       refreshSessionHour: 60,
+      refreshReuseGraceMs: 30_000,
     },
     clock,
     newId: createIdGenerator({ clock }),
     privacyNoticeVersion: '2026-11',
     exporters: new Map(),
   };
-  return { deps, state };
+  return { deps, state, advance };
 }
 
 export const SIGNUP = {

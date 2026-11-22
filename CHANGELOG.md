@@ -133,7 +133,8 @@ All notable changes are recorded here, grouped by roadmap phase.
 - `modules/identity` (see its README):
   - college-email OTP sign-up and sign-in, with `SIGNUP_DETAILS_REQUIRED` that does not consume
     the code
-  - 15-minute EdDSA access tokens, and 30-day rotating refresh tokens with reuse detection
+  - 15-minute EdDSA access tokens, and 30-day rotating refresh tokens with reuse detection and a
+    configurable grace window for retried refreshes (`REFRESH_REUSE_GRACE_SECONDS`, default 30)
     (ADR 0011)
   - logout, devices (list and remote sign-out), push-token registration
   - account deletion (`user.deleted.v1` once) and data export through the registry's exports

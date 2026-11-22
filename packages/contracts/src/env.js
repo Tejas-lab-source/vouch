@@ -60,6 +60,15 @@ export const EnvSchema = z
     RATE_LIMIT_OTP_DEVICE_HOUR: z.coerce.number().int().min(1).default(5),
     RATE_LIMIT_VERIFY_IP_15M: z.coerce.number().int().min(1).default(300),
     RATE_LIMIT_REFRESH_SESSION_HOUR: z.coerce.number().int().min(1).default(60),
+    REFRESH_REUSE_GRACE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(300)
+      .default(30)
+      .describe(
+        'A rotated refresh token retried this soon gets a fresh pair (ADR 0011); 0 disables.',
+      ),
 
     // Postgres (one login per module role is configured in Phase 15)
     DATABASE_URL: postgresUrl,
