@@ -197,6 +197,35 @@ describe('realtime client', () => {
   }, 15_000);
 });
 
+describe('delivery bookkeeping', () => {
+  it('a message delivered twice (live and again by sync) reaches the app once', async () => {
+    const gateway = await startGateway();
+    cleanups.push(gateway.close);
+    const { rt, received } = client(gateway);
+    rt.start();
+    await until(() => rt.socket.connected);
+    gateway.push('c1', 'one');
+    await until(() => received.length === 1);
+    // The gateway re-sends the same (conversation, seq), as it may across a reconnect.
+    gateway.io.emit('message.new', gateway.stored.at(0));
+    gateway.push('c1', 'two');
+    await until(() => received.length >= 2);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(received.map((m) => m.body)).toEqual(['one', 'two']);
+  });
+
+  it('cursors only move forward, so a late older message cannot rewind sync', () => {
+    const cursors = memoryCursors();
+    cursors.advance('c1', 5);
+    cursors.advance('c1', 3);
+    cursors.advance('c2', 1);
+    expect(cursors.all()).toEqual([
+      { conversationId: 'c1', lastSeq: 5 },
+      { conversationId: 'c2', lastSeq: 1 },
+    ]);
+  });
+});
+
 describe('query cache adapter', () => {
   it('merges messages by seq, ignores duplicates, and invalidates lists', () => {
     /** @type {Map<string, any>} */
