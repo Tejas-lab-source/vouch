@@ -12,7 +12,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 5   | Identity and authentication                                             | Approved    | 2026-11-21     | 2026-11-22         | phases/PHASE-05.md |
 | 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-06.md |
 | 7   | Safety core and discovery engine                                        | Approved    | 2026-11-22     | 2026-11-22         | phases/PHASE-07.md |
-| 8   | Matching                                                                | In progress | 2026-11-22     | —                  | —                  |
+| 8   | Matching                                                                | Report sent | 2026-11-22     | —                  | phases/PHASE-08.md |
 | 9   | Realtime chat                                                           | Not started | —              | —                  | —                  |
 | 10  | Notifications, moderation and admin backend                             | Not started | —              | —                  | —                  |
 | 11  | Frontend foundation                                                     | Not started | —              | —                  | —                  |

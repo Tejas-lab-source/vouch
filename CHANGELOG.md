@@ -246,3 +246,38 @@ All notable changes are recorded here, grouped by roadmap phase.
 - Media's development `ContentCheck` is replaced by the pipeline; `MODERATION_PROVIDER` is
   `dev` or `rekognition`.
 - The modules list is now identity, profiles, media, safety, discovery.
+
+## Phase 8 — Matching module
+
+### Added
+
+- `modules/matching` (see its README):
+  - `POST /v1/swipes`: idempotent on `swipeId`; the target must have been served; a like runs
+    one transaction with the pair lock, a block re-check and `createOrGet` on the canonical
+    pair, so a mutual like creates exactly one match and one `match.created.v1`
+  - a blocked pair is never revealed: the swipe answers like a pass and stores nothing
+  - passes buffered in Redis and written in batches of up to 500 every 5 s
+    (`matching.flushPasses`, `matching.writePasses`); a filter contributed to
+    `discovery.candidateFilters` excludes passes still in the buffer
+  - `GET /v1/matches` (cursor pagination, hydrated cards) and `POST /v1/matches/{id}/unmatch`
+    (permanent, idempotent, one `match.unmatched.v1`)
+  - `api.areMatched`, `getMatch`, `likesIn` (count only); consumers for blocks and account
+    deletion (swipes deleted, matches anonymised); nightly pass retention per partition;
+    export of swipes and matches
+- `apps/api/test/invariants/simultaneous-likes.test.js`: 1,000 pairs liking each other at the
+  same instant.
+- `profiles.api.isActive`; the `matching.flushPasses` and `matching.retentionTick` job
+  contracts; readable messages for `NOT_SERVED` and `NOT_MATCHED`.
+- ADRs 0015 (rate-limit keys and proxy trust) and 0016 (matching concurrency).
+
+### Changed
+
+- **Global rate limit (fixes Phase 4):** per user for signed-in requests
+  (`RATE_LIMIT_USER_MINUTE`, default 300) and per client IP otherwise
+  (`RATE_LIMIT_IP_MINUTE`, default 1,000), including requests with a missing or bad token.
+  Authentication is split into `authenticate` and `enforce` so the limiter counts every request.
+- **Client IP (fixes Phase 4):** `CF-Connecting-IP` and `X-Forwarded-For` are believed only
+  from `TRUSTED_PROXIES` (empty by default); otherwise the socket address is used. Modules use
+  `request.clientIp`.
+- `bench:deck` no longer needs per-user forwarded addresses.
+- The modules list is now identity, profiles, media, safety, discovery, matching.
