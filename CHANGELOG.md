@@ -441,3 +441,32 @@ All notable changes are recorded here, grouped by roadmap phase.
   - the Expo export for Android and iOS
   - new `web` and `mobile` CI jobs
 - **Docs:** ADR 0021 (frontend architecture) and a README for every new package and app.
+
+## Phase 12 — Frontend features I: onboarding, profile, discovery and matching
+
+### Added
+
+- **API (additive):**
+  - `PUT /v1/me/photos/order` (the exact set of current photos, one transaction)
+  - `GET /v1/me/likes/count` (a number only)
+- **Storage:** a bucket CORS rule (`PUT` with `content-type` from `CORS_ORIGINS`), applied by
+  `pnpm storage:init`; the R2 rule is documented in the media README.
+- **`scripts/measure-variants.js`:** runs photos through the production image pipeline and
+  prints the variant sizes.
+- **`features-core`:** hooks for profile, photo uploads (resize port, progress, confirm, poll,
+  resume), photo delete and reorder, the deck (prefetch at 3) and swipes (optimistic, stable
+  `swipeId`, rollback), matches, unmatch, the likes count, report and block, and onboarding
+  (resumable). Also allow-listed analytics and a realtime event hub.
+- **Web:**
+  - onboarding, the photo manager, the discover deck (buttons and ←/→), the match moment,
+    matches, profile editing and the chat placeholder
+  - Playwright: two users onboard with browser uploads to SeaweedFS (CORS), match and
+    unmatch; under 18 is refused; axe runs on every new page in light and dark
+- **Mobile:** the same screens with the Expo image picker, image manipulator and image cache,
+  plus a `PanResponder` swipe deck.
+- **Docs:** ADR 0022 and `docs/analytics.md`.
+
+### Changed
+
+- The Phase 11 sign-in now lands in onboarding until the profile is set up.
+- The `ui-native` `Button` accepts an `accessibilityLabel` for icon buttons.

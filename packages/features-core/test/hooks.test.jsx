@@ -376,23 +376,27 @@ describe('profile photos and matches', () => {
   it('reorder is optimistic and rolled back when the server refuses', async () => {
     const api = fakeApi({
       'GET /v1/me/profile': () => [200, profile({ photos: [photo(1), photo(2)] })],
-      'PUT /v1/me/photos/order': () => [
-        400,
-        { error: { code: 'VALIDATION_FAILED', message: 'x' } },
-      ],
+      'PUT /v1/me/photos/order': async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return [400, { error: { code: 'VALIDATION_FAILED', message: 'x' } }];
+      },
     });
     const { Wrapper } = wrapper(api);
     const { result } = renderHook(() => ({ me: useMyProfile(), reorder: useReorderPhotos() }), {
       wrapper: Wrapper,
     });
     await waitFor(() => expect(result.current.me.data?.photos).toHaveLength(2));
-    await act(async () => {
-      await result.current.reorder.mutateAsync([ID(2), ID(1)]).catch(() => {});
+    const order = () => result.current.me.data?.photos.map((/** @type {any} */ p) => p.id);
+    /** @type {Promise<unknown>} */
+    let pending = Promise.resolve();
+    act(() => {
+      pending = result.current.reorder.mutateAsync([ID(2), ID(1)]).catch(() => {});
     });
-    expect(result.current.me.data?.photos.map((/** @type {any} */ p) => p.id)).toEqual([
-      ID(1),
-      ID(2),
-    ]);
+    await waitFor(() => expect(order()).toEqual([ID(2), ID(1)])); // optimistic
+    await act(async () => {
+      await pending;
+    });
+    await waitFor(() => expect(order()).toEqual([ID(1), ID(2)])); // rolled back
     expect(api.calls.find((c) => c.route === 'PUT /v1/me/photos/order')?.body).toEqual({
       photoIds: [ID(2), ID(1)],
     });

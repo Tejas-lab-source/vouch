@@ -19,5 +19,17 @@ refresh cookie works with no CORS. In development, the sign-in code appears in t
 | `pnpm size`  | Fails if the initial JS is over 200 KB gzipped                                |
 | `pnpm e2e`   | Playwright against the real API in Testcontainers, with axe in light and dark |
 
-Screens register into slots through `src/app/features.js`. Phases 12 and 13 add the product
-features.
+## Screens (Phase 12)
+
+- **Onboarding** (`/onboarding`, resumable). The home shell waits until it is done.
+- **Discover:** the deck, with Like and Pass buttons, ←/→ keys, and report or block on the card.
+- **Match moment:** after a matching swipe or a `match.new` event.
+- **Matches:** a "new" row, the list, the likes count, and unmatch with confirmation.
+- **Profile:** fields, bio, photos and the slots.
+- **Chat:** `/chats/:id` is a placeholder until Phase 13.
+
+Photos are resized in the browser to at most 2048 px and uploaded straight to storage (the
+bucket's CORS rule allows `PUT` from the web origins).
+
+Screens register into slots through `src/app/features.js`. The e2e suite (`e2e/match.spec.js`)
+runs two browser users against the real API, with SeaweedFS for storage.
