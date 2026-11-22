@@ -100,6 +100,27 @@ export const EnvSchema = z
       .min(1)
       .default(300)
       .describe('Global limit per signed-in user, per minute.'),
+    SOCKET_REFRESH_GRACE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(600)
+      .default(60)
+      .describe('A socket whose token expired gets this long to send auth.refresh.'),
+    RATE_LIMIT_MESSAGES_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(60)
+      .describe('Chat messages per user per minute (fails open).'),
+    CHAT_MAX_LINKS_PER_MESSAGE: z.coerce.number().int().min(0).max(10).default(2),
+    CHAT_LINKS_AFTER_MESSAGES: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(50)
+      .default(3)
+      .describe('No links in a sender’s first N messages of a conversation.'),
     RATE_LIMIT_IP_MINUTE: z.coerce
       .number()
       .int()

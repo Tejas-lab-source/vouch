@@ -71,7 +71,15 @@ export const PIPELINES = Object.freeze(
         }),
         output: z.discriminatedUnion('allow', [
           z.strictObject({ allow: z.literal(true), body: z.string() }),
-          z.strictObject({ allow: z.literal(false), code: AppErrorCode }),
+          z.strictObject({
+            allow: z.literal(false),
+            code: AppErrorCode,
+            reason: z
+              .string()
+              .max(200)
+              .optional()
+              .describe('Readable reason shown to the sender (Phase 9).'),
+          }),
         ]),
       },
       {

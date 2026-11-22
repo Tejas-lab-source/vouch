@@ -47,6 +47,21 @@ export const socketFixtures = {
     valid: [{ ok: true, messages: [s.message], truncated: false }],
     invalid: [{ ok: true, messages: [s.message] }],
   },
+  'socket.auth.refresh.payload': { valid: [{ token: 'eyJhbGciOi' }], invalid: [{ token: '' }] },
+  'socket.auth.refresh.ack': {
+    valid: [
+      { ok: true, expiresAt: s.TS },
+      {
+        ok: false,
+        error: { code: 'UNAUTHENTICATED', message: 'Sign in to continue.', requestId: 'r1' },
+      },
+    ],
+    invalid: [{ ok: true }],
+  },
+  'socket.auth.expired.payload': {
+    valid: [{ reason: 'token_expired' }],
+    invalid: [{ reason: 'other' }],
+  },
   'socket.message.new.payload': { valid: [s.message], invalid: [{ ...s.message, seq: 0 }] },
   'socket.match.new.payload': {
     valid: [{ matchId: s.ID, conversationId: null, user: s.card }],
@@ -280,6 +295,7 @@ export const jobFixtures = {
     valid: [{ partition: 15, olderThan: s.TS }],
     invalid: [{ partition: 16, olderThan: s.TS }],
   },
+  'job.chat.retentionTick': { valid: [{}], invalid: [{ olderThan: 'x' }] },
   'job.matching.flushPasses': { valid: [{}], invalid: [{ now: true }] },
   'job.matching.retentionTick': { valid: [{}], invalid: [{ partition: 1 }] },
   'job.media.retentionTick': { valid: [{}], invalid: [{ olderThan: 'now' }] },
@@ -443,6 +459,7 @@ export const envFixtures = {
       { ...baseEnv, MODERATION_AWS_REGION: 'mumbai' },
       { ...baseEnv, TRUSTED_PROXIES: '10.0.0.0/8, not-an-ip' },
       { ...baseEnv, RATE_LIMIT_USER_MINUTE: '0' },
+      { ...baseEnv, CHAT_MAX_LINKS_PER_MESSAGE: '11' },
     ],
   },
 };

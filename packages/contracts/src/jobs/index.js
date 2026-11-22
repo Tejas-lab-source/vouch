@@ -49,6 +49,12 @@ export const JOBS = Object.freeze(
         }),
       }),
       defineJob({
+        name: 'chat.retentionTick',
+        queue: 'bulk',
+        description: 'Nightly: delete messages of conversations closed more than 30 days ago.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
         name: 'matching.flushPasses',
         queue: 'bulk',
         description:

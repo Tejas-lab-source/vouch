@@ -6329,6 +6329,130 @@
             }
           ]
         }
+      },
+      "auth.refresh": {
+        "payload": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "additionalProperties": false
+        },
+        "ack": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean",
+                  "const": true
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              },
+              "required": [
+                "ok",
+                "expiresAt"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean",
+                  "const": false
+                },
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "VALIDATION_FAILED",
+                        "UNAUTHENTICATED",
+                        "FORBIDDEN",
+                        "NOT_FOUND",
+                        "CONFLICT",
+                        "IDEMPOTENCY_KEY_REUSED",
+                        "APP_VERSION_UNSUPPORTED",
+                        "RATE_LIMITED",
+                        "FEATURE_DISABLED",
+                        "INTERNAL",
+                        "TEMPORARILY_UNAVAILABLE",
+                        "CAPTCHA_FAILED",
+                        "EMAIL_DOMAIN_NOT_ALLOWED",
+                        "OTP_INVALID",
+                        "OTP_EXPIRED",
+                        "OTP_ATTEMPTS_EXHAUSTED",
+                        "SIGNUP_DETAILS_REQUIRED",
+                        "UNDERAGE",
+                        "REFRESH_TOKEN_INVALID",
+                        "REFRESH_TOKEN_REUSED",
+                        "ACCOUNT_BANNED",
+                        "ACCOUNT_PENDING_REVIEW",
+                        "UNKNOWN_SECTION_TYPE",
+                        "PROFILE_INCOMPLETE",
+                        "UNSUPPORTED_MEDIA_TYPE",
+                        "FILE_TOO_LARGE",
+                        "PHOTO_LIMIT_REACHED",
+                        "UPLOAD_NOT_UPLOADED",
+                        "NOT_SERVED",
+                        "NOT_MATCHED",
+                        "BLOCKED",
+                        "CONVERSATION_CLOSED",
+                        "NOT_A_MEMBER",
+                        "MESSAGE_REJECTED",
+                        "MFA_REQUIRED",
+                        "IP_NOT_ALLOWED"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500,
+                      "description": "Human-readable; never contains PII."
+                    },
+                    "details": {
+                      "description": "Machine-readable extras, for example the failing field paths.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "ok",
+                "error"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
       }
     },
     "serverToClient": {
@@ -6555,6 +6679,21 @@
           },
           "required": [
             "conversationId",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "auth.expired": {
+        "payload": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string",
+              "const": "token_expired"
+            }
+          },
+          "required": [
             "reason"
           ],
           "additionalProperties": false
@@ -7226,6 +7365,14 @@
         "required": [
           "passes"
         ],
+        "additionalProperties": false
+      }
+    },
+    "chat.retentionTick": {
+      "queue": "bulk",
+      "payload": {
+        "type": "object",
+        "properties": {},
         "additionalProperties": false
       }
     },
@@ -8033,6 +8180,11 @@
                   "MFA_REQUIRED",
                   "IP_NOT_ALLOWED"
                 ]
+              },
+              "reason": {
+                "description": "Readable reason shown to the sender (Phase 9).",
+                "type": "string",
+                "maxLength": 200
               }
             },
             "required": [
