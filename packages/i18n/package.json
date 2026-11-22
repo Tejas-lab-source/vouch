@@ -1,0 +1,19 @@
+{
+  "name": "@vouch/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Strings and the t() helper (English in v1).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@vouch/config": "workspace:*",
+    "eslint": "9.39.5",
+    "vitest": "5.1.1"
+  }
+}

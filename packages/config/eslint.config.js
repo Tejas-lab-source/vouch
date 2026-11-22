@@ -43,8 +43,32 @@ export default [
     },
   },
   {
+    // JSX (Phase 11). ESLint's scope analysis does not count JSX usage, so unused variables
+    // in .jsx files are left to TypeScript (`noUnusedLocals`), which understands JSX.
+    files: ['**/*.jsx'],
+    languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
+    rules: { 'no-unused-vars': 'off' },
+  },
+  {
     files: ['**/*.cjs'],
     ...n.configs['flat/recommended-script'],
     languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
+  },
+];
+
+/**
+ * Extra config for frontend packages and apps (browser, React Native, bundlers): browser
+ * globals, and the Node-only rules of eslint-plugin-n off (bundlers resolve imports, and the
+ * code runs in browsers and React Native, not Node).
+ * @type {import('eslint').Linter.Config[]}
+ */
+export const frontend = [
+  {
+    files: ['**/*.js', '**/*.jsx'],
+    ignores: ['**/*.config.js', 'scripts/**', 'e2e/**'],
+    languageOptions: { globals: { ...globals.browser } },
+    rules: Object.fromEntries(
+      Object.keys(n.configs['flat/recommended-module'].rules ?? {}).map((rule) => [rule, 'off']),
+    ),
   },
 ];
