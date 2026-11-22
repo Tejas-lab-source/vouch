@@ -120,6 +120,15 @@ export function normaliseError(error) {
   }
   if (error?.statusCode === 413)
     return new AppError('VALIDATION_FAILED', { message: 'The request body is too large.' });
+  if (error?.statusCode === 415) {
+    return new AppError('UNSUPPORTED_MEDIA_TYPE', {
+      message: 'Send the request body as application/json.',
+    });
+  }
+  // Any other client error raised by Fastify itself is the caller's fault, never a 500.
+  if (error?.code?.startsWith?.('FST_ERR') && error.statusCode >= 400 && error.statusCode < 500) {
+    return new AppError('VALIDATION_FAILED');
+  }
   return error;
 }
 
