@@ -476,18 +476,20 @@ describe('profiles and media (ROLE=all, real Postgres, Redis and S3)', () => {
         payload: { photoIds },
         headers: auth(token),
       });
+    // Uploads are placed as their events are consumed, so the starting order is either one.
     const before = (await getProfile(user.token)).photos.map((/** @type {any} */ p) => p.id);
-    expect(before).toEqual([a, b]);
-    const moved = await reorder(user.token, [b, a]);
+    expect([...before].sort()).toEqual([a, b].sort());
+    const [first, second] = /** @type {[string, string]} */ (before);
+    const moved = await reorder(user.token, [second, first]);
     expect(moved.statusCode).toBe(200);
     const view = reorderMyPhotosEndpoint.response.schema.parse(moved.json());
     expect(view.photos.map((/** @type {any} */ p) => [p.id, p.position])).toEqual([
-      [b, 0],
-      [a, 1],
+      [second, 0],
+      [first, 1],
     ]);
     expect((await getProfile(user.token)).photos.map((/** @type {any} */ p) => p.id)).toEqual([
-      b,
-      a,
+      second,
+      first,
     ]);
     for (const photoIds of [[b], [b, theirs], [b, a, theirs], [b, b]]) {
       const refused = await reorder(user.token, photoIds);
