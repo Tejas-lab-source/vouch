@@ -115,6 +115,13 @@ describe(
     it('quiet hours and a switched-off preference suppress the push (and say why)', async () => {
       const { a, c, tc, conversationId } = await pair();
       // Quiet all day except a zero-length window, in the user's time zone: always quiet.
+      // GET returns the defaults first, then what was saved.
+      const defaults = await b.call('GET', '/v1/me/notification-prefs', { token: c.token });
+      expect(defaults.body).toMatchObject({
+        pushMatches: true,
+        pushMessages: true,
+        quietHours: null,
+      });
       const prefs = await b.call('PUT', '/v1/me/notification-prefs', {
         token: c.token,
         body: {
@@ -126,6 +133,10 @@ describe(
         },
       });
       expect(prefs.status).toBe(200);
+      expect((await b.call('GET', '/v1/me/notification-prefs', { token: c.token })).body).toEqual(
+        prefs.body,
+      );
+      expect(prefs.body.quietHours).toEqual({ startMinute: 0, endMinute: 1439 });
       const sa = await b.socket(a.token);
       const before = pushesTo(tc).length;
       await send(sa, conversationId, 'late night');

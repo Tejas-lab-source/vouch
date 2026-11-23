@@ -267,6 +267,15 @@ export const getMyProfile = (client, input = {}) =>
   client.call(ENDPOINTS.getMyProfile, /** @type {CallInput} */ (input));
 
 /**
+ * GET /v1/me/notification-prefs — Read push preferences and quiet hours (defaults until first saved).
+ * @param {ApiClient} client
+ * @param {{ signal?: AbortSignal }} [input]
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').getNotificationPrefs.response.schema>>}
+ */
+export const getNotificationPrefs = (client, input = {}) =>
+  client.call(ENDPOINTS.getNotificationPrefs, /** @type {CallInput} */ (input));
+
+/**
  * GET /v1/conversations — List the caller’s conversations, most recently active first.
  * @param {ApiClient} client
  * @param {{ query?: import('zod').input<typeof import('@vouch/contracts').listConversations.query>, signal?: AbortSignal }} [input]
@@ -301,6 +310,15 @@ export const listMatches = (client, input = {}) =>
  */
 export const listMessages = (client, input) =>
   client.call(ENDPOINTS.listMessages, /** @type {CallInput} */ (input));
+
+/**
+ * GET /v1/me/blocks — The people you blocked, newest first.
+ * @param {ApiClient} client
+ * @param {{ signal?: AbortSignal }} [input]
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').listMyBlocks.response.schema>>}
+ */
+export const listMyBlocks = (client, input = {}) =>
+  client.call(ENDPOINTS.listMyBlocks, /** @type {CallInput} */ (input));
 
 /**
  * POST /v1/auth/logout — Sign out this device: revokes the current session and its refresh-token family.
@@ -400,6 +418,15 @@ export const submitIdCard = (client, input) =>
  */
 export const swipe = (client, input) =>
   client.call(ENDPOINTS.swipe, /** @type {CallInput} */ (input));
+
+/**
+ * DELETE /v1/blocks/{userId} — Remove your block on a user.
+ * @param {ApiClient} client
+ * @param {{ params: import('zod').input<typeof import('@vouch/contracts').unblockUser.params>, signal?: AbortSignal }} input
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').unblockUser.response.schema>>}
+ */
+export const unblockUser = (client, input) =>
+  client.call(ENDPOINTS.unblockUser, /** @type {CallInput} */ (input));
 
 /**
  * POST /v1/matches/{id}/unmatch — Unmatch permanently; the conversation closes for both users.
@@ -627,6 +654,13 @@ export const ENDPOINTS = Object.freeze({
     auth: 'user',
     idempotency: 'none',
   },
+  getNotificationPrefs: {
+    id: 'getNotificationPrefs',
+    method: 'GET',
+    path: '/v1/me/notification-prefs',
+    auth: 'user',
+    idempotency: 'none',
+  },
   listConversations: {
     id: 'listConversations',
     method: 'GET',
@@ -652,6 +686,13 @@ export const ENDPOINTS = Object.freeze({
     id: 'listMessages',
     method: 'GET',
     path: '/v1/conversations/{id}/messages',
+    auth: 'user',
+    idempotency: 'none',
+  },
+  listMyBlocks: {
+    id: 'listMyBlocks',
+    method: 'GET',
+    path: '/v1/me/blocks',
     auth: 'user',
     idempotency: 'none',
   },
@@ -726,6 +767,13 @@ export const ENDPOINTS = Object.freeze({
     idempotency: 'body',
   },
   swipe: { id: 'swipe', method: 'POST', path: '/v1/swipes', auth: 'user', idempotency: 'body' },
+  unblockUser: {
+    id: 'unblockUser',
+    method: 'DELETE',
+    path: '/v1/blocks/{userId}',
+    auth: 'user',
+    idempotency: 'none',
+  },
   unmatch: {
     id: 'unmatch',
     method: 'POST',

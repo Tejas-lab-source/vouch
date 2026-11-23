@@ -22,16 +22,20 @@ Presence details never leave the module.
 | `message.delivered` | `markDelivered`: the same, for the delivered cursor                               |
 | `sync`              | Up to 500 messages after each `{ conversationId, lastSeq }`, in seq order         |
 
+When a read or delivered cursor moves forward, the other member gets `receipt.updated`
+`{ conversationId, deliveredSeq, readSeq }` (cursors only, never content; Phase 13). A repeated or
+older cursor sends nothing.
+
 Server events: `message.new` (to both members, after commit), `match.new` (to both, when the
 conversation opens), and `conversation.closed { conversationId, reason }`. The platform adds
 `auth.refresh` and `auth.expired`.
 
 ## HTTP routes (contracts in `packages/contracts/src/http/chat.js`)
 
-| Route                                 | Auth | Use case                                                      |
-| ------------------------------------- | ---- | ------------------------------------------------------------- |
-| `GET /v1/conversations`               | user | `listConversations`: by latest activity, cursor-paginated     |
-| `GET /v1/conversations/{id}/messages` | user | `listMessages`: history by seq; members only (`NOT_A_MEMBER`) |
+| Route                                 | Auth | Use case                                                                                                                                       |
+| ------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/conversations`               | user | `listConversations`: by latest activity, cursor-paginated                                                                                      |
+| `GET /v1/conversations/{id}/messages` | user | `listMessages`: history by seq (`afterSeq` forwards, `beforeSeq` backwards); the other member's `peerDeliveredSeq`/`peerReadSeq`; members only |
 
 ## Send rules
 

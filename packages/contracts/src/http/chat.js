@@ -36,15 +36,35 @@ export const listMessages = defineEndpoint({
   summary: 'Message history and gap replay, in seq order.',
   description:
     'Messages are addressed by `(conversationId, seq)`, so this list pages by seq instead of ' +
-    'an opaque cursor: pass `nextAfterSeq` back as `afterSeq`. It is null on the last page.',
+    'an opaque cursor: pass `nextAfterSeq` back as `afterSeq`. It is null on the last page. ' +
+    'To load history backwards (a chat screen opens at the newest message), pass `beforeSeq` ' +
+    'instead: the newest `limit` messages before it, in seq order, and `prevBeforeSeq` for the ' +
+    'next older page (null at the start). `peerDeliveredSeq` and `peerReadSeq` are the other ' +
+    'member’s cursors, for delivery and read states on your own messages.',
   params: z.strictObject({ id: ConversationId }),
   query: z.strictObject({
     afterSeq: z.coerce.number().int().min(0).default(0),
+    beforeSeq: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe('Page backwards: messages with seq below this (Phase 13).'),
     limit: z.coerce.number().int().min(1).max(100).default(50),
   }),
   response: {
     status: 200,
-    schema: z.strictObject({ items: z.array(Message), nextAfterSeq: z.int().min(1).nullable() }),
+    schema: z.strictObject({
+      items: z.array(Message),
+      nextAfterSeq: z.int().min(1).nullable(),
+      prevBeforeSeq: z
+        .int()
+        .min(1)
+        .nullable()
+        .describe('With `beforeSeq`: pass back as `beforeSeq` for older messages (Phase 13).'),
+      peerDeliveredSeq: z.int().min(0).describe('The other member’s delivered cursor (Phase 13).'),
+      peerReadSeq: z.int().min(0).describe('The other member’s read cursor (Phase 13).'),
+    }),
   },
   errors: ['NOT_FOUND', 'NOT_A_MEMBER'],
 });

@@ -38,6 +38,7 @@
  *   byClientId(conversationId: string, clientMsgId: string): Promise<MessageRecord | null>,
  *   last(conversationId: string, seq: number): Promise<MessageRecord | null>,
  *   after(conversationId: string, afterSeq: number, limit: number): Promise<MessageRecord[]>,
+ *   before(conversationId: string, beforeSeq: number, limit: number): Promise<MessageRecord[]>,
  *   countBySender(conversationId: string, senderId: string, upTo: number): Promise<number>,
  *   sentBy(userId: string): Promise<MessageRecord[]>,
  *   removeBySender(userId: string): Promise<number>,
@@ -48,6 +49,7 @@
  *   advanceRead(conversationId: string, userId: string, seq: number): Promise<void>,
  *   advanceDelivered(conversationId: string, userId: string, seq: number): Promise<void>,
  *   lastRead(conversationId: string, userId: string): Promise<number>,
+ *   get(conversationId: string, userId: string): Promise<{ readSeq: number, deliveredSeq: number }>,
  *   removeForUser(userId: string): Promise<number>,
  * }} cursors
  */

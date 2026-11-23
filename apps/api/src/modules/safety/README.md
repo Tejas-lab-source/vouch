@@ -24,6 +24,8 @@ fallback, the photo review queue and repeat offences. The admin module calls par
 | Route                                   | Auth                  | Use case                                                                  |
 | --------------------------------------- | --------------------- | ------------------------------------------------------------------------- |
 | `POST /v1/blocks`                       | user                  | `block`: idempotent; `NOT_FOUND` for unknown users; no self-blocking      |
+| `GET /v1/me/blocks`                     | user                  | `listMyBlocks`: your own blocks only, with a name (null if not visible)   |
+| `DELETE /v1/blocks/{userId}`            | user                  | `unblockMine`: removes only your block; ended matches stay ended          |
 | `POST /v1/reports`                      | user                  | `report`: evidence snapshot; 20 a day; auto-hide at 3 reporters in 7 days |
 | `POST /v1/verification/id-card/uploads` | user (pending review) | Presigned PUTs for the ID photo and a selfie (private `verification/`)    |
 | `POST /v1/verification/id-card`         | user (pending review) | Submits them for review (idempotent on the submission id)                 |

@@ -80,18 +80,34 @@ export function makeConversations(deps) {
 
   const listMessages = useCase(
     'chat.listMessages',
-    /** @param {{ id: string, afterSeq: number, limit: number }} input */
+    /** @param {{ id: string, afterSeq: number, beforeSeq?: number, limit: number }} input */
     async (input, ctx) => {
       const me = /** @type {string} */ (ctx.actor?.userId);
       const conversation = await memberConversation(input.id, me);
-      const rows = await read((stores) =>
-        stores.messages.after(conversation.id, input.afterSeq, input.limit + 1),
-      );
-      const pageRows = rows.slice(0, input.limit);
+      const peer = otherMember(conversation, me);
+      const backwards = input.beforeSeq !== undefined;
+      const { rows, cursors } = await read(async (stores) => ({
+        rows: backwards
+          ? await stores.messages.before(
+              conversation.id,
+              /** @type {number} */ (input.beforeSeq),
+              input.limit + 1,
+            )
+          : await stores.messages.after(conversation.id, input.afterSeq, input.limit + 1),
+        cursors: await stores.cursors.get(conversation.id, peer),
+      }));
+      // Backwards pages hold the newest `limit` rows before `beforeSeq` (the extra row is the
+      // oldest one, which only says that more exist).
+      const pageRows = backwards ? rows.slice(-input.limit) : rows.slice(0, input.limit);
       const ids = await publicIdsOf([conversation.userLow, conversation.userHigh]);
       return {
         items: pageRows.map((m) => messageView(m, ids)),
-        nextAfterSeq: rows.length > input.limit ? (pageRows.at(-1)?.seq ?? null) : null,
+        nextAfterSeq:
+          !backwards && rows.length > input.limit ? (pageRows.at(-1)?.seq ?? null) : null,
+        prevBeforeSeq:
+          backwards && rows.length > input.limit ? (pageRows.at(0)?.seq ?? null) : null,
+        peerDeliveredSeq: cursors.deliveredSeq,
+        peerReadSeq: cursors.readSeq,
       };
     },
   );

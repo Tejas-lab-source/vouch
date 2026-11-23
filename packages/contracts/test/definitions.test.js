@@ -23,7 +23,7 @@ const base = {
 
 describe('endpoint definitions', () => {
   it('every path is under /v1 and every id and route is unique', () => {
-    expect(ENDPOINTS.length).toBe(47);
+    expect(ENDPOINTS.length).toBe(50);
     for (const endpoint of ENDPOINTS) expect(endpoint.path.startsWith('/v1/')).toBe(true);
     expect(new Set(ENDPOINTS.map((e) => e.id)).size).toBe(ENDPOINTS.length);
     expect(new Set(ENDPOINTS.map((e) => `${e.method} ${e.path}`)).size).toBe(ENDPOINTS.length);

@@ -74,6 +74,12 @@ export function createChatStores(tx) {
             WHERE conversation_id = ${conversationId} AND seq > ${afterSeq}
             ORDER BY seq LIMIT ${limit}`
         ),
+      before: async (conversationId, beforeSeq, limit) =>
+        /** @type {any} */ (
+          await tx`SELECT ${MESSAGE} FROM chat.messages
+            WHERE conversation_id = ${conversationId} AND seq < ${beforeSeq}
+            ORDER BY seq DESC LIMIT ${limit}`
+        ).reverse(),
       countBySender: async (conversationId, senderId, upTo) =>
         Number(
           (
@@ -125,6 +131,12 @@ export function createChatStores(tx) {
               WHERE conversation_id = ${conversationId} AND user_id = ${userId}`
           )[0]?.n ?? 0,
         ),
+      get: async (conversationId, userId) => {
+        const [row] =
+          await tx`SELECT last_read_seq::int AS read, last_delivered_seq::int AS delivered
+          FROM chat.read_cursors WHERE conversation_id = ${conversationId} AND user_id = ${userId}`;
+        return { readSeq: Number(row?.read ?? 0), deliveredSeq: Number(row?.delivered ?? 0) };
+      },
       removeForUser: async (userId) =>
         (await tx`DELETE FROM chat.read_cursors WHERE user_id = ${userId}`).count,
     },

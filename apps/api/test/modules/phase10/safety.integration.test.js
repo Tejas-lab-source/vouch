@@ -141,6 +141,47 @@ describe('safety part 2: reports, moderation, bans, ID-card reviews (Phase 10)',
     expect(again.status).toBe(409);
   });
 
+  it('blocked users: the caller sees only their own blocks (with a name) and can unblock; the match stays ended', async () => {
+    const [me, them, third] = [await b.signUp(), await b.signUp(), await b.signUp()];
+    await b.completeProfile(them, { gender: 1 });
+    await b.match(me, them);
+    const blocked = await b.call('POST', '/v1/blocks', {
+      token: me.token,
+      body: { targetId: them.publicId },
+    });
+    expect(blocked.status).toBe(200);
+    // The block ends the match (matching consumes user.blocked.v1).
+    await eventually(
+      async () =>
+        (await b.call('GET', '/v1/matches', { token: me.token })).body.items.length === 0 || null,
+      WAIT_MS,
+    );
+    // `third` blocks `me`: that block is not shown to `me`.
+    await b.call('POST', '/v1/blocks', { token: third.token, body: { targetId: me.publicId } });
+    const list = await b.call('GET', '/v1/me/blocks', { token: me.token });
+    expect(list.status).toBe(200);
+    expect(list.body.items).toEqual([
+      { userId: them.publicId, name: expect.any(String), blockedAt: expect.any(String) },
+    ]);
+    expect((await b.call('GET', '/v1/me/blocks', { token: them.token })).body.items).toEqual([]);
+    // Unblocking someone else's block of you is a no-op.
+    const notMine = await b.call('DELETE', `/v1/blocks/${third.publicId}`, { token: me.token });
+    expect(notMine.body).toEqual({ unblocked: false });
+    const done = await b.call('DELETE', `/v1/blocks/${them.publicId}`, { token: me.token });
+    expect(done.body).toEqual({ unblocked: true });
+    expect(
+      (await b.call('DELETE', `/v1/blocks/${them.publicId}`, { token: me.token })).body,
+    ).toEqual({
+      unblocked: false,
+    });
+    expect((await b.call('GET', '/v1/me/blocks', { token: me.token })).body.items).toEqual([]);
+    // third's block on me still stands; the ended match is not restored.
+    expect((await b.call('GET', '/v1/me/blocks', { token: third.token })).body.items).toHaveLength(
+      1,
+    );
+    expect((await b.call('GET', '/v1/matches', { token: me.token })).body.items).toEqual([]);
+  });
+
   it('a ban revokes sessions, removes the user from decks and closes conversations within one consumer cycle', async () => {
     const [bad, other, viewer] = [await b.signUp(), await b.signUp(), await b.signUp()];
     await b.completeProfile(bad);

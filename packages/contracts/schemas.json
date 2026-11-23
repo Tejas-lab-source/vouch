@@ -3260,6 +3260,12 @@
               "minimum": 0,
               "maximum": 9007199254740991
             },
+            "beforeSeq": {
+              "description": "Page backwards: messages with seq below this (Phase 13).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
             "limit": {
               "default": 50,
               "type": "integer",
@@ -3340,11 +3346,39 @@
                 "type": "null"
               }
             ]
+          },
+          "prevBeforeSeq": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With `beforeSeq`: pass back as `beforeSeq` for older messages (Phase 13)."
+          },
+          "peerDeliveredSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The other member’s delivered cursor (Phase 13)."
+          },
+          "peerReadSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The other member’s read cursor (Phase 13)."
           }
         },
         "required": [
           "items",
-          "nextAfterSeq"
+          "nextAfterSeq",
+          "prevBeforeSeq",
+          "peerDeliveredSeq",
+          "peerReadSeq"
         ],
         "additionalProperties": false
       }
@@ -3752,6 +3786,141 @@
         "additionalProperties": false
       }
     },
+    "listMyBlocks": {
+      "module": "safety",
+      "method": "GET",
+      "path": "/v1/me/blocks",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{16,32}$",
+                  "description": "Random public id of a user. Internal user UUIDs are never exposed."
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 50
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Null when their profile is gone."
+                },
+                "blockedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              },
+              "required": [
+                "userId",
+                "name",
+                "blockedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unblockUser": {
+      "module": "safety",
+      "method": "DELETE",
+      "path": "/v1/blocks/{userId}",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,32}$",
+              "description": "Random public id of a user. Internal user UUIDs are never exposed."
+            }
+          },
+          "required": [
+            "userId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "unblocked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "unblocked"
+        ],
+        "additionalProperties": false
+      }
+    },
     "putNotificationPrefs": {
       "module": "notifications",
       "method": "PUT",
@@ -3836,6 +4005,93 @@
             "timezone"
           ],
           "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "pushMatches": {
+            "type": "boolean"
+          },
+          "pushMessages": {
+            "type": "boolean"
+          },
+          "pushLikesDigest": {
+            "type": "boolean"
+          },
+          "quietHours": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "startMinute": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1439
+                  },
+                  "endMinute": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1439
+                  }
+                },
+                "required": [
+                  "startMinute",
+                  "endMinute"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for no quiet hours. May wrap past midnight (start > end)."
+          },
+          "timezone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "IANA time zone, for example Asia/Kolkata."
+          }
+        },
+        "required": [
+          "pushMatches",
+          "pushMessages",
+          "pushLikesDigest",
+          "quietHours",
+          "timezone"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "getNotificationPrefs": {
+      "module": "notifications",
+      "method": "GET",
+      "path": "/v1/me/notification-prefs",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
         }
       },
       "response": {
@@ -7754,6 +8010,35 @@
             "matchId",
             "conversationId",
             "user"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "receipt.updated": {
+        "payload": {
+          "type": "object",
+          "properties": {
+            "conversationId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "description": "Conversation id (UUIDv7)."
+            },
+            "deliveredSeq": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "readSeq": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "conversationId",
+            "deliveredSeq",
+            "readSeq"
           ],
           "additionalProperties": false
         }

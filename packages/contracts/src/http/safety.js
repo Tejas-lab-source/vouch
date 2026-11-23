@@ -97,4 +97,43 @@ export const submitIdCard = defineEndpoint({
   errors: ['FORBIDDEN', 'CONFLICT', 'NOT_FOUND', 'UPLOAD_NOT_UPLOADED'],
 });
 
-export const safetyEndpoints = [blockUser, reportUser, createIdCardUploads, submitIdCard];
+/** Someone the caller blocked (Phase 13 settings). */
+export const BlockedUser = z.strictObject({
+  userId: PublicUserId,
+  name: z.string().min(1).max(50).nullable().describe('Null when their profile is gone.'),
+  blockedAt: Timestamp,
+});
+
+export const listMyBlocks = defineEndpoint({
+  id: 'listMyBlocks',
+  module: 'safety',
+  method: 'GET',
+  path: '/v1/me/blocks',
+  auth: 'user',
+  summary: 'The people you blocked, newest first.',
+  description: 'Only your own blocks: who blocked you is never revealed.',
+  response: { status: 200, schema: z.strictObject({ items: z.array(BlockedUser).max(1000) }) },
+});
+
+export const unblockUser = defineEndpoint({
+  id: 'unblockUser',
+  module: 'safety',
+  method: 'DELETE',
+  path: '/v1/blocks/{userId}',
+  auth: 'user',
+  summary: 'Remove your block on a user.',
+  description:
+    'Idempotent: unblocking someone not blocked returns `unblocked: false`. An ended match or ' +
+    'closed conversation is not restored; you may see each other in decks again.',
+  params: z.strictObject({ userId: PublicUserId }),
+  response: { status: 200, schema: z.strictObject({ unblocked: z.boolean() }) },
+});
+
+export const safetyEndpoints = [
+  blockUser,
+  reportUser,
+  createIdCardUploads,
+  submitIdCard,
+  listMyBlocks,
+  unblockUser,
+];

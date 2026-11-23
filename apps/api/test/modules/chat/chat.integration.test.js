@@ -174,6 +174,52 @@ describe('chat across two gateways (ROLE=ws ×2, one Redis)', () => {
     ).toEqual([]);
   });
 
+  it('history pages backwards from the newest; receipts reach the sender as cursors only (members only)', async () => {
+    const { a, b, conversationId } = await stack.matchedPair();
+    const sender = await open(stack.gatewayA, a);
+    const receipts = collect(sender, 'receipt.updated');
+    for (let i = 1; i <= 5; i += 1) await send(sender, conversationId, `p${i}`);
+    // Newest two, then the two before them, then the first one.
+    const pages = [];
+    let before = /** @type {number | null} */ (6);
+    while (before) {
+      const page = listMessagesEndpoint.response.schema.parse(
+        (
+          await stack.rest(
+            a,
+            `/v1/conversations/${conversationId}/messages?beforeSeq=${before}&limit=2`,
+          )
+        ).body,
+      );
+      pages.push(page.items.map((/** @type {any} */ m) => m.seq));
+      before = page.prevBeforeSeq;
+    }
+    expect(pages).toEqual([[4, 5], [2, 3], [1]]);
+    // The recipient reports delivery then reading: the sender gets the cursors, no content.
+    const recipient = await open(stack.gatewayB, b);
+    recipient.emit('message.delivered', { conversationId, seq: 5 });
+    await eventually(() => receipts.some((r) => r.deliveredSeq === 5), WAIT_MS);
+    recipient.emit('message.read', { conversationId, seq: 3 });
+    await eventually(() => receipts.some((r) => r.readSeq === 3), WAIT_MS);
+    const receipt = new Map(Object.entries(SERVER_EVENTS)).get('receipt.updated')?.payload;
+    for (const r of receipts) expect(receipt?.parse(r)).toEqual(r);
+    expect(receipts.at(-1)).toEqual({ conversationId, deliveredSeq: 5, readSeq: 3 });
+    // A repeated or older cursor sends nothing new.
+    const count = receipts.length;
+    recipient.emit('message.read', { conversationId, seq: 2 });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(receipts).toHaveLength(count);
+    // The REST view carries the other member's cursors too.
+    const latest = (await stack.rest(a, `/v1/conversations/${conversationId}/messages?beforeSeq=6`))
+      .body;
+    expect(latest).toMatchObject({ peerDeliveredSeq: 5, peerReadSeq: 3, prevBeforeSeq: null });
+    // A stranger moving cursors in this conversation changes nothing and tells no one.
+    const stranger = await open(stack.gatewayB, stack.fresh());
+    stranger.emit('message.read', { conversationId, seq: 5 });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(receipts).toHaveLength(count);
+  });
+
   it('message.created.v1 (for push) only when the recipient is offline, and never with the body', async () => {
     const { a, b, conversationId } = await stack.matchedPair();
     const sender = await open(stack.gatewayA, a);

@@ -270,15 +270,44 @@ export const httpFixtures = {
   },
   'listMessages.response': {
     valid: [
-      { items: [s.message], nextAfterSeq: 7 },
-      { items: [], nextAfterSeq: null },
+      {
+        items: [s.message],
+        nextAfterSeq: 7,
+        prevBeforeSeq: null,
+        peerDeliveredSeq: 7,
+        peerReadSeq: 5,
+      },
+      { items: [], nextAfterSeq: null, prevBeforeSeq: 12, peerDeliveredSeq: 0, peerReadSeq: 0 },
     ],
-    invalid: [{ items: [{ ...s.message, id: s.ID }], nextAfterSeq: null }],
+    invalid: [
+      {
+        items: [{ ...s.message, id: s.ID }],
+        nextAfterSeq: null,
+        prevBeforeSeq: null,
+        peerDeliveredSeq: 0,
+        peerReadSeq: 0,
+      },
+      { items: [], nextAfterSeq: null, prevBeforeSeq: null, peerDeliveredSeq: -1, peerReadSeq: 0 },
+    ],
   },
 
   // safety
   'blockUser.body': { valid: [{ targetId: s.PUBLIC_ID }], invalid: [{ targetId: s.ID }] },
   'blockUser.response': { valid: [{ blocked: true }], invalid: [{ blocked: 'yes' }] },
+  'listMyBlocks.response': {
+    valid: [
+      { items: [] },
+      {
+        items: [
+          { userId: s.PUBLIC_ID, name: 'Kabir', blockedAt: s.TS },
+          { userId: s.PUBLIC_ID, name: null, blockedAt: s.TS },
+        ],
+      },
+    ],
+    invalid: [{ items: [{ userId: s.ID, name: 'Kabir', blockedAt: s.TS }] }],
+  },
+  'unblockUser.params': { valid: [{ userId: s.PUBLIC_ID }], invalid: [{ userId: s.ID }] },
+  'unblockUser.response': { valid: [{ unblocked: true }, { unblocked: false }], invalid: [{}] },
   'reportUser.body': {
     valid: [
       { targetId: s.PUBLIC_ID, context: 'profile', reason: 'fake_profile' },
@@ -373,6 +402,18 @@ export const httpFixtures = {
       },
     ],
     invalid: [{ pushMatches: true }],
+  },
+  'getNotificationPrefs.response': {
+    valid: [
+      {
+        pushMatches: true,
+        pushMessages: false,
+        pushLikesDigest: true,
+        quietHours: { startMinute: 1320, endMinute: 420 },
+        timezone: 'Asia/Kolkata',
+      },
+    ],
+    invalid: [{ pushMatches: true, timezone: 'UTC' }],
   },
 
   // admin

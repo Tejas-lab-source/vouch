@@ -26,6 +26,12 @@ export function makePrefs(deps) {
     },
   );
 
+  /** `GET /v1/me/notification-prefs`: the saved values, or the defaults. */
+  const getPrefs = useCase('notifications.getPrefs', async (/** @type {unknown} */ _input, ctx) => {
+    const userId = /** @type {string} */ (ctx.actor?.userId);
+    return prefsView(await read((stores) => stores.prefs.find(userId)));
+  });
+
   /**
    * `notifications.likesDigest` (daily): one `likes.digest` push per user with unanswered
    * likes (a count, never who). Idempotent per user per day.
@@ -63,5 +69,5 @@ export function makePrefs(deps) {
     notificationPrefs: prefsView(await read((stores) => stores.prefs.find(userId))),
   });
 
-  return { putPrefs, likesDigest, retention, exportFor };
+  return { putPrefs, getPrefs, likesDigest, retention, exportFor };
 }

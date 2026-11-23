@@ -16,6 +16,7 @@ No module calls it in v1. It is the extension point for later features.
 | Route                           | Auth | Use case                                                   |
 | ------------------------------- | ---- | ---------------------------------------------------------- |
 | `PUT /v1/me/notification-prefs` | user | `putPrefs`: preferences, quiet hours and an IANA time zone |
+| `GET /v1/me/notification-prefs` | user | `getPrefs`: the saved values, or the defaults              |
 
 ## Templates (manifest key `templates`)
 

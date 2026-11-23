@@ -72,6 +72,13 @@ export const socketFixtures = {
     invalid: [{ conversationId: s.ID, reason: 'expired' }],
   },
   'socket.config.changed.payload': { valid: [{}], invalid: [{ flags: {} }] },
+  'socket.receipt.updated.payload': {
+    valid: [{ conversationId: s.ID, deliveredSeq: 9, readSeq: 4 }],
+    invalid: [
+      { conversationId: s.ID, deliveredSeq: 9 },
+      { conversationId: s.ID, deliveredSeq: 1, readSeq: 1, body: 'x' },
+    ],
+  },
 };
 
 /** Domain event envelopes, keyed `event.<name>`. @type {Fixtures} */

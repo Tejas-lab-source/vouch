@@ -85,6 +85,16 @@ export const SERVER_EVENTS = Object.freeze({
       user: ProfileCard.describe('The other user.'),
     }),
   },
+  'receipt.updated': {
+    description:
+      'The other member’s delivered or read cursor moved (Phase 13): your messages up to ' +
+      '`deliveredSeq` reached their device, and up to `readSeq` were read. Cursors only.',
+    payload: z.strictObject({
+      conversationId: ConversationId,
+      deliveredSeq: z.int().min(0),
+      readSeq: z.int().min(0),
+    }),
+  },
   'conversation.closed': {
     description: 'The conversation can no longer receive messages.',
     payload: z.strictObject({
