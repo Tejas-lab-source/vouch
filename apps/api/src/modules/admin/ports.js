@@ -5,6 +5,7 @@
 /**
  * @typedef {object} AdminStores
  * @property {StoreGroup} staff  `admin.admin_users`
+ * @property {StoreGroup} sessions  `admin.sessions` (Phase 14)
  * @property {StoreGroup} audit  `admin.audit_log` (append-only)
  * @property {StoreGroup} flags  `platform.feature_flags`
  * @property {StoreGroup} platform  colleges and deletion progress (read-only)
@@ -23,7 +24,7 @@
  * @property {import('../../platform/uow.js').UnitOfWork<AdminStores>} uow
  * @property {<T>(fn: (stores: AdminStores) => Promise<T>) => Promise<T>} read
  * @property {import('./adapters/crypto/node-crypto.js').AdminCrypto} crypto
- * @property {{ sign: (staff: StaffMember) => Promise<{ token: string, expiresAt: Date }> }} tokens
+ * @property {{ sign: (staff: StaffMember, sessionId: string) => Promise<{ token: string, expiresAt: Date }> }} tokens
  * @property {{ hit: (limits: { key: string, max: number, windowMs: number }[], options?: { failClosed?: boolean }) => Promise<void> }} rateLimiter
  * @property {any} identity  identity's public API
  * @property {any} profiles  profiles' public API

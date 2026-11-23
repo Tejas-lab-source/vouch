@@ -4358,6 +4358,63 @@
         "additionalProperties": false
       }
     },
+    "adminLogout": {
+      "module": "admin",
+      "method": "POST",
+      "path": "/v1/admin/auth/logout",
+      "auth": "admin",
+      "idempotency": "header",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "MFA_REQUIRED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "IP_NOT_ALLOWED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            },
+            "idempotency-key": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$",
+              "description": "Client-generated key, typically a UUID; reused only for retries of one request."
+            }
+          },
+          "required": [
+            "x-app-version",
+            "idempotency-key"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "loggedOut": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "loggedOut"
+        ],
+        "additionalProperties": false
+      }
+    },
     "adminListPanels": {
       "module": "admin",
       "method": "GET",

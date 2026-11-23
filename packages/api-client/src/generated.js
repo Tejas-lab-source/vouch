@@ -150,6 +150,15 @@ export const adminLogin = (client, input) =>
   client.call(ENDPOINTS.adminLogin, /** @type {CallInput} */ (input));
 
 /**
+ * POST /v1/admin/auth/logout — Sign out: revokes this admin session at once (Phase 14).
+ * @param {ApiClient} client
+ * @param {{ body: import('zod').input<typeof import('@vouch/contracts').adminLogout.body>, signal?: AbortSignal }} input
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').adminLogout.response.schema>>}
+ */
+export const adminLogout = (client, input) =>
+  client.call(ENDPOINTS.adminLogout, /** @type {CallInput} */ (input));
+
+/**
  * PUT /v1/admin/flags/{key} — Create or replace a flag. Connected clients receive `config.changed`.
  * @param {ApiClient} client
  * @param {{ params: import('zod').input<typeof import('@vouch/contracts').putFlag.params>, body: import('zod').input<typeof import('@vouch/contracts').putFlag.body>, signal?: AbortSignal }} input
@@ -585,6 +594,13 @@ export const ENDPOINTS = Object.freeze({
     method: 'POST',
     path: '/v1/admin/auth/login',
     auth: 'public',
+    idempotency: 'header',
+  },
+  adminLogout: {
+    id: 'adminLogout',
+    method: 'POST',
+    path: '/v1/admin/auth/logout',
+    auth: 'admin',
     idempotency: 'header',
   },
   adminPutFlag: {

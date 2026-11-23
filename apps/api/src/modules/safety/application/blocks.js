@@ -128,6 +128,8 @@ export function makeBlocks(deps) {
     'safety.unblockMine',
     /** @param {{ userId: string }} input */
     async (input, ctx) => {
+      // Sensitive: removing a safety protection needs a live session (Phase 14).
+      await identity.requireLiveSession(ctx);
       const blockerId = /** @type {string} */ (ctx.actor?.userId);
       const [target] = await identity.getUsersByPublicIds([input.userId]);
       if (!target) return { unblocked: false };

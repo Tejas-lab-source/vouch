@@ -1,10 +1,11 @@
 // @ts-check
-import { ApiError, adminLogin, createApiClient } from '@vouch/api-client';
+import { ApiError, adminLogin, adminLogout, createApiClient } from '@vouch/api-client';
 import { APP_VERSION } from '../../shared/config/index.js';
 
 /**
  * The staff session (ADR 0018): the admin token lives in memory only (never in storage), lasts
- * at most an hour and has no refresh. Any 401 signs the staff member out.
+ * at most an hour and has no refresh. Any 401 signs the staff member out. Signing out revokes
+ * the session on the server first (Phase 14), so the token stops working at once.
  * @param {{ baseUrl: string, fetch?: typeof fetch }} options
  */
 export function createStaffSession({ baseUrl, fetch }) {
@@ -38,7 +39,11 @@ export function createStaffSession({ baseUrl, fetch }) {
       current = { token: result.accessToken, ...result.admin };
       notify();
     },
-    signOut: end,
+    async signOut() {
+      // The local session ends whatever the server answers (it may already be revoked).
+      if (current) await adminLogout(client, { body: {} }).catch(() => {});
+      end();
+    },
     staff: () => current,
     /** @param {() => void} listener */
     subscribe(listener) {

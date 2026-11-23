@@ -1,4 +1,5 @@
 // @ts-check
+import { ServiceError } from '@vouch/contracts';
 import { REFRESH_TOKEN_TTL_MS } from '../domain/session.js';
 
 /**
@@ -47,4 +48,36 @@ export async function tokenPair(
     refreshToken,
     refreshTokenExpiresAt: refreshTokenExpiresAt.toISOString(),
   };
+}
+
+/**
+ * The session check for sensitive routes (Phase 14): an access token stays valid for up to 15
+ * minutes after its session is revoked, so these routes also check the session itself.
+ * @param {Pick<import('../ports.js').IdentityDeps, 'read'>} deps
+ */
+export function makeSessionGuard({ read }) {
+  /** @param {import('../../../platform/use-case.js').CallContext} ctx */
+  async function requireLiveSession(ctx) {
+    const { userId, sessionId } = ctx.actor ?? {};
+    const live =
+      typeof userId === 'string' &&
+      typeof sessionId === 'string' &&
+      (await read((stores) => stores.sessions.isLive(sessionId, userId)));
+    if (!live) {
+      throw new ServiceError('UNAUTHENTICATED', { message: 'This session has been signed out.' });
+    }
+  }
+  /**
+   * Wraps a use-case handler so it runs only for a live session.
+   * @template {(input: any, ctx: import('../../../platform/use-case.js').CallContext) => Promise<any>} H
+   * @param {H} handler @returns {H}
+   */
+  const sensitive = (handler) =>
+    /** @type {H} */ (
+      async (input, ctx) => {
+        await requireLiveSession(ctx);
+        return handler(input, ctx);
+      }
+    );
+  return { requireLiveSession, sensitive };
 }

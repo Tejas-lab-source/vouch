@@ -29,6 +29,16 @@ devices, consent records, account deletion and data export.
 | `DELETE /v1/me`              | user   | `deleteAccount`                                                          |
 | `GET /v1/me/export`          | user   | `exportData`: identity plus every module's `exports` hook                |
 
+**Sensitive routes (Phase 14, ADR 0026):** an access token stays valid for up to 15 minutes
+after its session is revoked. So these routes also check the session itself (`sessions.isLive`):
+
+- the routes: devices (list, sign out, push token), deletion, export, and safety's
+  `DELETE /v1/blocks/{userId}` (via `requireLiveSession` in identity's API)
+- a session is live when it is not revoked, or when it was only rotated by a refresh and its
+  family is still live
+- a revoked session gets `UNAUTHENTICATED`
+- a repeated deletion answers the same result without the check
+
 ## Events
 
 - **Emits:** `user.created.v1` (on sign-up), `user.deleted.v1` (on deletion, once).

@@ -541,6 +541,8 @@ export const httpFixtures = {
     invalid: [{ userId: s.PUBLIC_ID }],
   },
   'adminCreateBan.response': { valid: [s.ban], invalid: [{ ...s.ban, banId: 'x' }] },
+  'adminLogout.body': { valid: [{}], invalid: [{ everywhere: true }] },
+  'adminLogout.response': { valid: [{ loggedOut: true }], invalid: [{ loggedOut: false }] },
   'adminLogin.body': {
     valid: [{ email: 'mod@example.com', password: 'correct horse', totp: '123456' }],
     invalid: [

@@ -7336,6 +7336,150 @@
         }
       }
     },
+    "/v1/admin/auth/logout": {
+      "post": {
+        "operationId": "adminLogout",
+        "summary": "Sign out: revokes this admin session at once (Phase 14).",
+        "description": "Every admin request checks its session, so the token stops working immediately. Idempotent: signing out a revoked session returns the same result.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "header"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "MFA_REQUIRED",
+          "UNAUTHENTICATED",
+          "FORBIDDEN",
+          "IP_NOT_ALLOWED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Client-generated key, typically a UUID; reused only for retries of one request.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sign out: revokes this admin session at once (Phase 14).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "loggedOut": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "loggedOut"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: MFA_REQUIRED, UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: FORBIDDEN, IP_NOT_ALLOWED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/panels": {
       "get": {
         "operationId": "adminListPanels",

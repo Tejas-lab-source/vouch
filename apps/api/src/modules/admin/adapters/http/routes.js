@@ -2,6 +2,7 @@
 import {
   actOnReport,
   adminLogin,
+  adminLogout,
   createBan,
   decidePhoto,
   decideVerification,
@@ -46,6 +47,7 @@ export function adminRoutes(h) {
   /** @type {[any, (request: any) => unknown, Function][]} */
   const table = [
     [adminLogin, (r) => r.body, h.login],
+    [adminLogout, () => ({}), h.logout],
     [listPanels, () => ({}), h.listPanels],
     [listOverdueDeletions, () => ({}), h.listOverdueDeletions],
     [unblockUsers, (r) => ({ ...r.params, ...r.body }), h.unblock],

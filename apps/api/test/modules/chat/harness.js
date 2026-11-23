@@ -9,7 +9,13 @@ import modules from '../../../src/modules/index.js';
 import { createPlatform, startRole } from '../../../src/platform/boot.js';
 import { loadConfig } from '../../../src/platform/config.js';
 import { createLogger } from '../../../src/platform/logger.js';
-import { eventually, makeKeys, startInfra, testEnv } from '../../platform/helpers.js';
+import {
+  eventually,
+  liveSessionId,
+  makeKeys,
+  startInfra,
+  testEnv,
+} from '../../platform/helpers.js';
 
 const MAIN = fileURLToPath(new URL('../../../src/main.js', import.meta.url));
 const H = { 'x-app-version': '1.0.0', 'content-type': 'application/json' };
@@ -57,8 +63,12 @@ export async function startChatStack(env = {}) {
     JOIN profiles.profiles p ON p.user_id = u.id WHERE p.status = 'active' ORDER BY u.id LIMIT 600`;
   let next = 0;
 
-  /** @param {any} user @param {{ expiresIn?: string }} [opts] */
-  const token = (user, opts = {}) => keys.sign({ sub: user.id, sid: randomUUID() }, opts);
+  /**
+   * An access token on the user's live session (sensitive routes check it, Phase 14).
+   * @param {any} user @param {{ expiresIn?: string }} [opts]
+   */
+  const token = async (user, opts = {}) =>
+    keys.sign({ sub: user.id, sid: await liveSessionId(infra.admin, user.id) }, opts);
 
   /**
    * A socket client for `user` on a gateway; resolves once connected.

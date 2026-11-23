@@ -534,3 +534,7 @@ All notable changes are recorded here, grouped by roadmap phase.
   same transaction. The owning module emits `audit.recorded.v1` (additive) through its outbox,
   and admin stores it idempotently. Flags and sign-in write the row in their own transaction.
   A failure-injection test proves an action never happens without its entry.
+- **Admin sessions** (owner, ADR 0026): `POST /v1/admin/auth/logout`; every admin token carries
+  a session id, checked on every admin request, so logout and revocation take effect at once.
+- **Sensitive user routes** (ADR 0026): device management, deletion, export and self-unblock
+  check that the session is still live, so a signed-out session's access token cannot use them.

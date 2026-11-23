@@ -1,5 +1,6 @@
 // @ts-check
 import { execFileSync } from 'node:child_process';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { startTestContainers } from '@vouch/config/test/containers';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import postgres from 'postgres';
@@ -146,4 +147,28 @@ export async function eventually(fn, timeoutMs = 10_000) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error(`condition not met within ${timeoutMs} ms (last: ${JSON.stringify(last)})`);
+}
+
+/** Each user's live session id, per database connection. @type {WeakMap<object, Map<string, string>>} */
+const liveSessions = new WeakMap();
+
+/**
+ * A live identity session (a device and a session row) for a seeded user, created once per
+ * database, so tokens signed with it pass the sensitive-route session check (Phase 14).
+ * @param {any} sql  A superuser connection (`infra.admin`).
+ * @param {string} userId
+ * @returns {Promise<string>} the session id, for the token's `sid`
+ */
+export async function liveSessionId(sql, userId) {
+  if (!liveSessions.has(sql)) liveSessions.set(sql, new Map());
+  const known = /** @type {Map<string, string>} */ (liveSessions.get(sql));
+  const existing = known.get(userId);
+  if (existing) return existing;
+  const [deviceId, sessionId] = [randomUUID(), randomUUID()];
+  await sql`INSERT INTO identity.devices (id, user_id, platform) VALUES (${deviceId}, ${userId}, 'ios')`;
+  await sql`INSERT INTO identity.auth_sessions (id, user_id, device_id, family_id, token_hash, expires_at)
+    VALUES (${sessionId}, ${userId}, ${deviceId}, ${randomUUID()}, ${randomBytes(32)},
+      now() + interval '30 days')`;
+  known.set(userId, sessionId);
+  return sessionId;
 }

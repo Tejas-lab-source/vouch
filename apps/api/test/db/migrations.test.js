@@ -25,12 +25,14 @@ const EXPECTED_MIGRATIONS = [
   '20261122100300_admin_auth',
   '20261122100400_platform_consistency_grants',
   '20261123100000_chat_member_settings',
+  '20261123100100_admin_sessions',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */
 const EXPECTED_TABLES = [
   'admin.admin_users',
   'admin.audit_log',
+  'admin.sessions',
   'chat.conversations',
   'chat.member_settings',
   'chat.messages',

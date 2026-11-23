@@ -45,15 +45,22 @@ export function makeAdmin(deps) {
    * @returns {Promise<import('../ports.js').StaffMember>}
    */
   async function staffOf(ctx, role) {
-    const staff = await read((stores) => stores.staff.findById(ctx.actor?.userId));
-    if (!staff || staff.status !== 'active') throw new ServiceError('UNAUTHENTICATED');
+    const adminId = ctx.actor?.userId;
+    const sessionId = ctx.actor?.sessionId;
+    // The session is checked on every request, so logout and revocation apply at once.
+    const [staff, live] = await read(async (stores) => [
+      await stores.staff.findById(adminId),
+      typeof sessionId === 'string' &&
+        (await stores.sessions.isLive(sessionId, adminId, clock.now())),
+    ]);
+    if (!staff || staff.status !== 'active' || !live) throw new ServiceError('UNAUTHENTICATED');
     if (role === 'admin' && staff.role !== 'admin') throw new ServiceError('FORBIDDEN');
     return { id: staff.id, displayName: staff.displayName, role: staff.role };
   }
 
   /**
    * The audit trail of one staff request, passed into the module that makes the change.
-   * @param {any} ctx @param {import('../ports.js').StaffMember} staff
+   * @param {any} ctx @param {{ id: string }} staff
    */
   const trailOf = (ctx, staff) =>
     createAuditTrail({
@@ -166,23 +173,30 @@ export function makeAdmin(deps) {
       const now = clock.now();
       const step = verifyTotp(crypto.decryptSecret(staff.totpSecretEnc), input.totp, now, crypto);
       const member = { id: staff.id, displayName: staff.displayName, role: staff.role };
-      // A code is accepted once: its step must be newer than the last one used. The sign-in is
-      // audited in the same transaction that spends the code.
-      if (
-        step === null ||
-        !(await uow.run(async ({ stores }) => {
-          if (!(await stores.staff.useTotpStep(staff.id, step, now))) return false;
-          await auditIn(stores, trailOf(ctx, member), {
-            action: 'admin.login',
-            targetType: 'admin',
-            targetId: staff.id,
-          });
-          return true;
-        }))
-      ) {
-        throw refused();
-      }
-      const { token, expiresAt } = await tokens.sign(member);
+      // A code is accepted once: its step must be newer than the last one used. The session
+      // and the sign-in's audit entry are written in the same transaction that spends the code.
+      const signedIn =
+        step === null
+          ? null
+          : await uow.run(async ({ stores }) => {
+              if (!(await stores.staff.useTotpStep(staff.id, step, now))) return null;
+              const sessionId = newId();
+              const issued = await tokens.sign(member, sessionId);
+              await stores.sessions.insert({
+                id: sessionId,
+                adminId: staff.id,
+                createdAt: now,
+                expiresAt: issued.expiresAt,
+              });
+              await auditIn(stores, trailOf(ctx, member), {
+                action: 'admin.login',
+                targetType: 'admin',
+                targetId: staff.id,
+              });
+              return issued;
+            });
+      if (!signedIn) throw refused();
+      const { token, expiresAt } = signedIn;
       return {
         accessToken: token,
         expiresAt: expiresAt.toISOString(),
@@ -190,6 +204,31 @@ export function makeAdmin(deps) {
       };
     },
     { authz: 'public' },
+  );
+
+  /**
+   * `POST /v1/admin/auth/logout`: revokes this session (idempotent). Needs only a valid admin
+   * token, so a disabled account can still sign out.
+   */
+  const logout = useCase(
+    'admin.logout',
+    async (_input, ctx) => {
+      const adminId = ctx.actor?.userId;
+      const sessionId = ctx.actor?.sessionId;
+      if (typeof adminId === 'string' && typeof sessionId === 'string') {
+        await uow.run(async ({ stores }) => {
+          if (await stores.sessions.revoke(sessionId, adminId, clock.now())) {
+            await auditIn(stores, trailOf(ctx, { id: adminId }), {
+              action: 'admin.logout',
+              targetType: 'admin',
+              targetId: adminId,
+            });
+          }
+        });
+      }
+      return { loggedOut: /** @type {const} */ (true) };
+    },
+    { authz: 'admin' },
   );
 
   // --- Panels, users, deletions ---------------------------------------------------------
@@ -394,14 +433,16 @@ export function makeAdmin(deps) {
     },
   );
 
-  /** `admin.retentionTick` (nightly): audit entries older than 2 years. */
+  /** `admin.retentionTick` (nightly): audit entries older than 2 years; expired sessions. */
   const retention = () =>
-    uow.run(({ stores }) =>
-      stores.audit.purge(new Date(clock.now().getTime() - AUDIT_RETENTION_MS)),
-    );
+    uow.run(async ({ stores }) => ({
+      audit: await stores.audit.purge(new Date(clock.now().getTime() - AUDIT_RETENTION_MS)),
+      sessions: await stores.sessions.purge(new Date(clock.now().getTime() - DAY_MS)),
+    }));
 
   return {
     login,
+    logout,
     listPanels,
     getUser,
     listOverdueDeletions,
