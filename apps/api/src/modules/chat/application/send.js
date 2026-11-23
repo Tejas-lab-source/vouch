@@ -26,13 +26,22 @@ export function makeSend(deps) {
    */
   async function send(input, ctx) {
     const me = /** @type {string} */ (ctx.actor?.userId);
-    await rateLimiter.hit([
-      { key: `chat:messages:${me}`, max: settings.messagesPerMinute, windowMs: MINUTE_MS },
+    // Independent lookups run concurrently (Phase 14: fewer sequential round trips per send).
+    // Both are awaited, and the rate limit is reported first, as before.
+    const [limited, member] = await Promise.allSettled([
+      rateLimiter.hit([
+        { key: `chat:messages:${me}`, max: settings.messagesPerMinute, windowMs: MINUTE_MS },
+      ]),
+      memberConversation(input.conversationId, me),
     ]);
-    const conversation = await memberConversation(input.conversationId, me);
+    if (limited.status === 'rejected') throw limited.reason;
+    if (member.status === 'rejected') throw member.reason;
+    const conversation = member.value;
     const recipient = otherMember(conversation, me);
     if (conversation.closedAt) throw new ServiceError('CONVERSATION_CLOSED');
 
+    const online = presence.isOnline(recipient);
+    online.catch(() => {}); // awaited below; a refusal must not leave it unhandled
     const verdicts = await pipelines.collect(MESSAGE_FILTERS, {
       conversationId: conversation.id,
       senderId: me,
@@ -46,7 +55,7 @@ export function makeSend(deps) {
       throw new ServiceError(refusal.code, refusal.reason ? { message: refusal.reason } : {});
     }
 
-    const recipientOnline = await presence.isOnline(recipient);
+    const recipientOnline = await online;
     const { message, created } = await uow.run(async ({ stores, emit }) => {
       const locked = await stores.conversations.findForUpdate(conversation.id);
       if (!locked || locked.closedAt) throw new ServiceError('CONVERSATION_CLOSED');
