@@ -49,6 +49,8 @@ export const rateLimitKey = (request) =>
  * @property {(error: unknown) => void} [reportError]
  * @property {boolean} [apiRoutes]  false for the ws and worker roles (health only).
  * @property {{ module: string, plugin: any }[]} [routes]  Module route plugins.
+ * @property {import('./pressure.js').PressureGauge} [pressure]  Sheds new requests under
+ *   overload (503, Retry-After); health checks are never shed.
  */
 
 /**
@@ -68,6 +70,7 @@ export async function buildHttpServer({
   reportError,
   apiRoutes = true,
   routes = [],
+  pressure,
 }) {
   const proxyTrust = createProxyTrust(config.TRUSTED_PROXIES);
   // Cast: Fastify types the instance by pino's Logger, which is wider than FastifyBaseLogger.
@@ -100,6 +103,26 @@ export async function buildHttpServer({
       route: request.routeOptions.url ?? 'unmatched',
       statusCode: reply.statusCode,
       seconds: reply.elapsedTime / 1000,
+    });
+  });
+
+  // Overload: refuse new work before it is parsed, so accepted work can finish (Phase 14).
+  // Besides the process signals (event-loop delay, heap), requests in progress are capped:
+  // when the database is the bottleneck the process looks healthy while requests queue for
+  // connections, and an immediate 503 beats a 60 s timeout.
+  let inFlight = 0;
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.url === '/health' || request.url === '/ready') return;
+    const reason =
+      pressure?.overloaded() ?? (inFlight >= config.PRESSURE_MAX_IN_FLIGHT ? 'in_flight' : null);
+    if (reason) {
+      metrics.countShed('http', reason);
+      reply.header('retry-after', '5');
+      throw new AppError('TEMPORARILY_UNAVAILABLE');
+    }
+    inFlight += 1;
+    reply.raw.once('close', () => {
+      inFlight -= 1;
     });
   });
 

@@ -567,6 +567,20 @@ All notable changes are recorded here, grouped by roadmap phase.
 - **Mobile swipe on the UI thread** (ADR 0027): the deck uses Gesture Handler 3.3 and
   Reanimated 4.7 (Expo SDK 58's versions). The drag, fling and spring back are worklets, so a
   busy JS thread cannot drop frames.
+- **Overload protection** (found by the 10x load test, where the API ran out of heap and
+  crashed):
+  - Under pressure, new requests get 503 `TEMPORARILY_UNAVAILABLE` with `Retry-After`, and
+    new sockets are refused. Work already accepted finishes, and health checks are never shed.
+  - Pressure means a mean event-loop delay above `PRESSURE_MAX_EVENT_LOOP_DELAY_MS` (250), or
+    a heap above `PRESSURE_MAX_HEAP_RATIO` (0.85) of V8's limit.
+  - At most `PRESSURE_MAX_IN_FLIGHT` (128) requests are in progress. When the database is the
+    bottleneck the process looks healthy while requests queue for connections, and a quick
+    503 beats a 60 s timeout.
+  - Refusals are counted in `vouch_shed_total`.
+  - The image gives V8 75% of the container (`--max-old-space-size-percentage=75`).
+- **Performance:** synchronous pipeline steps run without a timer. The deck worker had
+  allocated a timer and a promise race per scorer per candidate, and the same load now uses
+  about a third less API CPU.
 - **Accessibility pass:**
   - web: a strict WCAG 2.2 AA check (every impact level) on `/privacy` in both themes, on
     Settings, and on keyboard-only sign-up with the notice dialog (Escape closes it, focus

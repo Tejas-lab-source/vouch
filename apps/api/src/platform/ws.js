@@ -140,9 +140,21 @@ function ackError(error, requestId) {
  *   redis: import('./redis.js').RedisClients,
  *   clock: { now: () => Date },
  *   modules: readonly { module: string, handlers: SocketHandlers }[],
+ *   pressure?: import('./pressure.js').PressureGauge,
+ *   metrics?: import('./metrics.js').Metrics,
  * }} options
  */
-export function createSocketGateway({ server, config, logger, verifier, redis, clock, modules }) {
+export function createSocketGateway({
+  server,
+  config,
+  logger,
+  verifier,
+  redis,
+  clock,
+  modules,
+  pressure,
+  metrics,
+}) {
   const trust = createProxyTrust(config.TRUSTED_PROXIES);
   const graceMs = config.SOCKET_REFRESH_GRACE_SECONDS * 1000;
   const io = new Server(server, {
@@ -183,7 +195,10 @@ export function createSocketGateway({ server, config, logger, verifier, redis, c
   };
 
   io.use(async (socket, next) => {
-    if (draining)
+    // Under overload, new sockets are refused (clients retry with backoff); connected ones stay.
+    const pressed = pressure?.overloaded();
+    if (pressed) metrics?.countShed('socket', pressed);
+    if (draining || pressed)
       return next(
         Object.assign(new Error('TEMPORARILY_UNAVAILABLE'), {
           data: { code: 'TEMPORARILY_UNAVAILABLE' },

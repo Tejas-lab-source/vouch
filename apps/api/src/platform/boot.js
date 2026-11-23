@@ -9,6 +9,7 @@ import { EVENT_RETENTION, purgeEvents } from './events/retention.js';
 import { createRelay, eventQueueName } from './events/relay.js';
 import { createFlags } from './flags.js';
 import { createReadiness } from './health.js';
+import { createPressureGauge } from './pressure.js';
 import { buildHttpServer } from './http.js';
 import { createIdGenerator } from './ids.js';
 import { createIdempotencyStore } from './idempotency.js';
@@ -218,7 +219,12 @@ export async function startRole({
     expectedMigrations,
     logger,
   });
+  const pressure = createPressureGauge({
+    maxEventLoopDelayMs: config.PRESSURE_MAX_EVENT_LOOP_DELAY_MS,
+    maxHeapRatio: config.PRESSURE_MAX_HEAP_RATIO,
+  });
   const http = await buildHttpServer({
+    pressure,
     config,
     logger,
     verifier: platform.verifier,
@@ -252,6 +258,8 @@ export async function startRole({
         verifier: platform.verifier,
         redis: platform.redis,
         clock: platform.clock,
+        pressure,
+        metrics: platform.metrics,
         modules: boot.socketHandlers.map(({ module, handlers }) => ({
           module,
           handlers: /** @type {import('./ws.js').SocketHandlers} */ (handlers),
@@ -282,6 +290,7 @@ export async function startRole({
         await metricsServer.close();
         await platform.redis.quit();
         await platform.db.end();
+        pressure.stop();
       })();
       /** @type {ReturnType<typeof setTimeout> | undefined} */
       let timer;
