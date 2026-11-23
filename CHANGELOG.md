@@ -592,3 +592,51 @@ All notable changes are recorded here, grouped by roadmap phase.
     returns)
   - mobile: a static check that every `Pressable`, `Switch`, `TextInput` and `Image` has an
     accessible name. This found `ListItem` without a label, now fixed.
+
+## Phase 15 — Deployment, observability and closed beta launch (in progress)
+
+### Added
+
+- **Hosting as config:** `render.yaml` (staging and production per ADR 0028: API, Postgres 17,
+  Key Value, nightly backup cron; every secret `sync: false`), and `scripts/gen-secrets.js`
+  (fresh secrets printed locally; `rotate-jwt` for key rotation).
+- **Deploy workflow** (`.github/workflows/deploy.yml`): CI, then staging at the exact commit
+  through Render's API, the smoke suite (`scripts/smoke.js`) and read-only browser checks,
+  then production after approval, a 10-minute 5xx watch (`scripts/deploy-watch.js`) and an
+  automatic API rollback (`scripts/render-deploy.js`). A rollback rehearsal on demand.
+- **Web and admin on Cloudflare Pages:** `VITE_API_BASE` (the API on its own origin),
+  `scripts/pages-headers.js` (a CSP built from the deployed origins, HSTS),
+  `scripts/deploy-pages.sh`. CI runs the browser suite in the deployed shape too
+  (`E2E_CROSS_ORIGIN=1`).
+- **Sentry** for web, admin (a lazy chunk) and mobile, with a shared PII scrubber; source
+  maps uploaded, never published.
+- **Mobile:** `app.config.js` (replaces `app.json`; profiles by `APP_VARIANT`) and `eas.json`.
+- **Observability:** `GET /internal/metrics` for a scrape token; scrape-time gauges for outbox
+  lag, dead letters, the oldest waiting job, backup age and Redis memory; Grafana dashboards
+  and alert rules as code (`infra/grafana/`); OpenTelemetry preloaded so ESM libraries are
+  traced.
+- **Backups and restore:** `scripts/backup.js` (nightly `pg_dump` to R2, 14 days, recorded in
+  `platform.backup_runs`; `fetch` and `restore` for the runbook, tested end to end into a new
+  Postgres as a non-superuser login).
+- **Beta controls:** invite-only colleges (`beta.invite_only` flag; hashed invite codes with
+  use limits and expiry; `signup.inviteCode`, `INVITE_CODE_REQUIRED`, `INVITE_CODE_INVALID`),
+  `scripts/college-add.js`, `scripts/invite-create.js`, `scripts/dlq.js` (list and replay).
+- **Landing page** with real structure, Open Graph tags and legal links (final text: C1–C4).
+- **Docs:** `docs/infrastructure.md`, `docs/OPERATIONS.md`, `docs/runbooks/launch-checklist.md`,
+  ADR 0028; `docs/runbooks/restore.md` updated.
+
+### Changed
+
+- The outbox relay wakes on Postgres `NOTIFY` (an insert trigger), keeping the 2 s poll as the
+  fallback: an idle event is published in about 60 ms instead of up to 2 s.
+- The image: 537 MB → 420 MB before the Postgres client (dev-only files removed).
+
+### Fixed
+
+- **CORS allowed only GET, HEAD and POST** (the plugin's default): every PATCH, PUT and DELETE
+  from the web app on its own origin would have failed. Found by the cross-origin browser run.
+- **The app could not use its database roles on a hosted Postgres:** since Postgres 16 a role's
+  creator holds only ADMIN on it, so `SET ROLE` was refused. `migrate up` now grants each module
+  role to the migrating login (`SET TRUE, INHERIT FALSE`).
+- Two tests that depended on timing (the deck block test and the worker-kill invariant's
+  wait).

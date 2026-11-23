@@ -11,7 +11,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { POSTGRES_IMAGE, startTestStorage, TEST_STORAGE } from '@vouch/config/test/containers';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runBackup } from '../../scripts/backup.js';
+import { fetchBackup, runBackup } from '../../scripts/backup.js';
 import { HOOK_TIMEOUT_MS, startInfra } from '../platform/helpers.js';
 
 /**
@@ -109,5 +109,36 @@ describe('nightly backup (Phase 15)', () => {
     const runs = await infra.admin`SELECT environment, object_key FROM platform.backup_runs
       ORDER BY id`;
     expect(runs.map((r) => r.object_key)).toEqual([first.key, later.key]);
+
+    // A restore starts by downloading the newest dump (or one by key) into the shell.
+    const dir2 = await mkdtemp(join(tmpdir(), 'vouch-fetch-'));
+    try {
+      const fetched = await fetchBackup({
+        s3,
+        bucket: TEST_STORAGE.bucket,
+        environment: 'staging',
+        file: join(dir2, 'latest.pgdump'),
+      });
+      expect(fetched).toEqual({ key: later.key, bytes: later.bytes });
+      await expect(
+        fetchBackup({
+          s3,
+          bucket: TEST_STORAGE.bucket,
+          environment: 'production',
+          file: join(dir2, 'x'),
+        }),
+      ).rejects.toThrow(/no backups/);
+      await expect(
+        fetchBackup({
+          s3,
+          bucket: TEST_STORAGE.bucket,
+          environment: 'staging',
+          key: 'photos/a.jpg',
+          file: join(dir2, 'x'),
+        }),
+      ).rejects.toThrow(/backups\//);
+    } finally {
+      await rm(dir2, { recursive: true, force: true });
+    }
   }, 180_000);
 });
