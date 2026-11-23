@@ -246,8 +246,19 @@ export function createRealtime({
  * lists; `config.changed` refetches the config.
  * @param {{ setQueryData: Function, invalidateQueries: Function }} queryClient
  * @param {{ messages: (id: string) => readonly unknown[], matches: () => readonly unknown[], conversations: () => readonly unknown[], config: () => readonly unknown[] }} keys
+ * @param {{ listRefreshMs?: number }} [options]  Coalesces conversation-list refreshes.
  */
-export function queryCacheAdapter(queryClient, keys) {
+export function queryCacheAdapter(queryClient, keys, { listRefreshMs = 1000 } = {}) {
+  // A burst of messages refreshes the conversation list once, not once per message.
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let listTimer = null;
+  const refreshList = () => {
+    if (listTimer) return;
+    listTimer = setTimeout(() => {
+      listTimer = null;
+      queryClient.invalidateQueries({ queryKey: keys.conversations() });
+    }, listRefreshMs);
+  };
   return {
     /** @param {Message} message */
     onMessage(message) {
@@ -259,7 +270,7 @@ export function queryCacheAdapter(queryClient, keys) {
           return { ...(current ?? {}), items: [...items, message].sort((a, b) => a.seq - b.seq) };
         },
       );
-      queryClient.invalidateQueries({ queryKey: keys.conversations() });
+      refreshList();
     },
     /** @param {string} event @param {any} [payload] */
     onEvent(event, payload) {

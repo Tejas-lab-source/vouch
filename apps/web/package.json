@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",
+    "@tanstack/react-virtual": "3.14.26",
     "@vouch/api-client": "workspace:*",
     "@vouch/domain": "workspace:*",
     "@vouch/features-core": "workspace:*",

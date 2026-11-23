@@ -159,6 +159,99 @@ export const en = Object.freeze({
   'chat.placeholder.title': 'Chat arrives soon',
   'chat.placeholder.body': 'Messaging opens in the next release.',
 
+  // Chat
+  'chats.title': 'Chats',
+  'chats.empty.title': 'No conversations yet',
+  'chats.empty.body': 'When you match, say hello from here.',
+  'chats.unread': '{count} unread',
+  'chats.noMessages': 'Say hello 👋',
+  'chats.you': 'You: {body}',
+  'chats.open': 'Open chat with {name}',
+  'chat.back': 'Back to chats',
+  'chat.composer.label': 'Message',
+  'chat.composer.placeholder': 'Write a message',
+  'chat.send': 'Send',
+  'chat.older': 'Load earlier messages',
+  'chat.today': 'Today',
+  'chat.yesterday': 'Yesterday',
+  'chat.state.sending': 'Sending',
+  'chat.state.sent': 'Sent',
+  'chat.state.delivered': 'Delivered',
+  'chat.state.read': 'Read',
+  'chat.state.failed': 'Not sent',
+  'chat.retry': 'Retry sending',
+  'chat.closed.unmatched': 'This conversation has ended.',
+  'chat.closed.blocked': 'This conversation has ended.',
+  'chat.closed.banned': 'This conversation has ended.',
+  'chat.closed.deleted': 'This account no longer exists.',
+  'chat.messages': 'Messages with {name}',
+  'chat.error.rateLimited': 'You are sending messages too quickly. Wait a moment.',
+  'chat.error.links': 'Links are not allowed yet in a new conversation.',
+  'chat.notFound': 'This conversation is not available.',
+
+  // Settings
+  'settings.title': 'Settings',
+  'settings.open': 'Settings',
+  'settings.notifications.title': 'Notifications',
+  'settings.notifications.matches': 'New matches',
+  'settings.notifications.messages': 'New messages',
+  'settings.notifications.likes': 'Daily likes summary',
+  'settings.quiet.enable': 'Quiet hours',
+  'settings.quiet.hint': 'No push notifications during these hours.',
+  'settings.quiet.start': 'From',
+  'settings.quiet.end': 'Until',
+  'settings.timezone': 'Time zone',
+  'settings.saved': 'Saved.',
+  'settings.pushDenied':
+    'Notifications are off for Vouch in your device settings. Turn them on there to get pushes.',
+  'settings.blocked.title': 'Blocked people',
+  'settings.blocked.empty': 'You have not blocked anyone.',
+  'settings.blocked.unknown': 'Someone (profile not visible)',
+  'settings.blocked.unblock': 'Unblock',
+  'settings.blocked.unblockNamed': 'Unblock {name}',
+  'settings.blocked.hint': 'Unblocking does not bring back a match or a chat.',
+  'settings.safety.title': 'Safety centre',
+  'settings.privacy.title': 'Privacy notice',
+  'settings.account.title': 'Your account and data',
+  'settings.export': 'Download my data',
+  'settings.export.done': 'Your data has been downloaded.',
+  'settings.signOut': 'Log out',
+  'settings.signOutAll': 'Log out of all devices',
+  'settings.signOutAll.body':
+    'Every phone and browser signed in to your account will be signed out.',
+  'settings.delete': 'Delete my account',
+  'settings.delete.title': 'Delete your account?',
+  'settings.delete.body':
+    'You are signed out everywhere at once and your profile disappears. Your data is erased within 30 days, and this cannot be undone. If you sign up again later, you start with a new, empty account.',
+  'settings.delete.confirmLabel': 'Type DELETE to confirm',
+  'settings.delete.confirmWord': 'DELETE',
+  'settings.delete.confirm': 'Delete my account',
+
+  // Safety centre and privacy (placeholder copy until legal review in Phase 15)
+  'safety.tips.title': 'Staying safe on Vouch',
+  'safety.tips.one': 'Keep chats on Vouch until you trust someone.',
+  'safety.tips.two':
+    'Meet for the first time in a public place on campus, and tell a friend where you are going.',
+  'safety.tips.three': 'Never send money or personal documents to someone you met here.',
+  'safety.tips.four':
+    'Trust your instincts: you can unmatch or block at any time, and they are not told.',
+  'safety.howToReport.title': 'How to report',
+  'safety.howToReport.body':
+    'Open their profile or your chat with them and choose Report. Our team reviews every report. In an emergency, contact local emergency services first.',
+  'privacy.summary':
+    'Vouch keeps only what it needs to run the app: your college email (stored as a one-way code), your profile, photos and messages. You can download your data or delete your account at any time from Settings.',
+  'privacy.version': 'Notice version: {version}',
+  'privacy.grievance.title': 'Grievance officer',
+  'privacy.grievance.body':
+    'For privacy questions or complaints, write to the grievance officer at {email}. We reply within 30 days.',
+
+  // Push (mobile)
+  'push.prompt.title': 'Know when they reply',
+  'push.prompt.body':
+    'Turn on notifications to hear about new matches and messages. We never show message text in a notification.',
+  'push.prompt.allow': 'Turn on',
+  'push.prompt.later': 'Not now',
+
   // Errors and system screens
   'error.title': 'Something went wrong',
   'error.body': 'Reload the page, or try again in a moment.',

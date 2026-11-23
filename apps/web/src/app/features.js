@@ -1,13 +1,14 @@
 // @ts-check
 import { createFeatureRegistry, defineClientFeature } from '@vouch/features-core';
-import { ComingSoon } from '../pages/home/ComingSoon.jsx';
+import { TextMessage } from '../entities/message/TextMessage.jsx';
+import { ChatsPage } from '../pages/chats/ChatsPage.jsx';
 import { DiscoverPage } from '../pages/discover/DiscoverPage.jsx';
 import { MatchesPage } from '../pages/matches/MatchesPage.jsx';
 import { ProfilePage } from '../pages/profile/ProfilePage.jsx';
 
 /**
- * The web app's client features, each registering its home tab. Chats is a placeholder until
- * Phase 13 registers the chat feature.
+ * The web app's client features, each registering its home tab; chat also registers the `text`
+ * message renderer (`chat.messageRenderers`, keyed by `props.kind`).
  */
 export function createWebRegistry() {
   return createFeatureRegistry([
@@ -38,13 +39,14 @@ export function createWebRegistry() {
       },
     }),
     defineClientFeature({
-      id: 'core.chats',
+      id: 'chat.conversations',
       slots: {
+        'chat.messageRenderers': [{ id: 'text', component: TextMessage, props: { kind: 'text' } }],
         'home.tabs': [
           {
             id: 'chats',
             order: 30,
-            component: ComingSoon,
+            component: ChatsPage,
             props: { path: '/chats', labelKey: 'home.tabs.chats' },
           },
         ],

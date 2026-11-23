@@ -1,12 +1,9 @@
 // @ts-check
-import { useLikesCount, useMatches } from '@vouch/features-core';
+import { useConversations, useLikesCount, useMatches } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { Avatar, Button, EmptyState, ListItem, Skeleton } from '@vouch/ui-web';
 import { useNavigate } from 'react-router';
 import { UnmatchButton } from '../../features/unmatch/UnmatchButton.jsx';
-
-/** Matches from the last 3 days that you have not opened yet appear in the "New" row. */
-const NEW_FOR_MS = 3 * 24 * 60 * 60 * 1000;
 
 /** @param {number} count */
 const likesLine = (count) => (count === 1 ? t('matches.likesOne') : t('matches.likes', { count }));
@@ -18,8 +15,12 @@ export function MatchesPage() {
   const navigate = useNavigate();
   const open = (/** @type {import('@vouch/features-core').MatchSummary} */ m) =>
     navigate(`/chats/${m.conversationId ?? m.matchId}`);
-  const now = Date.now();
-  const fresh = list.matches.filter((m) => now - Date.parse(m.createdAt) < NEW_FOR_MS).slice(0, 10);
+  // "New": matches with no message yet in either direction (Phase 13).
+  const conversations = useConversations();
+  const talked = new Set(
+    conversations.conversations.filter((c) => c.lastMessage).map((c) => c.conversationId),
+  );
+  const fresh = list.matches.filter((m) => !talked.has(m.conversationId ?? m.matchId)).slice(0, 10);
 
   return (
     <div className="w-page">

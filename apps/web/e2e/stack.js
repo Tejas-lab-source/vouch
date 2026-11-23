@@ -71,6 +71,8 @@ export async function startStack() {
     CDN_BASE_URL: storage.publicBaseUrl,
     CORS_ORIGINS: `http://127.0.0.1:${webPort}`,
     MODERATION_PROVIDER: 'dev',
+    // The 1,000-message chat test sends quickly from one user.
+    RATE_LIMIT_MESSAGES_MINUTE: '5000',
     ...keyEnv,
   };
   /** @param {string[]} args */

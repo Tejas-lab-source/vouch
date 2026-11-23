@@ -7,3 +7,10 @@ export const API_BASE = '';
 export const TURNSTILE_SITE_KEY = /** @type {string | undefined} */ (
   /** @type {any} */ (import.meta).env?.VITE_TURNSTILE_SITE_KEY
 );
+/**
+ * The grievance officer's address shown on the privacy page (DPDP). A placeholder until the
+ * owner provides the real one (Phase 15, `VITE_GRIEVANCE_EMAIL`).
+ */
+export const GRIEVANCE_EMAIL =
+  /** @type {string | undefined} */ (/** @type {any} */ (import.meta).env?.VITE_GRIEVANCE_EMAIL) ??
+  'grievance@vouch.example';

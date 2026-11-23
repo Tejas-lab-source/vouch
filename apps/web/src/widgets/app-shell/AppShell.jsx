@@ -18,9 +18,14 @@ export function AppShell() {
     <div className="w-shell">
       <header className="w-header">
         <span className="w-brand w-brand--small">{t('app.name')}</span>
-        <Button variant="ghost" onClick={() => void signOut()}>
-          {t('common.signOut')}
-        </Button>
+        <span className="w-row">
+          <NavLink to="/settings" className="w-header__link">
+            {t('settings.open')}
+          </NavLink>
+          <Button variant="ghost" onClick={() => void signOut()}>
+            {t('common.signOut')}
+          </Button>
+        </span>
       </header>
       {online ? null : <Toast message={t('common.offline')} />}
       <main className="w-main" id="main">

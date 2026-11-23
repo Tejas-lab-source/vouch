@@ -264,6 +264,41 @@ describe('delivery bookkeeping', () => {
 });
 
 describe('query cache adapter', () => {
+  it('a burst of messages refreshes the conversation list once', async () => {
+    vi.useFakeTimers();
+    try {
+      /** @type {string[]} */
+      const invalidated = [];
+      const qc = {
+        setQueryData: () => {},
+        invalidateQueries: (/** @type {any} */ q) => invalidated.push(JSON.stringify(q.queryKey)),
+      };
+      const keys = {
+        messages: (/** @type {string} */ id) => ['m', id],
+        matches: () => ['matches'],
+        conversations: () => ['convs'],
+        config: () => ['config'],
+      };
+      const adapter = queryCacheAdapter(qc, keys, { listRefreshMs: 1000 });
+      for (let seq = 1; seq <= 100; seq += 1) {
+        adapter.onMessage({
+          conversationId: 'c',
+          seq,
+          clientMsgId: `${seq}`,
+          senderId: 's',
+          kind: 'text',
+          body: 'x',
+          createdAt: '',
+        });
+      }
+      expect(invalidated).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(invalidated).toEqual(['["convs"]']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('merges messages by seq, ignores duplicates, and invalidates lists', () => {
     /** @type {Map<string, any>} */
     const data = new Map();

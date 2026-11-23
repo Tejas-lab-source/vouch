@@ -6,7 +6,10 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Component, lazy, Suspense, useEffect, useState } from 'react';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router';
 import { HomeTab } from './HomeTab.jsx';
-import { ChatPlaceholderPage } from '../pages/chat/ChatPlaceholderPage.jsx';
+import { ChatPage } from '../pages/chat/ChatPage.jsx';
+import { PrivacyPage } from '../pages/settings/PrivacyPage.jsx';
+import { SafetyCentrePage } from '../pages/settings/SafetyCentrePage.jsx';
+import { SettingsPage } from '../pages/settings/SettingsPage.jsx';
 import { NotFoundPage } from '../pages/not-found/NotFoundPage.jsx';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage.jsx';
 import { SignInPage } from '../pages/sign-in/SignInPage.jsx';
@@ -129,7 +132,10 @@ export function createRouter(services) {
                   path: /** @type {string} */ (tab.props?.path),
                   element: <HomeTab item={tab} />,
                 })),
-                { path: '/chats/:conversationId', element: <ChatPlaceholderPage /> },
+                { path: '/chats/:conversationId', element: <ChatPage /> },
+                { path: '/settings', element: <SettingsPage /> },
+                { path: '/settings/safety', element: <SafetyCentrePage /> },
+                { path: '/settings/privacy', element: <PrivacyPage /> },
               ],
             },
           ],
