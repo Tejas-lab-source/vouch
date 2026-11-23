@@ -63,7 +63,8 @@ export function makeMatches(deps) {
           ? [
               {
                 matchId: m.id,
-                conversationId: null,
+                // The conversation id is the match id (Phase 9, ADR 0017).
+                conversationId: m.id,
                 user: card,
                 createdAt: m.createdAt.toISOString(),
               },
@@ -96,5 +97,20 @@ export function makeMatches(deps) {
   /** @param {string} matchId */
   const getMatch = (matchId) => read((stores) => stores.matches.find(matchId));
 
-  return { unmatch, listMatches, likesIn, areMatched, getMatch };
+  /**
+   * Users with unanswered likes, in id order, for the daily digest (counts only, Phase 10).
+   * @param {{ afterId: string | null, limit: number }} page
+   * @returns {Promise<{ userId: string, likes: number }[]>}
+   */
+  const pendingLikes = ({ afterId, limit }) =>
+    read((stores) => stores.swipes.pendingLikesBatch(afterId, limit));
+  /** `GET /v1/me/likes/count`: the caller's own count, never identities. */
+  const getLikesCount = useCase(
+    'matching.getLikesCount',
+    async (/** @type {unknown} */ _input, ctx) => ({
+      count: await likesIn(/** @type {string} */ (ctx.actor?.userId)),
+    }),
+  );
+
+  return { unmatch, listMatches, likesIn, getLikesCount, pendingLikes, areMatched, getMatch };
 }

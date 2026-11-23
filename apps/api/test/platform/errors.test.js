@@ -75,6 +75,25 @@ describe('Fastify error handling', () => {
     expect((await app.inject({ url: '/limited' })).json().error.code).toBe('RATE_LIMITED');
   });
 
+  it('maps an unsupported content type to 415 and other Fastify client errors to 400', async () => {
+    const app = appWithErrors();
+    const wrongType = await app.inject({
+      method: 'POST',
+      url: '/v',
+      headers: { 'content-type': 'undefined' },
+      payload: 'x',
+    });
+    expect(wrongType.statusCode).toBe(415);
+    expect(wrongType.json().error.code).toBe('UNSUPPORTED_MEDIA_TYPE');
+    const emptyJson = await app.inject({
+      method: 'POST',
+      url: '/v',
+      headers: { 'content-type': 'application/json' },
+    });
+    expect(emptyJson.statusCode).toBe(400);
+    expect(emptyJson.json().error.code).toBe('VALIDATION_FAILED');
+  });
+
   it('returns a generic 500 without stack traces, and reports it', async () => {
     const report = vi.fn();
     const response = await appWithErrors(report).inject({ url: '/boom' });

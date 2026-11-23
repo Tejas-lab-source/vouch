@@ -64,4 +64,17 @@ export const unmatch = defineEndpoint({
   errors: ['NOT_FOUND', 'NOT_MATCHED'],
 });
 
-export const matchingEndpoints = [swipe, listMatches, unmatch];
+export const getLikesCount = defineEndpoint({
+  id: 'getLikesCount',
+  module: 'matching',
+  method: 'GET',
+  path: '/v1/me/likes/count',
+  auth: 'user',
+  summary: 'How many people liked you and are still waiting for your swipe.',
+  description:
+    'A count only: who liked you is never returned. Blocked users are not counted. A pass made ' +
+    'in the last few seconds may still be counted until it is written.',
+  response: { status: 200, schema: z.strictObject({ count: z.int().min(0) }) },
+});
+
+export const matchingEndpoints = [swipe, listMatches, unmatch, getLikesCount];

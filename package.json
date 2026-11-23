@@ -17,7 +17,7 @@
     "test:invariants": "pnpm --filter @vouch/api test:invariants",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && tsc -p apps/mobile/tsconfig.json",
     "db:migrate": "pnpm --filter @vouch/api db:migrate",
     "db:migrate:down": "pnpm --filter @vouch/api db:migrate:down",
     "db:seed": "pnpm --filter @vouch/api db:seed",

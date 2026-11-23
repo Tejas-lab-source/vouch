@@ -3,8 +3,16 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../src/platform/config.js';
 import { createS3Storage } from '../src/modules/media/adapters/storage/s3.js';
 
+/** The web dev and preview servers (apps/web), when `CORS_ORIGINS` is empty. */
+export const DEV_WEB_ORIGINS = Object.freeze([
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:4173',
+]);
+
 /**
- * Creates the local bucket in SeaweedFS (`pnpm storage:init`). Development only: in production
+ * Creates the local bucket in SeaweedFS and its upload CORS rule (`pnpm storage:init`). Development only: in production
  * the R2 bucket, its lifecycle rule and the CDN are set up in Phase 15.
  */
 async function main() {
@@ -19,7 +27,11 @@ async function main() {
     bucket: config.R2_BUCKET,
   });
   await storage.ensureBucket();
-  process.stdout.write(`bucket ${config.R2_BUCKET} ready at ${config.R2_ENDPOINT}\n`);
+  const origins = config.CORS_ORIGINS.length > 0 ? config.CORS_ORIGINS : DEV_WEB_ORIGINS;
+  await storage.applyUploadCors(origins);
+  process.stdout.write(
+    `bucket ${config.R2_BUCKET} ready at ${config.R2_ENDPOINT}; uploads allowed from ${origins.join(', ')}\n`,
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

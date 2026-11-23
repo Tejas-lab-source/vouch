@@ -56,6 +56,17 @@ export function createMatchingStores(tx) {
                   WHERE b.user_id = ${userId} AND b.other_id = l.swiper_id)`
           )[0]?.n ?? 0,
         ),
+      pendingLikesBatch: async (afterId, limit) =>
+        /** @type {any} */ (
+          await tx`SELECT l.target_id AS user_id, count(*)::int AS likes FROM matching.swipes l
+            WHERE l.direction = 1
+              AND (${afterId}::uuid IS NULL OR l.target_id > ${afterId}::uuid)
+              AND NOT EXISTS (SELECT 1 FROM matching.swipes s
+                WHERE s.swiper_id = l.target_id AND s.target_id = l.swiper_id)
+              AND NOT EXISTS (SELECT 1 FROM safety.block_pairs_v b
+                WHERE b.user_id = l.target_id AND b.other_id = l.swiper_id)
+            GROUP BY l.target_id ORDER BY l.target_id LIMIT ${limit}`
+        ),
       forUser: async (userId) =>
         /** @type {any} */ (
           await tx`SELECT target_id, direction, created_at FROM matching.swipes

@@ -33,6 +33,14 @@ export default defineModule({
       const { onUserBanned } = await import('./adapters/events/on-user-banned.js');
       return onUserBanned({ clock: ctx.clock });
     },
+    'user.unbanned.v1': async () => {
+      const { onUserUnbanned } = await import('./adapters/events/on-user-banned.js');
+      return onUserUnbanned();
+    },
+    'verification.decided.v1': async () => {
+      const { onVerificationDecided } = await import('./adapters/events/on-user-banned.js');
+      return onVerificationDecided();
+    },
   },
   jobs: {
     queue: 'bulk',

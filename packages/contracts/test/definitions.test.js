@@ -23,7 +23,7 @@ const base = {
 
 describe('endpoint definitions', () => {
   it('every path is under /v1 and every id and route is unique', () => {
-    expect(ENDPOINTS.length).toBe(39);
+    expect(ENDPOINTS.length).toBe(50);
     for (const endpoint of ENDPOINTS) expect(endpoint.path.startsWith('/v1/')).toBe(true);
     expect(new Set(ENDPOINTS.map((e) => e.id)).size).toBe(ENDPOINTS.length);
     expect(new Set(ENDPOINTS.map((e) => `${e.method} ${e.path}`)).size).toBe(ENDPOINTS.length);
@@ -74,7 +74,7 @@ describe('endpoint definitions', () => {
 });
 
 describe('events', () => {
-  it('defines the 13 v1 events, all named noun.verb.vN', () => {
+  it('defines the 15 v1 events, all named noun.verb.vN', () => {
     expect(Object.keys(EVENTS).sort()).toEqual(
       [
         'deck.served.v1',
@@ -90,6 +90,8 @@ describe('events', () => {
         'user.blocked.v1',
         'user.created.v1',
         'user.deleted.v1',
+        'user.unbanned.v1',
+        'verification.decided.v1',
       ].sort(),
     );
     for (const name of Object.keys(EVENTS)) expect(name).toMatch(EVENT_NAME);

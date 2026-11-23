@@ -37,4 +37,29 @@ export const userBanned = defineEvent({
   }),
 });
 
-export const safetyEvents = [userBlocked, reportCreated, userBanned];
+export const userUnbanned = defineEvent({
+  name: 'user.unbanned.v1',
+  producer: 'safety',
+  description: 'A ban was lifted or expired. Identity reactivates the account.',
+  payload: z.strictObject({ userId: Uuidv7, banId: Uuidv7, liftedAt: Timestamp }),
+});
+
+export const verificationDecided = defineEvent({
+  name: 'verification.decided.v1',
+  producer: 'safety',
+  description: 'An ID-card verification was approved or rejected. Identity updates the account.',
+  payload: z.strictObject({
+    userId: Uuidv7,
+    reviewId: Uuidv7,
+    decision: z.enum(['approved', 'rejected']),
+    decidedAt: Timestamp,
+  }),
+});
+
+export const safetyEvents = [
+  userBlocked,
+  reportCreated,
+  userBanned,
+  userUnbanned,
+  verificationDecided,
+];

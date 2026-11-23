@@ -12,11 +12,13 @@ export const httpFixtures = {
     valid: [
       { email: 'student@northfield.example.edu', turnstileToken: 'tok' },
       { email: 'student@northfield.example.edu', turnstileToken: 'tok', deviceId: s.UUID4 },
+      { email: 'student@gmail.example.com', turnstileToken: 'tok', verification: 'id_card' },
     ],
     invalid: [
       { email: 'not-an-email', turnstileToken: 'tok' },
       { email: 'a@b.edu' },
       { email: 'a@b.edu', turnstileToken: 'tok', deviceId: 'phone' },
+      { email: 'a@b.edu', turnstileToken: 'tok', verification: 'passport' },
     ],
   },
   'requestOtp.response': {
@@ -34,6 +36,17 @@ export const httpFixtures = {
         signup: {
           birthDate: '2005-01-31',
           gradYear: 2028,
+          consent: { noticeVersion: '2026-11', purposes: ['matching'] },
+        },
+      },
+      {
+        email: 'a@gmail.example.com',
+        code: '123456',
+        device: { platform: 'android' },
+        verification: 'id_card',
+        signup: {
+          birthDate: '2005-01-31',
+          collegeId: s.ID,
           consent: { noticeVersion: '2026-11', purposes: ['matching'] },
         },
       },
@@ -134,6 +147,11 @@ export const httpFixtures = {
   'updateMyProfile.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, age: 17 }] },
   'deleteMyPhoto.params': { valid: [{ id: s.ID }], invalid: [{ id: 'photo-1' }] },
   'deleteMyPhoto.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, photos: null }] },
+  'reorderMyPhotos.body': {
+    valid: [{ photoIds: [s.ID] }],
+    invalid: [{ photoIds: [] }, { photoIds: ['photo-1'] }, { photoIds: Array(7).fill(s.ID) }],
+  },
+  'reorderMyPhotos.response': { valid: [s.ownProfile], invalid: [{ ...s.ownProfile, age: 17 }] },
   'putProfileSection.params': { valid: [{ type: 'prompts' }], invalid: [{ type: 'Prompts!' }] },
   'putProfileSection.body': {
     valid: [{ schemaVersion: 1, position: 0, data: { answer: 'x' } }],
@@ -219,6 +237,10 @@ export const httpFixtures = {
     valid: [{ matchId: s.ID, unmatchedAt: s.TS }],
     invalid: [{ matchId: s.ID }],
   },
+  'getLikesCount.response': {
+    valid: [{ count: 0 }, { count: 12 }],
+    invalid: [{ count: -1 }, { count: 1.5 }, { count: 3, userIds: [] }],
+  },
 
   // chat
   'listConversations.query': { valid: [{ limit: 5 }], invalid: [{ limit: 51 }] },
@@ -248,15 +270,44 @@ export const httpFixtures = {
   },
   'listMessages.response': {
     valid: [
-      { items: [s.message], nextAfterSeq: 7 },
-      { items: [], nextAfterSeq: null },
+      {
+        items: [s.message],
+        nextAfterSeq: 7,
+        prevBeforeSeq: null,
+        peerDeliveredSeq: 7,
+        peerReadSeq: 5,
+      },
+      { items: [], nextAfterSeq: null, prevBeforeSeq: 12, peerDeliveredSeq: 0, peerReadSeq: 0 },
     ],
-    invalid: [{ items: [{ ...s.message, id: s.ID }], nextAfterSeq: null }],
+    invalid: [
+      {
+        items: [{ ...s.message, id: s.ID }],
+        nextAfterSeq: null,
+        prevBeforeSeq: null,
+        peerDeliveredSeq: 0,
+        peerReadSeq: 0,
+      },
+      { items: [], nextAfterSeq: null, prevBeforeSeq: null, peerDeliveredSeq: -1, peerReadSeq: 0 },
+    ],
   },
 
   // safety
   'blockUser.body': { valid: [{ targetId: s.PUBLIC_ID }], invalid: [{ targetId: s.ID }] },
   'blockUser.response': { valid: [{ blocked: true }], invalid: [{ blocked: 'yes' }] },
+  'listMyBlocks.response': {
+    valid: [
+      { items: [] },
+      {
+        items: [
+          { userId: s.PUBLIC_ID, name: 'Kabir', blockedAt: s.TS },
+          { userId: s.PUBLIC_ID, name: null, blockedAt: s.TS },
+        ],
+      },
+    ],
+    invalid: [{ items: [{ userId: s.ID, name: 'Kabir', blockedAt: s.TS }] }],
+  },
+  'unblockUser.params': { valid: [{ userId: s.PUBLIC_ID }], invalid: [{ userId: s.ID }] },
+  'unblockUser.response': { valid: [{ unblocked: true }, { unblocked: false }], invalid: [{}] },
   'reportUser.body': {
     valid: [
       { targetId: s.PUBLIC_ID, context: 'profile', reason: 'fake_profile' },
@@ -273,6 +324,43 @@ export const httpFixtures = {
   'reportUser.response': {
     valid: [{ reportId: s.ID, status: 'open' }],
     invalid: [{ reportId: s.ID, status: 'closed' }],
+  },
+  'createIdCardUploads.body': {
+    valid: [
+      {
+        idCard: { contentType: 'image/jpeg', sizeBytes: 200_000 },
+        selfie: { contentType: 'image/png', sizeBytes: 300_000 },
+      },
+    ],
+    invalid: [
+      {
+        idCard: { contentType: 'application/pdf', sizeBytes: 200_000 },
+        selfie: { contentType: 'image/png', sizeBytes: 300_000 },
+      },
+      { idCard: { contentType: 'image/jpeg', sizeBytes: 200_000 } },
+    ],
+  },
+  'createIdCardUploads.response': {
+    valid: [
+      {
+        submissionId: s.ID,
+        idCard: { url: 'https://r2.example.com/a', method: 'PUT', headers: {} },
+        selfie: {
+          url: 'https://r2.example.com/b',
+          method: 'PUT',
+          headers: { 'content-type': 'image/png' },
+        },
+        expiresAt: s.TS,
+      },
+    ],
+    invalid: [
+      { submissionId: s.ID, idCard: { url: 'x', method: 'PUT', headers: {} }, expiresAt: s.TS },
+    ],
+  },
+  'submitIdCard.body': { valid: [{ submissionId: s.ID }], invalid: [{ submissionId: 'x' }] },
+  'submitIdCard.response': {
+    valid: [{ status: 'pending' }],
+    invalid: [{ status: 'approved' }],
   },
 
   // notifications
@@ -314,6 +402,18 @@ export const httpFixtures = {
       },
     ],
     invalid: [{ pushMatches: true }],
+  },
+  'getNotificationPrefs.response': {
+    valid: [
+      {
+        pushMatches: true,
+        pushMessages: false,
+        pushLikesDigest: true,
+        quietHours: { startMinute: 1320, endMinute: 420 },
+        timezone: 'Asia/Kolkata',
+      },
+    ],
+    invalid: [{ pushMatches: true, timezone: 'UTC' }],
   },
 
   // admin
@@ -381,7 +481,8 @@ export const httpFixtures = {
   'adminListVerificationReviews.response': {
     valid: [{ items: [s.review], nextCursor: null }],
     invalid: [
-      { items: [{ ...s.review, idImageUrl: 'http://insecure.example.com/x' }], nextCursor: null },
+      { items: [{ ...s.review, idImageUrl: 'ftp://files.example.com/x' }], nextCursor: null },
+      { items: [{ ...s.review, selfieImageUrl: 'not a url' }], nextCursor: null },
     ],
   },
   'adminDecideVerification.params': { valid: [{ id: s.ID }], invalid: [{ id: null }] },
@@ -428,6 +529,78 @@ export const httpFixtures = {
     invalid: [{ userId: s.PUBLIC_ID }],
   },
   'adminCreateBan.response': { valid: [s.ban], invalid: [{ ...s.ban, banId: 'x' }] },
+  'adminLogin.body': {
+    valid: [{ email: 'mod@example.com', password: 'correct horse', totp: '123456' }],
+    invalid: [
+      { email: 'mod@example.com', password: 'x', totp: '12345' },
+      { email: 'mod@example.com', password: 'x' },
+    ],
+  },
+  'adminLogin.response': {
+    valid: [
+      {
+        accessToken: 'eyJ.x.y',
+        expiresAt: s.TS,
+        admin: { displayName: 'Asha', role: 'moderator' },
+      },
+    ],
+    invalid: [
+      { accessToken: 'eyJ.x.y', expiresAt: s.TS, admin: { displayName: 'Asha', role: 'owner' } },
+    ],
+  },
+  'adminListPanels.response': {
+    valid: [
+      {
+        items: [
+          {
+            id: 'safety.reports',
+            module: 'safety',
+            title: 'Reports',
+            roles: ['moderator', 'admin'],
+            list: { endpoint: 'adminListReports', columns: [{ field: 'reason', label: 'Reason' }] },
+            detail: {
+              endpoint: 'adminGetReport',
+              fields: [{ field: 'evidence', label: 'Evidence', kind: 'json' }],
+            },
+            actions: [
+              {
+                id: 'dismiss',
+                label: 'Dismiss',
+                endpoint: 'adminActOnReport',
+                body: { action: 'dismiss' },
+                needsNote: true,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    invalid: [
+      {
+        items: [
+          {
+            id: 'X',
+            module: 'safety',
+            title: 'Reports',
+            roles: [],
+            list: { endpoint: 'listReports', columns: [] },
+            detail: null,
+            actions: [],
+          },
+        ],
+      },
+    ],
+  },
+  'adminListOverdueDeletions.response': {
+    valid: [{ items: [{ userId: s.PUBLIC_ID, deletedAt: s.TS, pendingConsumers: ['chat'] }] }],
+    invalid: [{ items: [{ userId: s.PUBLIC_ID, deletedAt: s.TS, pendingConsumers: [] }] }],
+  },
+  'adminUnblock.params': { valid: [{ userId: s.PUBLIC_ID }], invalid: [{ userId: s.ID }] },
+  'adminUnblock.body': {
+    valid: [{ otherUserId: s.PUBLIC_ID2, note: 'blocked by mistake' }],
+    invalid: [{ otherUserId: s.PUBLIC_ID2 }],
+  },
+  'adminUnblock.response': { valid: [{ unblocked: true }], invalid: [{ unblocked: 'yes' }] },
   'adminLiftBan.params': { valid: [{ id: s.ID }], invalid: [{ id: s.PUBLIC_ID }] },
   'adminLiftBan.body': { valid: [{}], invalid: [{ now: true }] },
   'adminLiftBan.response': {

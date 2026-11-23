@@ -15,6 +15,7 @@ COPY packages/contracts/package.json packages/contracts/
 RUN pnpm install --frozen-lockfile --filter @vouch/api... --ignore-scripts
 COPY apps/api/src apps/api/src
 COPY apps/api/migrations apps/api/migrations
+COPY apps/api/scripts/admin-create.js apps/api/scripts/admin-create.js
 COPY packages/contracts/src packages/contracts/src
 RUN pnpm --filter @vouch/api deploy --prod --legacy --ignore-scripts /out
 
@@ -28,6 +29,8 @@ COPY --from=build /out/package.json ./package.json
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/src ./src
 COPY --from=build /out/migrations ./migrations
+# The only way to create staff accounts (ADR 0018): `node scripts/admin-create.js --email … --name …`.
+COPY --from=build /out/scripts/admin-create.js ./scripts/admin-create.js
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \

@@ -32,13 +32,15 @@ export async function startSession(
 /**
  * The token pair returned to clients. `refreshToken` is removed by the route for cookie transport.
  * @param {import('../ports.js').TokenIssuer} tokens
- * @param {{ userId: string, sessionId: string, refreshToken: string, refreshTokenExpiresAt: Date }} session
+ * `pendingReview` (Phase 10) marks the access token of an account waiting for ID-card review:
+ * the platform then allows only the routes such an account may use.
+ * @param {{ userId: string, sessionId: string, refreshToken: string, refreshTokenExpiresAt: Date, pendingReview?: boolean }} session
  */
 export async function tokenPair(
   tokens,
-  { userId, sessionId, refreshToken, refreshTokenExpiresAt },
+  { userId, sessionId, refreshToken, refreshTokenExpiresAt, pendingReview = false },
 ) {
-  const access = await tokens.issueAccessToken({ userId, sessionId });
+  const access = await tokens.issueAccessToken({ userId, sessionId, pendingReview });
   return {
     accessToken: access.token,
     accessTokenExpiresAt: access.expiresAt.toISOString(),

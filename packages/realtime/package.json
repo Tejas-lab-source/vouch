@@ -1,0 +1,26 @@
+{
+  "name": "@vouch/realtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Socket.IO client: auth refresh, reconnect, sync, outgoing queue, query-cache adapter.",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "socket.io-client": "4.8.4"
+  },
+  "devDependencies": {
+    "@vouch/config": "workspace:*",
+    "eslint": "9.39.5",
+    "vitest": "5.1.1",
+    "socket.io": "4.8.4"
+  }
+}

@@ -100,6 +100,27 @@ export const EnvSchema = z
       .min(1)
       .default(300)
       .describe('Global limit per signed-in user, per minute.'),
+    SOCKET_REFRESH_GRACE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(600)
+      .default(60)
+      .describe('A socket whose token expired gets this long to send auth.refresh.'),
+    RATE_LIMIT_MESSAGES_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(60)
+      .describe('Chat messages per user per minute (fails open).'),
+    CHAT_MAX_LINKS_PER_MESSAGE: z.coerce.number().int().min(0).max(10).default(2),
+    CHAT_LINKS_AFTER_MESSAGES: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(50)
+      .default(3)
+      .describe('No links in a sender’s first N messages of a conversation.'),
     RATE_LIMIT_IP_MINUTE: z.coerce
       .number()
       .int()
@@ -107,6 +128,38 @@ export const EnvSchema = z
       .default(1000)
       .describe('Global limit per client IP for unauthenticated or rejected requests, per minute.'),
     ADMIN_IP_ALLOWLIST: csv.optional(),
+
+    // Admin accounts (Phase 10, ADR 0018)
+    ADMIN_TOTP_KEY: z
+      .string()
+      .regex(/^[A-Za-z0-9+/]{43}=$/)
+      .optional()
+      .describe('Base64 32-byte key encrypting admin TOTP secrets (AES-256-GCM).'),
+    ADMIN_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(240).default(60),
+
+    // Notifications and moderation (Phase 10)
+    PUSH_MESSAGE_BATCH_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(3600)
+      .default(30)
+      .describe('At most one message push per conversation in this window.'),
+    ADMIN_ALERT_EMAIL: z.email().optional().describe('Where new-report alerts are emailed.'),
+    REPORT_AUTOHIDE_REPORTERS: z.coerce.number().int().min(1).max(100).default(3),
+    REPORT_AUTOHIDE_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+    REPORTS_PER_DAY: z.coerce.number().int().min(1).max(1000).default(20),
+    PHOTO_REJECTIONS_FOR_REVIEW: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(3)
+      .describe('Rejected photos (30 days) that open a system report.'),
+    ID_CARD_FALLBACK: z
+      .stringbool()
+      .default(true)
+      .describe('Allow sign-up with any email plus a reviewed student ID and selfie.'),
 
     // Object storage (Cloudflare R2; SeaweedFS locally, ADR 0012)
     R2_ACCOUNT_ID: z.string().min(1).optional(),
@@ -220,6 +273,7 @@ export const EnvSchema = z
     if (env.CAPTCHA_PROVIDER === 'dev') fail('CAPTCHA_PROVIDER', 'dev is development-only');
     if (env.PUSH_PROVIDER === 'log') fail('PUSH_PROVIDER', 'log is development-only');
     if (env.MODERATION_PROVIDER === 'dev') fail('MODERATION_PROVIDER', 'dev is development-only');
+    if (!env.ADMIN_TOTP_KEY) fail('ADMIN_TOTP_KEY', 'required in production');
     if (env.MODERATION_ENDPOINT) fail('MODERATION_ENDPOINT', 'the endpoint override is test-only');
     if (env.R2_ENDPOINT) fail('R2_ENDPOINT', 'the local S3 endpoint is development-only');
   });

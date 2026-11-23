@@ -27,4 +27,14 @@ export const putNotificationPrefs = defineEndpoint({
   response: { status: 200, schema: NotificationPrefs },
 });
 
-export const notificationsEndpoints = [putNotificationPrefs];
+export const getNotificationPrefs = defineEndpoint({
+  id: 'getNotificationPrefs',
+  module: 'notifications',
+  method: 'GET',
+  path: '/v1/me/notification-prefs',
+  auth: 'user',
+  summary: 'Read push preferences and quiet hours (defaults until first saved).',
+  response: { status: 200, schema: NotificationPrefs },
+});
+
+export const notificationsEndpoints = [putNotificationPrefs, getNotificationPrefs];

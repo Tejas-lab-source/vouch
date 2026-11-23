@@ -24,7 +24,9 @@
  * @property {(id: string, at: Date) => Promise<void>} markUploaded
  * @property {(id: string, photoKey: string) => Promise<string>} startProcessing
  *   Sets `processing` and keeps an existing photo key (retries reuse it); returns the key.
- * @property {(id: string) => Promise<void>} markInReview
+ * @property {(id: string) => Promise<void>} markInReview  Also stamps `processed_at` (the time it was flagged).
+ * @property {(afterId: string | null, limit: number) => Promise<{ id: string, userId: string, flaggedAt: Date }[]>} listInReview  Oldest first.
+ * @property {(flaggedBefore: Date) => Promise<number>} countInReviewBefore
  * @property {(id: string, at: Date) => Promise<void>} markApproved
  * @property {(id: string, reason: string, at: Date) => Promise<void>} markRejected
  * @property {(id: string) => Promise<void>} remove
@@ -40,6 +42,7 @@
  * @typedef {object} StorageProvider
  * @property {(input: { key: string, contentType: string, contentLength: number, expiresInSeconds: number }) => Promise<string>} presignPut
  *   A URL that accepts exactly one PUT with this content type and length.
+ * @property {(input: { key: string, expiresInSeconds: number }) => Promise<string>} presignGet  Short-lived read URL for a private object (Phase 10).
  * @property {(key: string) => Promise<{ contentLength: number, contentType: string | null } | null>} head
  * @property {(key: string, maxBytes: number) => Promise<Buffer>} read
  * @property {(key: string, body: Buffer, options: { contentType: string, cacheControl?: string }) => Promise<void>} write
@@ -90,6 +93,7 @@
  * @property {() => string} randomKey  16 random bytes, base64url.
  * @property {(tx: import('postgres').TransactionSql, key: string) => Promise<void>} lockKey
  * @property {import('pino').Logger} logger
+ * @property {{ setGauge: (name: string, help: string, labels: Record<string, string>, value: number) => void }} [metrics]
  */
 
 export {};

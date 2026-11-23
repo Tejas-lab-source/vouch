@@ -1,0 +1,33 @@
+{
+  "name": "@vouch/ui-native",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React Native components on the design tokens.",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vouch/ui-tokens": "workspace:*",
+    "@vouch/i18n": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "19.3.0",
+    "react-native": "0.88.1"
+  },
+  "devDependencies": {
+    "@vouch/config": "workspace:*",
+    "eslint": "9.39.5",
+    "vitest": "5.1.1",
+    "@types/react": "19.3.0",
+    "react": "19.3.0",
+    "react-native": "0.88.1"
+  }
+}

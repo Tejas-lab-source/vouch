@@ -1,5 +1,7 @@
 // @ts-check
 
+/** @typedef {Record<string, (...args: any[]) => Promise<any>>} StoreGroup */
+
 /**
  * @typedef {object} SafetyStores
  * @property {{
@@ -8,8 +10,13 @@
  *   blockedBy(blockerId: string): Promise<{ blockedId: string, createdAt: Date }[]>,
  *   othersOf(userId: string): Promise<string[]>,
  *   exists(a: string, b: string): Promise<boolean>,
+ *   blockersBetween(a: string, b: string): Promise<string[]>,
  * }} blocks  `othersOf` and `exists` are symmetric (either direction).
- * @property {{ activeAmong(userIds: readonly string[], now: Date): Promise<string[]> }} bans
+ * @property {{ activeAmong(userIds: readonly string[], now: Date): Promise<string[]>, [more: string]: (...args: any[]) => Promise<any> }} bans
+ * @property {StoreGroup} reports  Phase 10 (see adapters/pg/stores.js).
+ * @property {StoreGroup} verifications  Phase 10.
+ * @property {StoreGroup} rejections  Phase 10.
+ * @property {StoreGroup} erasure  Phase 10.
  */
 
 /**
@@ -38,6 +45,13 @@
  * @property {(tx: import('postgres').TransactionSql) => SafetyStores} storesFor  Stores on a caller's transaction.
  * @property {BlockCache} blockCache
  * @property {{ getUsersByPublicIds: (ids: readonly string[]) => Promise<{ id: string, publicId: string, status: string }[]>, getUsersByIds: (ids: readonly string[]) => Promise<{ id: string, publicId: string }[]> }} identity
+ * @property {any} [profiles]  profiles' public API (Phase 10)
+ * @property {any} [media]  media's public API (Phase 10)
+ * @property {any} [pipelines]
+ * @property {any} [rateLimiter]
+ * @property {any} [redis]
+ * @property {() => string} [newId]
+ * @property {any} [settings]
  * @property {ModerationProvider} moderation
  * @property {import('./domain/moderation.js').ModerationThresholds} thresholds
  * @property {{ now: () => Date }} clock

@@ -41,6 +41,20 @@ export function makeMatchingConsumers({ passes, clock, newId }) {
     },
 
     /**
+     * `user.banned.v1` (Phase 10): every active match of the banned user ends
+     * (`unmatchedBy: null`), so chat closes the conversations; the other person is told
+     * `unmatched`, exactly as for an unmatch. Lifting the ban does not restore matches.
+     * @param {{ userId: string }} payload
+     * @param {Scope} scope
+     */
+    async onUserBanned({ userId }, scope) {
+      const at = clock.now();
+      for (const match of await scope.stores.matches.allForUser(userId)) {
+        if (!match.unmatchedAt && !match.anonymisedAt) await end(scope, match, at);
+      }
+    },
+
+    /**
      * `user.deleted.v1`: delete the user's swipes (both directions), end active matches, and
      * anonymise every match: the user's id becomes a random tombstone, in canonical order.
      * @param {{ userId: string }} payload

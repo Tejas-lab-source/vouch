@@ -20,6 +20,15 @@
     "**/node_modules/**",
     "**/coverage/**",
     "**/.turbo/**",
-    "**/test/boundaries/fixtures/**"
+    "**/test/boundaries/fixtures/**",
+    "apps/web/**",
+    "apps/admin/**",
+    "apps/mobile/**",
+    "apps/landing/**",
+    "packages/features-core/**",
+    "packages/ui-web/**",
+    "packages/ui-native/**",
+    "**/dist/**",
+    "**/.expo/**"
   ]
 }

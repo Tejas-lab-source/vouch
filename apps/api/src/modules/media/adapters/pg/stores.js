@@ -37,8 +37,21 @@ export function createMediaStores(tx) {
         return /** @type {any} */ (row).photoKey;
       },
       markInReview: async (id) => {
-        await tx`UPDATE media.uploads SET status = 'in_review' WHERE id = ${id}`;
+        await tx`UPDATE media.uploads SET status = 'in_review', processed_at = now() WHERE id = ${id}`;
       },
+      listInReview: async (afterId, limit) =>
+        /** @type {any} */ (
+          await tx`SELECT id, user_id, processed_at AS flagged_at FROM media.uploads
+            WHERE status = 'in_review' AND (${afterId}::uuid IS NULL OR id > ${afterId}::uuid)
+            ORDER BY id LIMIT ${limit}`
+        ),
+      countInReviewBefore: async (flaggedBefore) =>
+        Number(
+          (
+            await tx`SELECT count(*)::int AS n FROM media.uploads
+              WHERE status = 'in_review' AND processed_at < ${flaggedBefore}`
+          )[0]?.n ?? 0,
+        ),
       markApproved: async (id, at) => {
         await tx`UPDATE media.uploads SET status = 'approved', photo_id = id, processed_at = ${at} WHERE id = ${id}`;
       },

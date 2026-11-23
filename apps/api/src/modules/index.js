@@ -1,8 +1,11 @@
 // @ts-check
+import admin from './admin/manifest.js';
+import chat from './chat/manifest.js';
 import discovery from './discovery/manifest.js';
 import identity from './identity/manifest.js';
 import matching from './matching/manifest.js';
 import media from './media/manifest.js';
+import notifications from './notifications/manifest.js';
 import profiles from './profiles/manifest.js';
 import safety from './safety/manifest.js';
 
@@ -11,4 +14,4 @@ import safety from './safety/manifest.js';
  * one line here. `_example` is test-only and never listed.
  * @type {import('../platform/registry.js').Manifest[]}
  */
-export default [identity, profiles, media, safety, discovery, matching];
+export default [identity, profiles, media, safety, discovery, matching, chat, notifications, admin];

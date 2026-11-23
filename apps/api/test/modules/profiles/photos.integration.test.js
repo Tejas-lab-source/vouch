@@ -6,6 +6,7 @@ import {
   EVENTS,
   getMyProfile as getMyProfileEndpoint,
   ProfileCard,
+  reorderMyPhotos as reorderMyPhotosEndpoint,
   updateMyProfile as updateMyProfileEndpoint,
 } from '@vouch/contracts';
 import { startTestStorage, TEST_STORAGE } from '@vouch/config/test/containers';
@@ -351,6 +352,33 @@ describe('profiles and media (ROLE=all, real Postgres, Redis and S3)', () => {
     expect(event?.payload.reason).toBe('not_an_image');
   });
 
+  it('the upload CORS rule lets only the web origins PUT (preflight), with the signed content type', async () => {
+    const web = 'http://localhost:5173';
+    await createS3Storage({
+      endpoint: s3.endpoint,
+      ...TEST_STORAGE,
+    }).applyUploadCors([web]);
+    /** @param {string} origin @param {string} method */
+    const preflight = (origin, method) =>
+      fetch(`${s3.endpoint}/${TEST_STORAGE.bucket}/uploads/probe`, {
+        method: 'OPTIONS',
+        headers: {
+          origin,
+          'access-control-request-method': method,
+          'access-control-request-headers': 'content-type',
+        },
+      });
+    const allowed = await preflight(web, 'PUT');
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get('access-control-allow-origin')).toBe(web);
+    expect(allowed.headers.get('access-control-allow-methods')).toBe('PUT');
+    const foreign = await preflight('https://elsewhere.example', 'PUT');
+    expect(foreign.headers.get('access-control-allow-origin')).toBeNull();
+    const del = await preflight(web, 'DELETE');
+    // A browser refuses any method missing from Allow-Methods.
+    expect(del.headers.get('access-control-allow-methods') ?? '').not.toContain('DELETE');
+  });
+
   it('storage enforces the signed size and type; confirm refuses anything else', async () => {
     const user = await signUp();
     const bytes = await jpegWithGps({ width: 300, height: 300 });
@@ -427,6 +455,51 @@ describe('profiles and media (ROLE=all, real Postgres, Redis and S3)', () => {
       auth(user.token),
     );
     expect(freed.statusCode).toBe(201);
+  });
+
+  it('reorders photos: the new order is stored, and another user’s photo or a partial list is refused', async () => {
+    const user = await signUp();
+    const other = await signUp();
+    const a = (await uploadPhoto(user.token, await jpegWithGps({ width: 300, height: 300 })))
+      .uploadId;
+    const b = (await uploadPhoto(user.token, await jpegWithGps({ width: 310, height: 300 })))
+      .uploadId;
+    const theirs = (await uploadPhoto(other.token, await jpegWithGps())).uploadId;
+    await photoReaches(user.token, a, 'approved');
+    await photoReaches(user.token, b, 'approved');
+    await photoReaches(other.token, theirs, 'approved');
+    /** @param {string} token @param {string[]} photoIds */
+    const reorder = (token, photoIds) =>
+      app.http.inject({
+        method: 'PUT',
+        url: '/v1/me/photos/order',
+        payload: { photoIds },
+        headers: auth(token),
+      });
+    // Uploads are placed as their events are consumed, so the starting order is either one.
+    const before = (await getProfile(user.token)).photos.map((/** @type {any} */ p) => p.id);
+    expect([...before].sort()).toEqual([a, b].sort());
+    const [first, second] = /** @type {[string, string]} */ (before);
+    const moved = await reorder(user.token, [second, first]);
+    expect(moved.statusCode).toBe(200);
+    const view = reorderMyPhotosEndpoint.response.schema.parse(moved.json());
+    expect(view.photos.map((/** @type {any} */ p) => [p.id, p.position])).toEqual([
+      [second, 0],
+      [first, 1],
+    ]);
+    expect((await getProfile(user.token)).photos.map((/** @type {any} */ p) => p.id)).toEqual([
+      second,
+      first,
+    ]);
+    for (const photoIds of [[b], [b, theirs], [b, a, theirs], [b, b]]) {
+      const refused = await reorder(user.token, photoIds);
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json().error.code).toBe('VALIDATION_FAILED');
+    }
+    // The other user's order is untouched.
+    expect((await getProfile(other.token)).photos.map((/** @type {any} */ p) => p.id)).toEqual([
+      theirs,
+    ]);
   });
 
   it('a photo deleted while it is being processed stays deleted and leaves no files', async () => {

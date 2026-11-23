@@ -47,6 +47,21 @@ export const socketFixtures = {
     valid: [{ ok: true, messages: [s.message], truncated: false }],
     invalid: [{ ok: true, messages: [s.message] }],
   },
+  'socket.auth.refresh.payload': { valid: [{ token: 'eyJhbGciOi' }], invalid: [{ token: '' }] },
+  'socket.auth.refresh.ack': {
+    valid: [
+      { ok: true, expiresAt: s.TS },
+      {
+        ok: false,
+        error: { code: 'UNAUTHENTICATED', message: 'Sign in to continue.', requestId: 'r1' },
+      },
+    ],
+    invalid: [{ ok: true }],
+  },
+  'socket.auth.expired.payload': {
+    valid: [{ reason: 'token_expired' }],
+    invalid: [{ reason: 'other' }],
+  },
   'socket.message.new.payload': { valid: [s.message], invalid: [{ ...s.message, seq: 0 }] },
   'socket.match.new.payload': {
     valid: [{ matchId: s.ID, conversationId: null, user: s.card }],
@@ -57,6 +72,13 @@ export const socketFixtures = {
     invalid: [{ conversationId: s.ID, reason: 'expired' }],
   },
   'socket.config.changed.payload': { valid: [{}], invalid: [{ flags: {} }] },
+  'socket.receipt.updated.payload': {
+    valid: [{ conversationId: s.ID, deliveredSeq: 9, readSeq: 4 }],
+    invalid: [
+      { conversationId: s.ID, deliveredSeq: 9 },
+      { conversationId: s.ID, deliveredSeq: 1, readSeq: 1, body: 'x' },
+    ],
+  },
 };
 
 /** Domain event envelopes, keyed `event.<name>`. @type {Fixtures} */
@@ -264,6 +286,28 @@ export const eventFixtures = {
       },
     ],
   },
+  'event.user.unbanned.v1': {
+    valid: [envelope('user.unbanned.v1', 1, { userId: s.ID, banId: s.ID2, liftedAt: s.TS })],
+    invalid: [envelope('user.unbanned.v1', 1, { userId: s.ID, banId: s.ID2 })],
+  },
+  'event.verification.decided.v1': {
+    valid: [
+      envelope('verification.decided.v1', 1, {
+        userId: s.ID,
+        reviewId: s.ID2,
+        decision: 'approved',
+        decidedAt: s.TS,
+      }),
+    ],
+    invalid: [
+      envelope('verification.decided.v1', 1, {
+        userId: s.ID,
+        reviewId: s.ID2,
+        decision: 'maybe',
+        decidedAt: s.TS,
+      }),
+    ],
+  },
 };
 
 /** Job payloads, keyed `job.<name>`. @type {Fixtures} */
@@ -280,6 +324,13 @@ export const jobFixtures = {
     valid: [{ partition: 15, olderThan: s.TS }],
     invalid: [{ partition: 16, olderThan: s.TS }],
   },
+  'job.chat.retentionTick': { valid: [{}], invalid: [{ olderThan: 'x' }] },
+  'job.notifications.likesDigest': { valid: [{}], invalid: [{ userId: 'x' }] },
+  'job.notifications.retentionTick': { valid: [{}], invalid: [{ days: 90 }] },
+  'job.safety.retentionTick': { valid: [{}], invalid: [{ days: 1 }] },
+  'job.admin.retentionTick': { valid: [{}], invalid: [{ years: 2 }] },
+  'job.platform.consistencyCheck': { valid: [{}], invalid: [{ check: 'all' }] },
+  'job.media.reviewAlert': { valid: [{}], invalid: [{ hours: 48 }] },
   'job.matching.flushPasses': { valid: [{}], invalid: [{ now: true }] },
   'job.matching.retentionTick': { valid: [{}], invalid: [{ partition: 1 }] },
   'job.media.retentionTick': { valid: [{}], invalid: [{ olderThan: 'now' }] },
@@ -341,6 +392,20 @@ export const pipelineFixtures = {
   'pipeline.safety.contentChecks.output': {
     valid: [{ verdict: 'review', reasons: ['suggestive'], provider: 'dev' }],
     invalid: [{ verdict: 'unsure', reasons: [], provider: 'dev' }],
+  },
+  'pipeline.safety.reportEvidence.input': {
+    valid: [
+      { reporterId: s.ID, targetId: s.ID2, context: 'chat', conversationId: s.ID },
+      { reporterId: s.ID, targetId: s.ID2, context: 'profile', conversationId: null },
+    ],
+    invalid: [{ reporterId: s.ID, targetId: s.ID2, context: 'feed', conversationId: null }],
+  },
+  'pipeline.safety.reportEvidence.output': {
+    valid: [
+      { messages: [s.message], refuse: null },
+      { messages: [], refuse: 'NOT_A_MEMBER' },
+    ],
+    invalid: [{ messages: [], refuse: 'BLOCKED' }],
   },
   'pipeline.profiles.cardFields.input': { valid: [s.card], invalid: [{ ...s.card, photos: [] }] },
   'pipeline.profiles.cardFields.output': { valid: [s.card], invalid: [{ ...s.card, extra: true }] },
@@ -427,6 +492,7 @@ export const envFixtures = {
         MODERATION_PROVIDER: 'rekognition',
         MODERATION_API_KEY: 'mk',
         MODERATION_AWS_ACCESS_KEY_ID: 'AKIAEXAMPLE',
+        ADMIN_TOTP_KEY: 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=',
       },
     ],
     invalid: [
@@ -443,6 +509,9 @@ export const envFixtures = {
       { ...baseEnv, MODERATION_AWS_REGION: 'mumbai' },
       { ...baseEnv, TRUSTED_PROXIES: '10.0.0.0/8, not-an-ip' },
       { ...baseEnv, RATE_LIMIT_USER_MINUTE: '0' },
+      { ...baseEnv, CHAT_MAX_LINKS_PER_MESSAGE: '11' },
+      { ...baseEnv, ADMIN_TOTP_KEY: 'short' },
+      { ...baseEnv, REPORT_AUTOHIDE_REPORTERS: '0' },
     ],
   },
 };

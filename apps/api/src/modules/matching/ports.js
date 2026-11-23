@@ -17,6 +17,7 @@
  *   pairState(me: string, targetId: string, userLow: string, userHigh: string): Promise<{ reverseLike: boolean, previouslyUnmatched: boolean }>,
  *   insertPasses(passes: readonly { swiperId: string, targetId: string, swipedAt: string }[]): Promise<number>,
  *   likesInCount(userId: string): Promise<number>,
+ *   pendingLikesBatch(afterId: string | null, limit: number): Promise<{ userId: string, likes: number }[]>,
  *   forUser(userId: string): Promise<{ targetId: string, direction: number, createdAt: Date }[]>,
  *   removeForUser(userId: string): Promise<number>,
  *   purgePasses(partition: number, olderThan: Date, limit: number): Promise<number>,

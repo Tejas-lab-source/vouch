@@ -49,6 +49,12 @@ export const JOBS = Object.freeze(
         }),
       }),
       defineJob({
+        name: 'chat.retentionTick',
+        queue: 'bulk',
+        description: 'Nightly: delete messages of conversations closed more than 30 days ago.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
         name: 'matching.flushPasses',
         queue: 'bulk',
         description:
@@ -90,6 +96,44 @@ export const JOBS = Object.freeze(
           template: z.enum(['match.new', 'message.new', 'likes.digest']),
           params: z.record(z.string().regex(/^[a-zA-Z]+$/), z.string().max(200)),
         }),
+      }),
+      defineJob({
+        name: 'notifications.likesDigest',
+        queue: 'bulk',
+        description: 'Daily: one likes.digest push to each user with unanswered likes.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
+        name: 'notifications.retentionTick',
+        queue: 'bulk',
+        description: 'Nightly: delete delivery log rows older than 90 days.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
+        name: 'safety.retentionTick',
+        queue: 'bulk',
+        description:
+          'Nightly: purge report evidence 1 year after close, lifted or expired bans, ' +
+          'ID images 30 days after the decision; lift expired bans.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
+        name: 'admin.retentionTick',
+        queue: 'bulk',
+        description: 'Nightly: delete audit log entries older than 2 years.',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
+        name: 'platform.consistencyCheck',
+        queue: 'bulk',
+        description: 'Nightly: count cross-module invariant violations (metrics and alerts).',
+        payload: z.strictObject({}),
+      }),
+      defineJob({
+        name: 'media.reviewAlert',
+        queue: 'bulk',
+        description: 'Hourly: alert when a photo has been in review for more than 48 hours.',
+        payload: z.strictObject({}),
       }),
       defineJob({
         name: 'notifications.checkReceipts',

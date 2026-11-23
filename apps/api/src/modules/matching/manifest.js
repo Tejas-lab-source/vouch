@@ -50,6 +50,7 @@ export default defineModule({
   subscribe: {
     'user.blocked.v1': (/** @type {any} */ ctx) => handlerFor(ctx, 'user.blocked.v1'),
     'user.deleted.v1': (/** @type {any} */ ctx) => handlerFor(ctx, 'user.deleted.v1'),
+    'user.banned.v1': (/** @type {any} */ ctx) => handlerFor(ctx, 'user.banned.v1'),
   },
   jobs: {
     queue: 'bulk',

@@ -68,7 +68,11 @@ export function makeRefresh(deps) {
           await stores.sessions.markRotated(session.id, next.sessionId, now);
         }
         await stores.devices.touch(session.deviceId, now);
-        return { userId: session.userId, ...next };
+        return {
+          userId: session.userId,
+          ...next,
+          pendingReview: user.status === 'pending_review',
+        };
       });
 
       // Revocations above are committed before the error is raised.

@@ -9,13 +9,15 @@ export const IDENTITY_RETENTION_MS = Object.freeze({
 
 /**
  * Runs one retention task inside the caller's transaction.
- * @param {{ purgeSessions: (d: Date) => Promise<number>, purgeDevices: (d: Date) => Promise<number>, purgeDeletedUsers: (d: Date) => Promise<number> }} retention
+ * @param {{ purgeSessions: (d: Date) => Promise<number>, purgeDevices: (d: Date) => Promise<number>, purgeDeletedUsers: (d: Date) => Promise<number>, purgeExpiredBannedEmails?: (d: Date) => Promise<number> }} retention
  * @param {'sessions' | 'devices' | 'deletedUsers'} task
  * @param {Date} olderThan
  * @returns {Promise<number>} Rows deleted.
  */
-export function runRetention(retention, task, olderThan) {
+export async function runRetention(retention, task, olderThan) {
   if (task === 'sessions') return retention.purgeSessions(olderThan);
   if (task === 'devices') return retention.purgeDevices(olderThan);
-  return retention.purgeDeletedUsers(olderThan);
+  // Ban records of expired bans go with the erasure pass (they already no longer match).
+  const emails = (await retention.purgeExpiredBannedEmails?.(olderThan)) ?? 0;
+  return emails + (await retention.purgeDeletedUsers(olderThan));
 }

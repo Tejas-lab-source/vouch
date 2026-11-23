@@ -191,7 +191,41 @@ export function makeProfileUseCases(deps) {
     },
   );
 
+  const reorderMyPhotos = useCase(
+    'profiles.reorderMyPhotos',
+    /** @param {{ photoIds: string[] }} input */
+    async (input, ctx) => {
+      const userId = /** @type {string} */ (ctx.actor?.userId);
+      await change(userId, async (profile, { stores }) => {
+        const current = (await stores.photos.listForUserForUpdate(userId)).filter(
+          (p) => p.status !== 'deleted',
+        );
+        const ids = new Set(input.photoIds);
+        const exact =
+          ids.size === input.photoIds.length &&
+          ids.size === current.length &&
+          current.every((p) => ids.has(p.id));
+        if (!exact) {
+          throw new ServiceError('VALIDATION_FAILED', {
+            message: 'List each of your current photos exactly once.',
+          });
+        }
+        const positionOf = new Map(current.map((p) => [p.id, p.position]));
+        const moves = input.photoIds.flatMap((id, position) =>
+          positionOf.get(id) === position ? [] : [{ id, position }],
+        );
+        if (moves.length === 0) return null;
+        for (const move of moves) {
+          await stores.photos.setPosition(move.id, move.position, clock.now());
+        }
+        return { profile, changed: ['photos'] };
+      });
+      return ownView(userId);
+    },
+  );
+
   return {
+    reorderMyPhotos,
     createEmptyProfile,
     ensureProfile,
     getMyProfile,

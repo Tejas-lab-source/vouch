@@ -61,6 +61,13 @@ export const CLIENT_EVENTS = Object.freeze({
     }),
     ack: ack({ messages: z.array(Message).max(500), truncated: z.boolean() }),
   },
+  'auth.refresh': {
+    description:
+      'After refreshing the access token, send the new one: the socket stays connected and its ' +
+      'expiry moves to the new token’s (Phase 9). It must belong to the same user.',
+    payload: z.strictObject({ token: z.string().min(1).max(4096) }),
+    ack: ack({ expiresAt: Timestamp }),
+  },
 });
 
 /** Server → client events. */
@@ -78,12 +85,28 @@ export const SERVER_EVENTS = Object.freeze({
       user: ProfileCard.describe('The other user.'),
     }),
   },
+  'receipt.updated': {
+    description:
+      'The other member’s delivered or read cursor moved (Phase 13): your messages up to ' +
+      '`deliveredSeq` reached their device, and up to `readSeq` were read. Cursors only.',
+    payload: z.strictObject({
+      conversationId: ConversationId,
+      deliveredSeq: z.int().min(0),
+      readSeq: z.int().min(0),
+    }),
+  },
   'conversation.closed': {
     description: 'The conversation can no longer receive messages.',
     payload: z.strictObject({
       conversationId: ConversationId,
       reason: z.enum(['unmatched', 'blocked', 'banned', 'deleted']),
     }),
+  },
+  'auth.expired': {
+    description:
+      'The access token expired and no valid `auth.refresh` arrived within the grace period; ' +
+      'the server disconnects next. Reconnect with a fresh token, then `sync` (Phase 9).',
+    payload: z.strictObject({ reason: z.literal('token_expired') }),
   },
   'config.changed': {
     description: 'Flags or limits changed; refetch `GET /v1/config`.',

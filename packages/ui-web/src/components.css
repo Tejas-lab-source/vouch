@@ -1,0 +1,283 @@
+/* Vouch web components (Phase 11). Colours and sizes come only from the token variables. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+}
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.v-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.v-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 0 var(--space-5);
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-weight: var(--type-label-weight);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-easing);
+}
+.v-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.v-button--block {
+  width: 100%;
+}
+.v-button--primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.v-button--secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.v-button--danger {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+.v-button--ghost {
+  background: transparent;
+  color: var(--color-accent);
+}
+.v-spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: v-spin calc(var(--motion-slow) * 2) linear infinite;
+}
+@keyframes v-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.v-field {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+.v-field__label {
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+}
+.v-field__hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--type-caption-size);
+}
+.v-field__error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--type-label-size);
+}
+.v-input,
+.v-otp__input {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text);
+  font: inherit;
+}
+.v-input[aria-invalid='true'],
+.v-otp__input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+.v-otp {
+  position: relative;
+}
+.v-otp__input {
+  width: 100%;
+  letter-spacing: 1.5em;
+  font-variant-numeric: tabular-nums;
+}
+.v-otp__boxes {
+  display: none;
+}
+
+.v-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-weight: var(--type-label-weight);
+}
+
+.v-card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.v-modal {
+  width: min(32rem, 100vw);
+  max-height: 90vh;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  color: var(--color-text);
+}
+.v-modal::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+@media (max-width: 600px) {
+  .v-modal {
+    margin: auto 0 0;
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}
+.v-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+.v-modal__title {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+.v-modal__body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+.v-icon-button {
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: inherit;
+  font-size: var(--type-title-size);
+  cursor: pointer;
+}
+
+.v-toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-text);
+  color: var(--color-background);
+}
+.v-toast--error {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.v-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+}
+.v-empty__title {
+  margin: 0;
+  font-size: var(--type-title-size);
+}
+.v-empty__body {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.v-skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  animation: v-pulse calc(var(--motion-slow) * 4) ease-in-out infinite;
+}
+.v-skeleton--round {
+  border-radius: 50%;
+}
+@keyframes v-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-skeleton,
+  .v-spinner {
+    animation: none;
+  }
+}
+
+.v-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+.v-list-item--button {
+  cursor: pointer;
+}
+.v-list-item__text {
+  display: grid;
+  flex: 1;
+}
+.v-list-item__subtitle {
+  color: var(--color-text-muted);
+  font-size: var(--type-label-size);
+}
+
+.v-badge {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-label-weight);
+  text-align: center;
+}
+.v-badge--accent {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.v-badge--danger {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}

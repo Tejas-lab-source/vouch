@@ -53,6 +53,7 @@
         "x-error-codes": [
           "CAPTCHA_FAILED",
           "VALIDATION_FAILED",
+          "FEATURE_DISABLED",
           "EMAIL_DOMAIN_NOT_ALLOWED",
           "APP_VERSION_UNSUPPORTED",
           "RATE_LIMITED",
@@ -105,6 +106,14 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "verification": {
+                    "type": "string",
+                    "enum": [
+                      "college_email",
+                      "id_card"
+                    ],
+                    "description": "Omitted means college_email."
                   }
                 },
                 "required": [
@@ -139,6 +148,16 @@
           },
           "400": {
             "description": "Error codes: CAPTCHA_FAILED, VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: FEATURE_DISABLED.",
             "content": {
               "application/json": {
                 "schema": {
@@ -334,6 +353,12 @@
                           "purposes"
                         ],
                         "additionalProperties": false
+                      },
+                      "collegeId": {
+                        "description": "Required for an ID-card sign-up (any email); ignored for a college email.",
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
                       }
                     },
                     "required": [
@@ -341,6 +366,14 @@
                       "consent"
                     ],
                     "additionalProperties": false
+                  },
+                  "verification": {
+                    "type": "string",
+                    "enum": [
+                      "college_email",
+                      "id_card"
+                    ],
+                    "description": "Omitted means college_email."
                   }
                 },
                 "required": [
@@ -2990,6 +3023,348 @@
         }
       }
     },
+    "/v1/me/photos/order": {
+      "put": {
+        "operationId": "reorderMyPhotos",
+        "summary": "Set the order of your photos; the first is the main photo.",
+        "description": "List every current photo (pending, approved or rejected) exactly once. Repeating the same order returns the same profile. A missing, unknown or repeated id is VALIDATION_FAILED.",
+        "tags": [
+          "profiles"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "photoIds": {
+                    "minItems": 1,
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                      "description": "Photo id (UUIDv7)."
+                    }
+                  }
+                },
+                "required": [
+                  "photoIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set the order of your photos; the first is the main photo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{16,32}$",
+                      "description": "Random public id of a user. Internal user UUIDs are never exposed."
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "active",
+                        "hidden"
+                      ]
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 50
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "gender": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "enum": [
+                            0,
+                            1,
+                            2
+                          ],
+                          "description": "0 = woman, 1 = man, 2 = non-binary."
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "interestedIn": {
+                      "maxItems": 3,
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "enum": [
+                          0,
+                          1,
+                          2
+                        ],
+                        "description": "0 = woman, 1 = man, 2 = non-binary."
+                      }
+                    },
+                    "bio": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "age": {
+                      "type": "integer",
+                      "minimum": 18,
+                      "maximum": 99
+                    },
+                    "minAge": {
+                      "type": "integer",
+                      "minimum": 18,
+                      "maximum": 99
+                    },
+                    "maxAge": {
+                      "type": "integer",
+                      "minimum": 18,
+                      "maximum": 99
+                    },
+                    "photos": {
+                      "maxItems": 6,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+                            "description": "Photo id (UUIDv7)."
+                          },
+                          "position": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 5
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected"
+                            ]
+                          },
+                          "urls": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "w400": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "description": "400 px variant, used in decks."
+                                  },
+                                  "w1080": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "description": "1080 px variant, used in detail views."
+                                  }
+                                },
+                                "required": [
+                                  "w400",
+                                  "w1080"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Null until the photo is approved."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "position",
+                          "status",
+                          "urls"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+                          },
+                          "schemaVersion": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "position": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "data": {
+                            "description": "Validated against the zod schema registered for `type`."
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "schemaVersion",
+                          "position",
+                          "data"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "missing": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "name",
+                          "gender",
+                          "interestedIn",
+                          "photos"
+                        ]
+                      },
+                      "description": "Empty when the profile is complete."
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "status",
+                    "name",
+                    "gender",
+                    "interestedIn",
+                    "bio",
+                    "age",
+                    "minAge",
+                    "maxAge",
+                    "photos",
+                    "sections",
+                    "missing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/media/uploads": {
       "post": {
         "operationId": "createUpload",
@@ -4280,6 +4655,127 @@
         }
       }
     },
+    "/v1/me/likes/count": {
+      "get": {
+        "operationId": "getLikesCount",
+        "summary": "How many people liked you and are still waiting for your swipe.",
+        "description": "A count only: who liked you is never returned. Blocked users are not counted. A pass made in the last few seconds may still be counted until it is written.",
+        "tags": [
+          "matching"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many people liked you and are still waiting for your swipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/conversations": {
       "get": {
         "operationId": "listConversations",
@@ -4648,7 +5144,7 @@
       "get": {
         "operationId": "listMessages",
         "summary": "Message history and gap replay, in seq order.",
-        "description": "Messages are addressed by `(conversationId, seq)`, so this list pages by seq instead of an opaque cursor: pass `nextAfterSeq` back as `afterSeq`. It is null on the last page.",
+        "description": "Messages are addressed by `(conversationId, seq)`, so this list pages by seq instead of an opaque cursor: pass `nextAfterSeq` back as `afterSeq`. It is null on the last page. To load history backwards (a chat screen opens at the newest message), pass `beforeSeq` instead: the newest `limit` messages before it, in seq order, and `prevBeforeSeq` for the next older page (null at the start). `peerDeliveredSeq` and `peerReadSeq` are the other member’s cursors, for delivery and read states on your own messages.",
         "tags": [
           "chat"
         ],
@@ -4690,6 +5186,17 @@
               "default": 0,
               "type": "integer",
               "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "beforeSeq",
+            "in": "query",
+            "required": false,
+            "description": "Page backwards: messages with seq below this (Phase 13).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
               "maximum": 9007199254740991
             }
           },
@@ -4790,11 +5297,39 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "prevBeforeSeq": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "With `beforeSeq`: pass back as `beforeSeq` for older messages (Phase 13)."
+                    },
+                    "peerDeliveredSeq": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "The other member’s delivered cursor (Phase 13)."
+                    },
+                    "peerReadSeq": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "The other member’s read cursor (Phase 13)."
                     }
                   },
                   "required": [
                     "items",
-                    "nextAfterSeq"
+                    "nextAfterSeq",
+                    "prevBeforeSeq",
+                    "peerDeliveredSeq",
+                    "peerReadSeq"
                   ],
                   "additionalProperties": false
                 }
@@ -5227,6 +5762,749 @@
         }
       }
     },
+    "/v1/verification/id-card/uploads": {
+      "post": {
+        "operationId": "createIdCardUploads",
+        "summary": "Presigned URLs for a student ID photo and a selfie (ID-card sign-up only).",
+        "description": "Only for accounts in `pending_review` without a submitted review. The images are private: they are never served by the CDN and are deleted 30 days after the decision.",
+        "tags": [
+          "safety"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "header"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "FORBIDDEN",
+          "CONFLICT",
+          "FILE_TOO_LARGE",
+          "UNSUPPORTED_MEDIA_TYPE",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Client-generated key, typically a UUID; reused only for retries of one request.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idCard": {
+                    "type": "object",
+                    "properties": {
+                      "contentType": {
+                        "type": "string",
+                        "enum": [
+                          "image/jpeg",
+                          "image/png",
+                          "image/webp"
+                        ]
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10485760
+                      }
+                    },
+                    "required": [
+                      "contentType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "selfie": {
+                    "type": "object",
+                    "properties": {
+                      "contentType": {
+                        "type": "string",
+                        "enum": [
+                          "image/jpeg",
+                          "image/png",
+                          "image/webp"
+                        ]
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10485760
+                      }
+                    },
+                    "required": [
+                      "contentType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "idCard",
+                  "selfie"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Presigned URLs for a student ID photo and a selfie (ID-card sign-up only).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "submissionId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+                    },
+                    "idCard": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "method": {
+                          "type": "string",
+                          "const": "PUT"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "description": "Headers the upload request must send."
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "method",
+                        "headers"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "selfie": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "method": {
+                          "type": "string",
+                          "const": "PUT"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "description": "Headers the upload request must send."
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "method",
+                        "headers"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "submissionId",
+                    "idCard",
+                    "selfie",
+                    "expiresAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED, FORBIDDEN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error codes: CONFLICT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error codes: FILE_TOO_LARGE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error codes: UNSUPPORTED_MEDIA_TYPE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/verification/id-card": {
+      "post": {
+        "operationId": "submitIdCard",
+        "summary": "Submit the uploaded ID and selfie for review.",
+        "description": "Idempotent on the submission id. The account stays `pending_review` until decided.",
+        "tags": [
+          "safety"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "body",
+          "field": "submissionId"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "CONFLICT",
+          "UPLOAD_NOT_UPLOADED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "submissionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+                  }
+                },
+                "required": [
+                  "submissionId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Submit the uploaded ID and selfie for review.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "pending"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED, FORBIDDEN.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error codes: NOT_FOUND.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error codes: CONFLICT, UPLOAD_NOT_UPLOADED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/blocks": {
+      "get": {
+        "operationId": "listMyBlocks",
+        "summary": "The people you blocked, newest first.",
+        "description": "Only your own blocks: who blocked you is never revealed.",
+        "tags": [
+          "safety"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The people you blocked, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "maxItems": 1000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{16,32}$",
+                            "description": "Random public id of a user. Internal user UUIDs are never exposed."
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 50
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Null when their profile is gone."
+                          },
+                          "blockedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "blockedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/blocks/{userId}": {
+      "delete": {
+        "operationId": "unblockUser",
+        "summary": "Remove your block on a user.",
+        "description": "Idempotent: unblocking someone not blocked returns `unblocked: false`. An ended match or closed conversation is not restored; you may see each other in decks again.",
+        "tags": [
+          "safety"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Random public id of a user. Internal user UUIDs are never exposed.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,32}$"
+            }
+          },
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remove your block on a user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unblocked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "unblocked"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/notification-prefs": {
       "put": {
         "operationId": "putNotificationPrefs",
@@ -5411,6 +6689,997 @@
           },
           "403": {
             "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getNotificationPrefs",
+        "summary": "Read push preferences and quiet hours (defaults until first saved).",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read push preferences and quiet hours (defaults until first saved).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pushMatches": {
+                      "type": "boolean"
+                    },
+                    "pushMessages": {
+                      "type": "boolean"
+                    },
+                    "pushLikesDigest": {
+                      "type": "boolean"
+                    },
+                    "quietHours": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "startMinute": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "endMinute": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            }
+                          },
+                          "required": [
+                            "startMinute",
+                            "endMinute"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Null for no quiet hours. May wrap past midnight (start > end)."
+                    },
+                    "timezone": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "description": "IANA time zone, for example Asia/Kolkata."
+                    }
+                  },
+                  "required": [
+                    "pushMatches",
+                    "pushMessages",
+                    "pushLikesDigest",
+                    "quietHours",
+                    "timezone"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/auth/login": {
+      "post": {
+        "operationId": "adminLogin",
+        "summary": "Sign in with email, password and a TOTP code; returns an admin access token.",
+        "description": "Every failure answers the same UNAUTHENTICATED, whichever factor was wrong. Rate-limited per email and per IP. A TOTP code is accepted once. Honours ADMIN_IP_ALLOWLIST.",
+        "tags": [
+          "admin"
+        ],
+        "security": [],
+        "x-idempotency": {
+          "mode": "header"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "IP_NOT_ALLOWED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Client-generated key, typically a UUID; reused only for retries of one request.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "totp": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password",
+                  "totp"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sign in with email, password and a TOTP code; returns an admin access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "EdDSA JWT, audience vouch:admin, amr mfa."
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "displayName": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "moderator",
+                            "admin"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "displayName",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "accessToken",
+                    "expiresAt",
+                    "admin"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: IP_NOT_ALLOWED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/panels": {
+      "get": {
+        "operationId": "adminListPanels",
+        "summary": "The admin panels this admin may use, from every module’s manifest.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "MFA_REQUIRED",
+          "UNAUTHENTICATED",
+          "FORBIDDEN",
+          "IP_NOT_ALLOWED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The admin panels this admin may use, from every module’s manifest.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9.-]{1,59}$"
+                          },
+                          "module": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 60
+                          },
+                          "roles": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "moderator",
+                                "admin"
+                              ]
+                            }
+                          },
+                          "list": {
+                            "type": "object",
+                            "properties": {
+                              "endpoint": {
+                                "type": "string",
+                                "pattern": "^admin[A-Z][A-Za-z]{1,79}$"
+                              },
+                              "columns": {
+                                "minItems": 1,
+                                "maxItems": 12,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "field": {
+                                      "type": "string",
+                                      "pattern": "^[a-zA-Z][a-zA-Z0-9.]{0,79}$"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 60
+                                    },
+                                    "kind": {
+                                      "default": "text",
+                                      "type": "string",
+                                      "enum": [
+                                        "text",
+                                        "timestamp",
+                                        "status",
+                                        "user",
+                                        "image",
+                                        "json"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "field",
+                                    "label",
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "endpoint",
+                              "columns"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "detail": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "endpoint": {
+                                    "type": "string",
+                                    "pattern": "^admin[A-Z][A-Za-z]{1,79}$"
+                                  },
+                                  "fields": {
+                                    "minItems": 1,
+                                    "maxItems": 40,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "field": {
+                                          "type": "string",
+                                          "pattern": "^[a-zA-Z][a-zA-Z0-9.]{0,79}$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 60
+                                        },
+                                        "kind": {
+                                          "default": "text",
+                                          "type": "string",
+                                          "enum": [
+                                            "text",
+                                            "timestamp",
+                                            "status",
+                                            "user",
+                                            "image",
+                                            "json"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "field",
+                                        "label",
+                                        "kind"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "endpoint",
+                                  "fields"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "maxItems": 12,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[a-z][a-z_]{1,39}$"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 60
+                                },
+                                "endpoint": {
+                                  "type": "string",
+                                  "pattern": "^admin[A-Z][A-Za-z]{1,79}$"
+                                },
+                                "body": {
+                                  "default": {},
+                                  "description": "Fixed body fields.",
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {}
+                                },
+                                "needsNote": {
+                                  "default": false,
+                                  "type": "boolean"
+                                },
+                                "confirm": {
+                                  "default": false,
+                                  "type": "boolean"
+                                },
+                                "danger": {
+                                  "default": false,
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "label",
+                                "endpoint",
+                                "body",
+                                "needsNote",
+                                "confirm",
+                                "danger"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "module",
+                          "title",
+                          "roles",
+                          "list",
+                          "detail",
+                          "actions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: MFA_REQUIRED, UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: FORBIDDEN, IP_NOT_ALLOWED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/deletions/overdue": {
+      "get": {
+        "operationId": "adminListOverdueDeletions",
+        "summary": "Account deletions that a module has not finished erasing within 24 hours.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "MFA_REQUIRED",
+          "UNAUTHENTICATED",
+          "FORBIDDEN",
+          "IP_NOT_ALLOWED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account deletions that a module has not finished erasing within 24 hours.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "maxItems": 500,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{16,32}$",
+                            "description": "Random public id of a user. Internal user UUIDs are never exposed."
+                          },
+                          "deletedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "pendingConsumers": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            }
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "deletedAt",
+                          "pendingConsumers"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: MFA_REQUIRED, UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: FORBIDDEN, IP_NOT_ALLOWED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{userId}/unblock": {
+      "post": {
+        "operationId": "adminUnblock",
+        "summary": "Remove the block userId placed on otherUserId (for example one made in error).",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "body",
+          "field": "otherUserId"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "MFA_REQUIRED",
+          "UNAUTHENTICATED",
+          "FORBIDDEN",
+          "IP_NOT_ALLOWED",
+          "NOT_FOUND",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Random public id of a user. Internal user UUIDs are never exposed.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,32}$"
+            }
+          },
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "otherUserId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{16,32}$",
+                    "description": "Random public id of a user. Internal user UUIDs are never exposed."
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "otherUserId",
+                  "note"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Remove the block userId placed on otherUserId (for example one made in error).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unblocked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "unblocked"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: MFA_REQUIRED, UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: FORBIDDEN, IP_NOT_ALLOWED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error codes: NOT_FOUND.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7101,6 +9370,18 @@
                             ],
                             "description": "Short-lived signed URL; null after the image is deleted (30 days after the decision)."
                           },
+                          "selfieImageUrl": {
+                            "description": "Phase 10: the selfie, compared with the ID photo; same lifetime as idImageUrl.",
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uri"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "submittedAt": {
                             "type": "string",
                             "format": "date-time",
@@ -7339,6 +9620,18 @@
                         }
                       ],
                       "description": "Short-lived signed URL; null after the image is deleted (30 days after the decision)."
+                    },
+                    "selfieImageUrl": {
+                      "description": "Phase 10: the selfie, compared with the ID photo; same lifetime as idImageUrl.",
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "submittedAt": {
                       "type": "string",

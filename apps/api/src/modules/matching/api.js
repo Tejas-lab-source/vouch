@@ -7,6 +7,6 @@
  * - `likesIn(userId)`: how many people liked the user and are still unanswered (a count only).
  * @param {ReturnType<typeof import('./adapters/wiring.js').buildMatchingHandlers>} handlers
  */
-export function createMatchingApi({ areMatched, getMatch, likesIn }) {
-  return { areMatched, getMatch, likesIn };
+export function createMatchingApi({ areMatched, getMatch, likesIn, pendingLikes }) {
+  return { areMatched, getMatch, likesIn, pendingLikes };
 }

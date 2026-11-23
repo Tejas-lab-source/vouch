@@ -64,6 +64,58 @@ jobs:
       - name: Invariant tests (run alone; concurrency and timing targets)
         run: pnpm test:invariants
 
+  web:
+    name: Web build, bundle budget and end-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the web app
+        run: pnpm --filter @vouch/web build
+
+      - name: Initial JS under 200 KB gzipped
+        run: pnpm --filter @vouch/web size
+
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @vouch/web exec playwright install --with-deps chromium
+
+      - name: End-to-end tests (real API in Testcontainers)
+        run: pnpm --filter @vouch/web e2e
+
+  mobile:
+    name: Mobile bundle (Expo export, Android and iOS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Bundle for Android and iOS (Metro, Hermes)
+        run: pnpm --filter @vouch/mobile export:check
+
   docker:
     name: Compose services and Docker image
     runs-on: ubuntu-latest

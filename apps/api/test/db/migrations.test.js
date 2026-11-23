@@ -19,6 +19,11 @@ const EXPECTED_MIGRATIONS = [
   '20261122002100_photo_tombstones',
   '20261122003100_upload_photo_key',
   '20261122003200_upload_in_review',
+  '20261122100000_identity_banned_emails',
+  '20261122100100_upload_review_queue',
+  '20261122100200_safety_moderation',
+  '20261122100300_admin_auth',
+  '20261122100400_platform_consistency_grants',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */
@@ -29,6 +34,7 @@ const EXPECTED_TABLES = [
   'chat.messages',
   'chat.read_cursors',
   'identity.auth_sessions',
+  'identity.banned_emails',
   'identity.consents',
   'identity.devices',
   'identity.users',
@@ -48,6 +54,7 @@ const EXPECTED_TABLES = [
   'profiles.profiles',
   'safety.bans',
   'safety.blocks',
+  'safety.photo_rejections',
   'safety.reports',
   'safety.verification_reviews',
 ];

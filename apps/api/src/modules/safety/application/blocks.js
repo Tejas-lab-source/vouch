@@ -7,7 +7,7 @@ import { canBlock } from '../domain/block.js';
  * @param {import('../ports.js').SafetyDeps} deps
  */
 export function makeBlocks(deps) {
-  const { useCase, uow, read, storesFor, blockCache, identity, clock, logger } = deps;
+  const { useCase, uow, read, storesFor, blockCache, identity, profiles, clock, logger } = deps;
 
   /**
    * Loads a user's blocked set from Postgres into Redis (best-effort).
@@ -104,6 +104,53 @@ export function makeBlocks(deps) {
     { authz: 'admin' },
   );
 
+  /**
+   * `DELETE /v1/blocks/{userId}`: the caller removes their own block. Only the caller's block on
+   * that user is touched (a block the other person made stays). Matches and conversations ended
+   * by the block are not restored.
+   */
+  const unblockMine = useCase(
+    'safety.unblockMine',
+    /** @param {{ userId: string }} input */
+    async (input, ctx) => {
+      const blockerId = /** @type {string} */ (ctx.actor?.userId);
+      const [target] = await identity.getUsersByPublicIds([input.userId]);
+      if (!target) return { unblocked: false };
+      const removed = await uow.run(({ stores }) => stores.blocks.remove(blockerId, target.id));
+      await blockCache.forget(blockerId, target.id);
+      return { unblocked: removed };
+    },
+  );
+
+  /** `GET /v1/me/blocks`: the caller's blocks with a display name (null when not visible). */
+  const listMyBlocks = useCase('safety.listMyBlocks', async (_input, ctx) => {
+    const userId = /** @type {string} */ (ctx.actor?.userId);
+    const rows = await read((stores) => stores.blocks.blockedBy(userId));
+    const ids = rows.map((r) => r.blockedId);
+    const [users, cards] = await Promise.all([
+      identity.getUsersByIds(ids),
+      profiles ? profiles.getCards(ids) : Promise.resolve([]),
+    ]);
+    const publicIds = new Map(users.map((u) => [u.id, u.publicId]));
+    const names = new Map(
+      /** @type {{ userId: string, name: string }[]} */ (cards).map((c) => [c.userId, c.name]),
+    );
+    return {
+      items: rows.flatMap((r) => {
+        const publicId = publicIds.get(r.blockedId);
+        return publicId
+          ? [
+              {
+                userId: publicId,
+                name: names.get(publicId) ?? null,
+                blockedAt: r.createdAt.toISOString(),
+              },
+            ]
+          : [];
+      }),
+    };
+  });
+
   const listBlocked = useCase('safety.listBlocked', async (_input, ctx) => {
     const userId = /** @type {string} */ (ctx.actor?.userId);
     const rows = await read((stores) => stores.blocks.blockedBy(userId));
@@ -117,7 +164,15 @@ export function makeBlocks(deps) {
     };
   });
 
-  return { block, unblock, listBlocked, blockPolicy };
+  /**
+   * Who, of the two, has blocked the other (both, one or none). For wording notices only: the
+   * blocked person is never told (ARCHITECTURE.md 11; owner decision, Phase 9).
+   * @param {string} a
+   * @param {string} b
+   */
+  const blockersBetween = (a, b) => read((stores) => stores.blocks.blockersBetween(a, b));
+
+  return { block, unblock, unblockMine, listBlocked, listMyBlocks, blockPolicy, blockersBetween };
 }
 
 /**

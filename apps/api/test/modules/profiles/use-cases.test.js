@@ -52,8 +52,13 @@ function setup() {
       },
     },
     photos: {
-      listForUser: async () => [...state.photos.values()],
+      listForUser: async () => [...state.photos.values()].sort((a, b) => a.position - b.position),
       findForUpdate: async (id) => state.photos.get(id) ?? null,
+      listForUserForUpdate: async (userId) =>
+        [...state.photos.values()]
+          .filter((p) => p.userId === userId)
+          .sort((a, b) => a.position - b.position),
+      setPosition: async (id, position) => void Object.assign(state.photos.get(id), { position }),
       insert: async (p) => void state.photos.set(p.id, { ...p, userId: p.userId }),
       setStatus: async (id, status, keys) =>
         void Object.assign(state.photos.get(id), {
@@ -197,6 +202,35 @@ describe('profile use cases', () => {
     );
     expect(state.photos.get(PHOTO)?.status).toBe('deleted');
     expect(state.media.filter((m) => m.releaseUpload === PHOTO)).toHaveLength(2);
+  });
+
+  it('reorders exactly the caller’s current photos; anything else is refused', async () => {
+    const { h, state, scope } = setup();
+    const second = `${PHOTO.slice(0, -4)}bbbb`;
+    const third = `${PHOTO.slice(0, -4)}cccc`;
+    for (const id of [PHOTO, second, third]) {
+      await h.consumers.onPhotoUploaded({ uploadId: id, userId: USER }, scope);
+    }
+    await h.useCases.deleteMyPhoto({ id: third }, CTX);
+    const view = await h.useCases.reorderMyPhotos({ photoIds: [second, PHOTO] }, CTX);
+    expect(view.photos.map((/** @type {any} */ p) => [p.id, p.position])).toEqual([
+      [second, 0],
+      [PHOTO, 1],
+    ]);
+    expect(state.invalidated).toContain(USER);
+    const events = state.events.length;
+    // The same order again is a no-op: no event.
+    await h.useCases.reorderMyPhotos({ photoIds: [second, PHOTO] }, CTX);
+    expect(state.events).toHaveLength(events);
+    for (const photoIds of [[second], [second, PHOTO, third], [second, second], [PHOTO, 'x']]) {
+      await expect(h.useCases.reorderMyPhotos({ photoIds }, CTX)).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+      });
+    }
+    state.photos.get(PHOTO).userId = 'someone-else';
+    await expect(
+      h.useCases.reorderMyPhotos({ photoIds: [second, PHOTO] }, CTX),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
   it('deleting someone else’s photo id changes nothing (idempotent 200)', async () => {

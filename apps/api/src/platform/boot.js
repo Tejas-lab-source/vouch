@@ -13,6 +13,9 @@ import { buildHttpServer } from './http.js';
 import { createIdGenerator } from './ids.js';
 import { createIdempotencyStore } from './idempotency.js';
 import { createJobs } from './jobs.js';
+import { configRoute } from './config-route.js';
+import { createSemaphore } from './semaphore.js';
+import { CONSISTENCY_CRON, createConsistencyCheck } from './jobs/consistency.js';
 import { createMetrics, startMetricsServer } from './metrics.js';
 import { createPipelines } from './pipelines.js';
 import { createRateLimiter } from './rate-limit.js';
@@ -20,6 +23,7 @@ import { createRedis } from './redis.js';
 import { bootModules, capabilitiesOf } from './registry.js';
 import { createUnitOfWork } from './uow.js';
 import { createUseCaseFactory } from './use-case.js';
+import { createSocketEmitter, createSocketGateway } from './ws.js';
 
 /** Nightly retention of event bookkeeping, 03:17 UTC (off the hour). */
 const RETENTION_CRON = '17 3 * * *';
@@ -30,6 +34,7 @@ const RETENTION_CRON = '17 3 * * *';
  * @property {import('fastify').FastifyInstance} metricsServer  Internal /metrics server.
  * @property {Record<string, any>} platform  The services injected into modules.
  * @property {import('./registry.js').BootResult} boot
+ * @property {import('./ws.js').SocketGateway | null} gateway  The socket gateway (`ws`, `all`).
  * @property {(drainMs: number) => Promise<void>} stop  Graceful shutdown.
  */
 
@@ -76,6 +81,8 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
     rateLimiter,
     useCase,
     verifier,
+    /** Server events to users' rooms, from any role (`emitToUser`). */
+    sockets: createSocketEmitter({ redis: redis.command, logger }),
     /**
      * A unit of work for one module (its role, its stores).
      * @template S
@@ -96,6 +103,11 @@ export async function createPlatform({ config, logger, extraDbModules = [] }) {
  */
 async function startWorkers(platform, boot, events) {
   const { db, jobs, logger } = platform;
+  // Half the pool for consumer transactions; the rest stays free for the reads they make
+  // through other modules' APIs and for jobs (see events/consume.js).
+  const consumerSlots = createSemaphore(
+    Math.max(1, Math.floor(platform.config.DATABASE_POOL_MAX / 2)),
+  );
 
   /** @type {Map<string, Record<string, (job: any) => Promise<unknown>>>} */
   const byQueue = new Map();
@@ -118,6 +130,7 @@ async function startWorkers(platform, boot, events) {
         consumer: module,
         event: definition,
         handler: /** @type {any} */ (handler),
+        slots: consumerSlots,
       }),
     );
   }
@@ -125,21 +138,40 @@ async function startWorkers(platform, boot, events) {
 
   handle('bulk', 'platform.retention', async (/** @type {any} */ job) => {
     const { task, olderThan } = job.data;
-    if (task !== 'outbox' && task !== 'inbox') return { skipped: task };
+    if (task !== 'outbox' && task !== 'inbox' && task !== 'deletionTasks') {
+      return { skipped: task };
+    }
     return { deleted: await purgeEvents(db, task, new Date(olderThan)) };
   });
   handle('bulk', 'platform.retentionTick', async () => {
     const now = platform.clock.now().getTime();
-    for (const task of /** @type {const} */ (['outbox', 'inbox'])) {
+    for (const task of /** @type {const} */ (['outbox', 'inbox', 'deletionTasks'])) {
       await jobs.add('platform.retention', {
         task,
         olderThan: new Date(
-          now - (task === 'outbox' ? EVENT_RETENTION.outbox : EVENT_RETENTION.inbox),
+          now - (new Map(Object.entries(EVENT_RETENTION)).get(task) ?? 0),
         ).toISOString(),
       });
     }
   });
   await jobs.schedule('platform.retention-tick', RETENTION_CRON, 'platform.retentionTick', {});
+  handle(
+    'bulk',
+    'platform.consistencyCheck',
+    createConsistencyCheck({
+      db,
+      logger,
+      metrics: platform.metrics,
+      clock: platform.clock,
+      subscriptions: boot.subscriptions,
+    }),
+  );
+  await jobs.schedule(
+    'platform.consistency-check',
+    CONSISTENCY_CRON,
+    'platform.consistencyCheck',
+    {},
+  );
 
   for (const { id, cron, job } of boot.schedules) await jobs.schedule(id, cron, job, {});
 
@@ -195,9 +227,37 @@ export async function startRole({
     metrics: platform.metrics,
     reportError,
     apiRoutes: capabilities.http,
-    routes: boot.routes,
+    routes: capabilities.http
+      ? [
+          ...boot.routes,
+          {
+            module: 'platform',
+            plugin: configRoute({
+              config,
+              db: platform.db,
+              flags: platform.flags,
+              apis: boot.apis,
+              sections: boot.sections,
+            }),
+          },
+        ]
+      : boot.routes,
   });
   const relay = capabilities.workers ? await startWorkers(platform, boot, events) : null;
+  const gateway = capabilities.socket
+    ? createSocketGateway({
+        server: http.server,
+        config,
+        logger,
+        verifier: platform.verifier,
+        redis: platform.redis,
+        clock: platform.clock,
+        modules: boot.socketHandlers.map(({ module, handlers }) => ({
+          module,
+          handlers: /** @type {import('./ws.js').SocketHandlers} */ (handlers),
+        })),
+      })
+    : null;
 
   if (listen) await http.listen({ port: config.PORT, host: config.HOST });
   const metricsServer = await startMetricsServer({
@@ -212,8 +272,10 @@ export async function startRole({
     metricsServer,
     platform,
     boot,
+    gateway,
     stop: async (drainMs) => {
       const steps = (async () => {
+        await gateway?.drain(drainMs); // sockets leave gradually before HTTP closes
         await http.close(); // stops accepting; waits for in-flight requests
         await relay?.stop();
         await platform.jobs.close(); // waits for running jobs

@@ -57,7 +57,15 @@ export function objectsOf(upload) {
 export const UPLOAD_ROW_RETENTION_MS = 7 * 24 * 3600 * 1000;
 
 /** Only these prefixes may be deleted through the public API. */
-export const DELETABLE_PREFIXES = Object.freeze(['photos/', 'uploads/', 'review/']);
+export const DELETABLE_PREFIXES = Object.freeze([
+  'photos/',
+  'uploads/',
+  'review/',
+  'verification/',
+]);
+
+/** Private ID-card images (Phase 10): never public, never under the CDN's `photos/`. */
+export const VERIFICATION_PREFIX = 'verification/';
 
 /**
  * The image type a file really is, from its first bytes (magic numbers), regardless of its

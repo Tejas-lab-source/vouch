@@ -300,6 +300,19 @@ describe('event bus: outbox → relay → per-consumer queues → inbox', () => 
     expect(await infra.admin`SELECT 1 FROM platform.outbox WHERE id = ${id}`).toHaveLength(0);
   });
 
+  it('purges finished deletion tasks after 90 days and keeps unfinished ones (Phase 10)', async () => {
+    const [old, recent, open] = [uuidv7(), uuidv7(), uuidv7()];
+    await infra.admin`INSERT INTO platform.deletion_tasks (user_id, module, requested_at, completed_at) VALUES
+      (${old}, 'chat', now() - interval '100 days', now() - interval '91 days'),
+      (${recent}, 'chat', now() - interval '10 days', now() - interval '9 days'),
+      (${open}, 'chat', now() - interval '100 days', NULL)`;
+    const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000);
+    expect(await purgeEvents(db, 'deletionTasks', cutoff)).toBe(1);
+    const left = await infra.admin`SELECT user_id FROM platform.deletion_tasks
+      WHERE user_id IN (${old}, ${recent}, ${open})`;
+    expect(left.map((r) => r.user_id).sort()).toEqual([recent, open].sort());
+  });
+
   it('jobs: validates payloads against the contracts and schedules repeatable jobs once', async () => {
     const runner = newJobs();
     await expect(runner.add('media.processImage', { uploadId: 'nope' })).rejects.toThrow();

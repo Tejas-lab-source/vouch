@@ -5,22 +5,24 @@ written in batches and expire after 30 days; likes are kept for the account's li
 
 ## Public API (`api.js`)
 
-| Function            | Returns                                                                     |
-| ------------------- | --------------------------------------------------------------------------- |
-| `areMatched(a, b)`  | Whether the two users have an active match                                  |
-| `getMatch(matchId)` | `{ id, userLow, userHigh, createdAt, unmatchedAt, anonymisedAt }` or `null` |
-| `likesIn(userId)`   | How many people liked the user and are still unanswered (a count only)      |
+| Function                           | Returns                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------- |
+| `areMatched(a, b)`                 | Whether the two users have an active match                                             |
+| `getMatch(matchId)`                | `{ id, userLow, userHigh, createdAt, unmatchedAt, anonymisedAt }` or `null`            |
+| `likesIn(userId)`                  | How many people liked the user and are still unanswered (a count only)                 |
+| `pendingLikes({ afterId, limit })` | Users with unanswered likes and their counts, in id order (the daily digest, Phase 10) |
 
 `likesIn` never exposes who (a later premium feature). Its route, `GET /v1/me/likes/count`,
 arrives in Phase 12.
 
 ## HTTP routes (contracts in `packages/contracts/src/http/matching.js`)
 
-| Route                           | Auth | Use case                                                        |
-| ------------------------------- | ---- | --------------------------------------------------------------- |
-| `POST /v1/swipes`               | user | `swipe`: idempotent on `swipeId`; like or pass a served card    |
-| `GET /v1/matches`               | user | `listMatches`: active matches, newest first, cursor-paginated   |
-| `POST /v1/matches/{id}/unmatch` | user | `unmatch`: permanent and idempotent; members only (`NOT_FOUND`) |
+| Route                           | Auth | Use case                                                                                                      |
+| ------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/swipes`               | user | `swipe`: idempotent on `swipeId`; like or pass a served card                                                  |
+| `GET /v1/matches`               | user | `listMatches`: active matches, newest first, cursor-paginated (`conversationId` equals the match id, Phase 9) |
+| `POST /v1/matches/{id}/unmatch` | user | `unmatch`: permanent and idempotent; members only (`NOT_FOUND`)                                               |
+| `GET /v1/me/likes/count`        | user | `getLikesCount`: unanswered likes as a number only; never who liked you; blocked users excluded               |
 
 ### Swipe rules
 
@@ -51,7 +53,8 @@ arrives in Phase 12.
 
 - **Emits:** `match.created.v1` (once per pair), `match.unmatched.v1` (once per match;
   `unmatchedBy` is null for a block or deletion).
-- **Consumes:** `user.blocked.v1` (ends an active match between the pair), `user.deleted.v1`
+- **Consumes:** `user.banned.v1` (Phase 10: ends every active match of the banned user, so chat
+  closes the conversations), `user.blocked.v1` (ends an active match between the pair), `user.deleted.v1`
   (deletes the user's swipes in both directions, ends active matches, and anonymises every
   match: the user's id becomes a random tombstone, in canonical order).
 

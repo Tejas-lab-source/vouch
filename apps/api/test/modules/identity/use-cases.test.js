@@ -1,7 +1,13 @@
 // @ts-check
 import { describe, expect, it } from 'vitest';
 import { buildIdentityHandlers } from '../../../src/modules/identity/adapters/wiring.js';
-import { CTX, fakeDeps, SIGNUP } from './fakes.js';
+import { createIdentityApi } from '../../../src/modules/identity/api.js';
+import {
+  makeOnUserBanned,
+  makeOnUserUnbanned,
+  makeOnVerificationDecided,
+} from '../../../src/modules/identity/application/ban.js';
+import { COLLEGE, CTX, fakeDeps, SIGNUP } from './fakes.js';
 
 const EMAIL = 'Aditi+x@northfield.example.edu';
 const DEVICE = { platform: /** @type {const} */ ('ios') };
@@ -318,5 +324,140 @@ describe('sessions', () => {
     const exported = await buildIdentityHandlers(deps).exportData({}, { actor });
     expect(Object.keys(exported.data)).toEqual(['identity', 'profiles']);
     expect(JSON.stringify(exported)).not.toContain('northfield.example.edu');
+  });
+});
+
+describe('ID-card fallback and bans (Phase 10)', () => {
+  const GMAIL = 'aditi@gmail.example.com';
+  const ID_CARD = /** @type {const} */ ('id_card');
+
+  it('any email may request a code with verification id_card; without it the domain must be listed', async () => {
+    const { h, state } = setup();
+    await expect(h.requestOtp({ email: GMAIL, turnstileToken: 'ok' }, CTX)).rejects.toMatchObject({
+      code: 'EMAIL_DOMAIN_NOT_ALLOWED',
+    });
+    expect(
+      await h.requestOtp({ email: GMAIL, turnstileToken: 'ok', verification: ID_CARD }, CTX),
+    ).toEqual({
+      sent: true,
+    });
+    expect(state.sent).toHaveLength(1);
+  });
+
+  it('is refused when the fallback is switched off', async () => {
+    const { deps } = fakeDeps();
+    const h = buildIdentityHandlers({ ...deps, idCardFallback: false });
+    await expect(
+      h.requestOtp({ email: GMAIL, turnstileToken: 'ok', verification: ID_CARD }, CTX),
+    ).rejects.toMatchObject({ code: 'FEATURE_DISABLED' });
+  });
+
+  it('creates a pending_review account in the chosen college', async () => {
+    const { h, state } = setup();
+    await h.requestOtp({ email: GMAIL, turnstileToken: 'ok', verification: ID_CARD }, CTX);
+    const result = await h.verifyOtp(
+      {
+        email: GMAIL,
+        code: '123456',
+        device: DEVICE,
+        verification: ID_CARD,
+        signup: { ...SIGNUP, collegeId: COLLEGE.id },
+      },
+      CTX,
+    );
+    expect(result.user).toMatchObject({ status: 'pending_review', newUser: true });
+    const user = [...state.users.values()][0];
+    expect(user).toMatchObject({ status: 'pending_review', collegeId: COLLEGE.id });
+    expect(state.events.at(0)?.payload.status).toBe('pending_review');
+  });
+
+  it('needs a known college for an ID-card sign-up', async () => {
+    const { h, state } = setup();
+    await h.requestOtp({ email: GMAIL, turnstileToken: 'ok', verification: ID_CARD }, CTX);
+    await expect(
+      h.verifyOtp(
+        {
+          email: GMAIL,
+          code: '123456',
+          device: DEVICE,
+          verification: ID_CARD,
+          signup: { ...SIGNUP, collegeId: '01936f3e-8a4b-7c2d-9e1f-0a1b2c3d4e99' },
+        },
+        CTX,
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(state.users.size).toBe(0);
+  });
+
+  it('a college email stays active even when id_card is sent', async () => {
+    const { h } = setup();
+    await requestCode(h);
+    const result = await h.verifyOtp(
+      { email: EMAIL, code: '123456', device: DEVICE, verification: ID_CARD, signup: SIGNUP },
+      CTX,
+    );
+    expect(result.user.status).toBe('active');
+  });
+
+  it('ban evasion: an erased account whose ban is active cannot sign up again with that email', async () => {
+    const { h, state, deps } = setup({ codes: ['111111', '222222'] });
+    await requestCode(h);
+    await h.verifyOtp({ email: EMAIL, code: '111111', device: DEVICE, signup: SIGNUP }, CTX);
+    const user = [...state.users.values()][0];
+    const stores = /** @type {any} */ (await deps.uow.run(async ({ stores: s }) => s));
+    await makeOnUserBanned({ clock: deps.clock })(
+      { userId: user.id, banId: 'ban-1', expiresAt: null },
+      stores,
+    );
+    expect(user.status).toBe('banned');
+    state.users.clear(); // the 30-day erasure
+    await requestCode(h);
+    await expect(
+      h.verifyOtp({ email: EMAIL, code: '222222', device: DEVICE, signup: SIGNUP }, CTX),
+    ).rejects.toMatchObject({ code: 'ACCOUNT_BANNED' });
+    expect(state.users.size).toBe(0);
+    expect(state.otp.size).toBe(0);
+  });
+
+  it('an expired ban no longer blocks sign-up; lifting a ban reactivates the account', async () => {
+    const { h, state, deps } = setup({ codes: ['111111', '222222'] });
+    await requestCode(h);
+    await h.verifyOtp({ email: EMAIL, code: '111111', device: DEVICE, signup: SIGNUP }, CTX);
+    const user = [...state.users.values()][0];
+    const stores = /** @type {any} */ (await deps.uow.run(async ({ stores: s }) => s));
+    await makeOnUserBanned({ clock: deps.clock })(
+      { userId: user.id, banId: 'ban-2', expiresAt: '2026-11-20T00:00:00Z' },
+      stores,
+    );
+    expect(await stores.bannedEmails.isBanned(user.emailHmac, deps.clock.now())).toBe(false);
+    await makeOnUserUnbanned()({ userId: user.id, banId: 'ban-2' }, stores);
+    expect(user.status).toBe('active');
+    expect(state.bannedEmails.size).toBe(0);
+  });
+
+  it('an approved verification activates a pending_review account; a rejection leaves it pending', async () => {
+    const { h, state, deps } = setup();
+    await h.requestOtp({ email: GMAIL, turnstileToken: 'ok', verification: ID_CARD }, CTX);
+    await h.verifyOtp(
+      {
+        email: GMAIL,
+        code: '123456',
+        device: DEVICE,
+        verification: ID_CARD,
+        signup: { ...SIGNUP, collegeId: COLLEGE.id },
+      },
+      CTX,
+    );
+    const user = [...state.users.values()][0];
+    const stores = /** @type {any} */ (await deps.uow.run(async ({ stores: s }) => s));
+    const api = createIdentityApi(deps);
+    await expect(api.assertActive(user.id)).rejects.toMatchObject({
+      code: 'ACCOUNT_PENDING_REVIEW',
+    });
+    await makeOnVerificationDecided()({ userId: user.id, decision: 'rejected' }, stores);
+    expect(user.status).toBe('pending_review');
+    await makeOnVerificationDecided()({ userId: user.id, decision: 'approved' }, stores);
+    expect(user.status).toBe('active');
+    await expect(api.assertActive(user.id)).resolves.toBeUndefined();
   });
 });

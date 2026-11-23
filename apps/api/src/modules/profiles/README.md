@@ -15,6 +15,9 @@ Cards are cached in Redis as `profiles:card:{userId}` for 10 minutes and invalid
 change. The `profiles.cardFields` pipeline (owned here, empty in v1) runs on every read, after
 the cache.
 
+Phase 10 adds `hide(userId)` and `unhide(userId)` (moderation; idempotent; `profile.updated.v1`
+only when the status changes), `statusOf(userId)` and `minApprovedPhotos` (client limits).
+
 ## HTTP routes (contracts in `packages/contracts/src/http/profiles.js`)
 
 | Route                                | Auth | Use case                                                                |
@@ -23,6 +26,7 @@ the cache.
 | `PATCH /v1/me/profile`               | user | `updateMyProfile`: name, gender, interests, bio, age range              |
 | `PUT /v1/me/profile/sections/{type}` | user | `putSection`: validated against the `sections` registry (empty in v1)   |
 | `DELETE /v1/me/photos/{id}`          | user | `deleteMyPhoto`: idempotent; files are released through media           |
+| `PUT /v1/me/photos/order`            | user | `reorderMyPhotos`: every current photo exactly once; the first is main  |
 
 ## Events
 

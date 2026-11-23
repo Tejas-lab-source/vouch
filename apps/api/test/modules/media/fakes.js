@@ -39,7 +39,16 @@ export function fakeMediaDeps({ verdict = 'approve', onCheck } = {}) {
         return u.photoKey;
       },
       markInReview: async (id) =>
-        void Object.assign(state.uploads.get(id), { status: 'in_review' }),
+        void Object.assign(state.uploads.get(id), { status: 'in_review', flaggedAt: new Date() }),
+      listInReview: async (afterId, limit) =>
+        [...state.uploads.values()]
+          .filter((u) => u.status === 'in_review' && (!afterId || u.id > afterId))
+          .sort((a, b) => (a.id < b.id ? -1 : 1))
+          .slice(0, limit)
+          .map((u) => ({ id: u.id, userId: u.userId, flaggedAt: u.flaggedAt })),
+      countInReviewBefore: async (before) =>
+        [...state.uploads.values()].filter((u) => u.status === 'in_review' && u.flaggedAt < before)
+          .length,
       markApproved: async (id) => void Object.assign(state.uploads.get(id), { status: 'approved' }),
       markRejected: async (id, reason) =>
         void Object.assign(state.uploads.get(id), { status: 'rejected', errorCode: reason }),
@@ -71,6 +80,7 @@ export function fakeMediaDeps({ verdict = 'approve', onCheck } = {}) {
       state.presigned.push(input);
       return `https://storage.test/${input.key}?signed`;
     },
+    presignGet: async ({ key }) => `https://storage.test/${key}?get`,
     head: async (key) => {
       const o = state.objects.get(key);
       return o ? { contentLength: o.body.length, contentType: o.contentType } : null;

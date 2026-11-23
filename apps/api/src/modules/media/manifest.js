@@ -52,8 +52,16 @@ export default defineModule({
         const { handlers } = await handlersOf(ctx);
         return () => handlers.purgeUploads();
       },
+      'media.reviewAlert': async (/** @type {any} */ ctx) => {
+        const { makeReview } = await import('./application/review.js');
+        const review = makeReview((await handlersOf(ctx)).deps);
+        return () => review.reviewAlert();
+      },
     },
   },
-  schedules: [{ id: 'media.retention-tick', cron: '53 3 * * *', job: 'media.retentionTick' }],
+  schedules: [
+    { id: 'media.retention-tick', cron: '53 3 * * *', job: 'media.retentionTick' },
+    { id: 'media.review-alert', cron: '17 * * * *', job: 'media.reviewAlert' },
+  ],
   migrations: new URL('./migrations', import.meta.url),
 });

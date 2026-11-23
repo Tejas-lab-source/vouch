@@ -281,3 +281,243 @@ All notable changes are recorded here, grouped by roadmap phase.
   `request.clientIp`.
 - `bench:deck` no longer needs per-user forwarded addresses.
 - The modules list is now identity, profiles, media, safety, discovery, matching.
+
+## Phase 9 — Realtime chat and WebSocket gateway
+
+### Added
+
+- Socket gateway (`apps/api/src/platform/ws.js`, roles `ws` and `all`; ADR 0017):
+  - Socket.IO with WebSocket transport only and the Redis adapter
+  - the handshake JWT check, and a `user:{id}` room per socket
+  - every event validated against the contracts, with `{ ok, … }` acks
+  - module handlers through the manifest `socket.handlers` key
+  - `auth.refresh`, and `auth.expired` after expiry plus `SOCKET_REFRESH_GRACE_SECONDS`
+  - a gradual drain on SIGTERM
+  - `platform.sockets.emitToUser` for every role, through the Redis emitter
+- `modules/chat` (see its README):
+  - the conversation id is the match id, opened by the `match.created.v1` consumer
+    (`match.new` to both members)
+  - `message.send` is exactly once per `clientMsgId`, with a gapless seq per conversation
+    under a row lock; the ack and `message.new` go out after commit
+  - `sync` replay, plus read and delivered cursors that only move forward
+  - the fail-closed `chat.messageFilters` pipeline: length, link limiter and block check
+  - `message.created.v1` when the recipient is offline
+  - conversations close on unmatch, block and deletion; blocks are never revealed
+  - nightly purge 30 days after close; export of sent messages
+  - `GET /v1/conversations` and `GET /v1/conversations/{id}/messages`
+  - presence, exposed only as `isActiveRecently`
+- `safety.api.blocks.blockersBetween`, which the closing notices use.
+- Contracts (additive):
+  - the `auth.refresh` client event and the `auth.expired` server event
+  - the `chat.retentionTick` job
+  - an optional `reason` on a `chat.messageFilters` refusal
+  - env `SOCKET_REFRESH_GRACE_SECONDS`, `RATE_LIMIT_MESSAGES_MINUTE`,
+    `CHAT_MAX_LINKS_PER_MESSAGE` and `CHAT_LINKS_AFTER_MESSAGES`
+- Invariants: gateway failover (SIGKILL mid-stream), idempotent send, closed and blocked
+  conversations refused, and a 500-socket load smoke on two gateway processes.
+- ADR 0017 (socket gateway and chat delivery).
+
+### Changed
+
+- **Readable error messages (owner decision):** every `AppErrorCode` now has a readable
+  message, and a test fails when one is missing.
+- Fastify client errors map to stable codes: a wrong content type is
+  `UNSUPPORTED_MEDIA_TYPE` (415), and any other Fastify 4xx is `VALIDATION_FAILED`, never 500.
+- `listMatches` returns `conversationId` (equal to the match id).
+- The access-token principal carries `expiresAt`.
+- The modules list is now identity, profiles, media, safety, discovery, matching, chat.
+
+## Phase 10 — Notifications, moderation and admin backend
+
+### Added
+
+- **`modules/notifications`** (ADR 0019):
+  - Expo push over `fetch` (chunks of 100, receipts, invalid tokens removed) and a development
+    log provider
+  - the templates registry: `match.new`, `message.new`, `likes.digest`. Pushes never carry a
+    body, a name or an internal id.
+  - preferences and time-zone-aware quiet hours
+  - at most one message push per conversation per 30 s
+  - a block cancels queued pushes
+  - a staff alert email for new reports
+  - the daily likes digest
+  - a delivery log, kept 90 days
+- **Safety part 2** (ADR 0020):
+  - reports with evidence snapshots, with chat's last 20 messages through the new fail-closed
+    `safety.reportEvidence` pipeline
+  - auto-hide at 3 distinct reporters in 7 days
+  - moderation actions: dismiss, warn, hide, unhide, ban
+  - bans and lifting them (`user.unbanned.v1`), plus nightly expiry
+  - the ID-card fallback: private uploads, review and `verification.decided.v1`
+  - the photo review queue, and the 48-hour review alert (`media.reviewAlert`)
+  - repeat-offence system reports
+  - erasure and retention
+- **Identity:**
+  - the ID-card sign-up (`pending_review`), with a `pr` token claim that limits such accounts
+    to the verification routes (HTTP and sockets)
+  - the ban-evasion record (`identity.banned_emails`)
+  - `user.unbanned.v1` and `verification.decided.v1` consumers
+  - push-token API
+- **`modules/admin`** (ADR 0018):
+  - `admin:create` (scrypt password and an AES-256-GCM-sealed TOTP secret)
+  - sign-in with email, password and RFC 6238 TOTP (`node:crypto`, replay refused)
+  - every admin route from the contracts, plus panels, overdue deletions and unblock
+  - per-call account and role checks
+  - one audit entry per action, purged after 2 years
+  - panels from module manifests (`admin.panels`)
+  - flags with a `config.changed` broadcast
+- **Platform:**
+  - `GET /v1/config`
+  - the nightly consistency job (`vouch_consistency_violations`), with column-level grants for
+    `vouch_platform`
+  - `user.deleted.v1` completion recorded in `platform.deletion_tasks`
+  - socket `broadcast`
+  - generic gauges
+  - the template and panel registries
+  - job queues taken from the contracts
+- **Matching:** `user.banned.v1` ends the banned user's matches; `pendingLikes` for the digest.
+- **Contracts (additive):**
+  - the admin login, panels, overdue-deletion and unblock endpoints
+  - the ID-card endpoints
+  - `verification` and `signup.collegeId` on sign-in
+  - `selfieImageUrl` on verification reviews
+  - two events, six jobs and the `safety.reportEvidence` pipeline
+  - env: `ADMIN_TOTP_KEY`, `ADMIN_TOKEN_TTL_MINUTES`, `PUSH_MESSAGE_BATCH_SECONDS`,
+    `ADMIN_ALERT_EMAIL`, `REPORT_AUTOHIDE_*`, `REPORTS_PER_DAY`, `PHOTO_REJECTIONS_FOR_REVIEW`
+    and `ID_CARD_FALLBACK`
+- **Tests:** the full backend scenario, and admin, safety and notifications integration on a
+  shared harness; RFC 6238 vectors and the semaphore.
+
+### Changed
+
+- **Fix (kernel):** concurrent consumer transactions are bounded to half the database pool.
+  Without that, consumers that read through another module's API could exhaust the pool and
+  deadlock (seen with notifications and chat consumers under load).
+- **Fix (discovery):** a deck rebuild keeps the served set, so cards served just before a refill
+  stay swipeable. Before, swipes on them failed with `NOT_SERVED`.
+- `pnpm dev:keys --write` also writes `ADMIN_TOTP_KEY`.
+- The modules list now ends with notifications and admin.
+
+## Phase 11 — Frontend foundation
+
+### Added
+
+- **Shared packages:**
+  - `i18n`: English strings; `t()` throws on a missing key
+  - `domain`: the 18+ age rule, validators, formatting and version comparison
+  - `ui-tokens`: a neutral palette in light and dark, spacing, type scale, radii and motion,
+    as JS and CSS variables, with a WCAG AA contrast test
+  - `api-client`: fetch functions generated from the contracts (no runtime zod),
+    `X-App-Version`, automatic `Idempotency-Key`, `ApiError`, a single-flight refresh, cookie
+    (web) or body (mobile) transport, and TanStack Query keys
+  - `realtime`: a socket.io-client wrapper with a token refresh before expiry, a reconnect
+    after a server disconnect, `sync` with cursors on every connect, once-only delivery, an
+    outbox retried with the same `clientMsgId`, and a Query cache adapter
+  - `features-core`: the slot registry (`defineClientFeature`, filtered by flags), the sign-in
+    flow, and the React providers and hooks (`useSession`, `useConfig`, `useFlags` and
+    `<Slot>`)
+  - `ui-web` and `ui-native`: the accessible UI kits (Button, Input, OtpInput, Avatar, Card,
+    Modal/Sheet, Toast, EmptyState, Skeleton, ListItem and Badge). The web kit ships a
+    generated `styles.css`.
+- **`apps/web`:**
+  - React 19, Vite 8, React Router and TanStack Query in Feature-Sliced Design
+  - an error boundary, a 404, the lazy `/ui-kit` page, and sign-in with the emailed code
+  - the home shell, with tabs from the `home.tabs` slot
+  - the dev and preview servers proxy `/v1` and `/socket.io` to the API
+- **`apps/mobile`:**
+  - Expo SDK 58 with Expo Router (`src/routes`)
+  - the refresh token in the secure store
+  - the splash screen held until the session is restored
+  - a forced-update screen, the same sign-in flow and the home tabs
+- **`apps/admin`:** staff sign-in (email, password and TOTP; the token is kept in memory
+  only) and the panel list.
+- **`apps/landing`:** a static placeholder.
+- **Checks:**
+  - JSX in `tsc --checkJs` (`tsconfig.web.json`, `apps/mobile/tsconfig.json`) and in ESLint
+  - Feature-Sliced Design boundaries for every app in dependency-cruiser
+  - a jsdom Vitest setup
+  - Playwright end-to-end against the real API (Testcontainers), with axe in light and dark
+  - the 200 KB gzipped initial-JS budget
+  - the Expo export for Android and iOS
+  - new `web` and `mobile` CI jobs
+- **Docs:** ADR 0021 (frontend architecture) and a README for every new package and app.
+
+## Phase 12 — Frontend features I: onboarding, profile, discovery and matching
+
+### Added
+
+- **API (additive):**
+  - `PUT /v1/me/photos/order` (the exact set of current photos, one transaction)
+  - `GET /v1/me/likes/count` (a number only)
+- **Storage:** a bucket CORS rule (`PUT` with `content-type` from `CORS_ORIGINS`), applied by
+  `pnpm storage:init`; the R2 rule is documented in the media README.
+- **`scripts/measure-variants.js`:** runs photos through the production image pipeline and
+  prints the variant sizes.
+- **`features-core`:** hooks for profile, photo uploads (resize port, progress, confirm, poll,
+  resume), photo delete and reorder, the deck (prefetch at 3) and swipes (optimistic, stable
+  `swipeId`, rollback), matches, unmatch, the likes count, report and block, and onboarding
+  (resumable). Also allow-listed analytics and a realtime event hub.
+- **Web:**
+  - onboarding, the photo manager, the discover deck (buttons and ←/→), the match moment,
+    matches, profile editing and the chat placeholder
+  - Playwright: two users onboard with browser uploads to SeaweedFS (CORS), match and
+    unmatch; under 18 is refused; axe runs on every new page in light and dark
+- **Mobile:** the same screens with the Expo image picker, image manipulator and image cache,
+  plus a `PanResponder` swipe deck.
+- **Docs:** ADR 0022 and `docs/analytics.md`.
+
+### Changed
+
+- The Phase 11 sign-in now lands in onboarding until the profile is set up.
+- The `ui-native` `Button` accepts an `accessibilityLabel` for icon buttons.
+
+## Phase 13 — Frontend features II: chat, notifications, safety, settings and admin app
+
+### Added
+
+- **API (additive):**
+  - `receipt.updated` socket event to the sender (cursors only)
+  - `listMessages` `beforeSeq`/`prevBeforeSeq` and `peerDeliveredSeq`/`peerReadSeq`
+  - `GET /v1/me/notification-prefs`
+  - `GET /v1/me/blocks` and `DELETE /v1/blocks/{userId}`
+- **`features-core`:**
+  - chat hooks: conversations; backward history; the send state machine (sending → sent →
+    delivered → read, failed and retry with the same `clientMsgId`); mark-read while
+    visible
+  - settings hooks: prefs, blocks, export, sign out everywhere, delete
+  - push: the registration port and notification-tap targets
+  - the mobile offline message cache (last 50 per conversation)
+- **Realtime:** delivered reports once per new seq, `receipt.updated`, and `message.read`
+  without an ack. Conversation-list refreshes during a burst are coalesced (at most one a
+  second).
+- **Web:**
+  - chat: the list with unread counts; a virtualised conversation with date separators and
+    states; the composer slot; renderers by kind; the closed state; report and block in the
+    header
+  - settings: notifications and quiet hours, blocked people, export, log out everywhere,
+    delete account
+  - the safety centre and privacy pages
+- **Mobile:** the same, plus push (permission after a match, token registration, taps open the
+  chat, clearing on open) and the offline cache.
+- **Admin:**
+  - every panel rendered from its definition, with confirmed actions that show their audit
+    entry
+  - user lookup with ban, and the flag toggle
+- **Playwright:**
+  - live chat with read states, offline catch-up (in order, once), and sending while offline
+  - a block closes the chat; settings round trip
+  - 1,000 messages stay virtualised
+  - report → admin ban → user signed out
+  - axe on every new page
+- **Docs:** ADR 0023.
+
+### Changed
+
+- The "New" matches row shows matches with no messages yet (was: the last 3 days).
+- The admin JSON field is keyboard-focusable (axe `scrollable-region-focusable`).
+
+### Fixed
+
+- A burst of messages no longer refetches the conversation list per message.
+- Two flaky tests: the photo-reorder test no longer assumes upload order, and the
+  invalid-push-token test waits for the delivery's final status.

@@ -47,7 +47,8 @@
  *   findById(id: string): Promise<UserRecord | null>,
  *   findManyByIds(ids: readonly string[]): Promise<UserRecord[]>,
  *   findManyByPublicIds(publicIds: readonly string[]): Promise<UserRecord[]>,
- *   insert(user: { id: string, publicId: string, collegeId: string, emailHmac: Buffer, status: 'active', birthDate: string, gradYear: number | null, createdAt: Date }): Promise<void>,
+ *   insert(user: { id: string, publicId: string, collegeId: string, emailHmac: Buffer, status: 'active' | 'pending_review', birthDate: string, gradYear: number | null, createdAt: Date }): Promise<void>,
+ *   deletedBefore(cutoff: Date, limit: number): Promise<UserRecord[]>,
  *   markDeleted(id: string, at: Date): Promise<void>,
  *   setStatus(id: string, status: UserRecord['status']): Promise<void>,
  * }} users
@@ -68,7 +69,14 @@
  *   revoke(id: string, at: Date): Promise<void>,
  *   setPushToken(id: string, pushToken: string, platform: DeviceRecord['platform'], at: Date): Promise<void>,
  *   touch(id: string, at: Date): Promise<void>,
+ *   pushTokensOf(userId: string): Promise<string[]>,
+ *   clearPushToken(pushToken: string): Promise<number>,
  * }} devices
+ * @property {{
+ *   insert(ban: { banId: string, emailHmac: Buffer, expiresAt: Date | null }): Promise<void>,
+ *   removeByBan(banId: string): Promise<void>,
+ *   isBanned(emailHmac: Buffer, now: Date): Promise<boolean>,
+ * }} bannedEmails
  * @property {{
  *   insert(consent: { id: string, userId: string, noticeVersion: string, purposes: string[], at: Date }): Promise<void>,
  *   listForUser(userId: string): Promise<{ noticeVersion: string, purposes: string[], grantedAt: Date, withdrawnAt: Date | null }[]>,
@@ -111,7 +119,7 @@
 
 /**
  * @typedef {object} TokenIssuer
- * @property {(claims: { userId: string, sessionId: string }) => Promise<{ token: string, expiresAt: Date }>} issueAccessToken
+ * @property {(claims: { userId: string, sessionId: string, pendingReview?: boolean }) => Promise<{ token: string, expiresAt: Date }>} issueAccessToken
  */
 
 /**
@@ -152,7 +160,13 @@
  * @property {{ now: () => Date }} clock
  * @property {() => string} newId
  * @property {string} privacyNoticeVersion
+ * @property {boolean} idCardFallback  Sign-up with any email plus a reviewed student ID (Phase 10).
  * @property {Map<string, (userId: string) => Promise<Record<string, unknown>>>} exporters
+ */
+
+/**
+ * @typedef {object} UserRecordWithEmail
+ * @property {Buffer} emailHmac
  */
 
 export {};

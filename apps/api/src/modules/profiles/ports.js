@@ -49,6 +49,8 @@
  * @property {{
  *   listForUser(userId: string): Promise<PhotoRecord[]>,
  *   findForUpdate(id: string): Promise<PhotoRecord | null>,
+ *   listForUserForUpdate(userId: string): Promise<PhotoRecord[]>,
+ *   setPosition(id: string, position: number, at: Date): Promise<void>,
  *   insert(p: { id: string, userId: string, status: 'pending' | 'approved' | 'rejected', position: number, key1080: string | null, key400: string | null, at: Date }): Promise<void>,
  *   setStatus(id: string, status: PhotoRecord['status'], keys: PhotoKeys | null, at: Date): Promise<void>,
  *   approvedForUsers(ids: readonly string[]): Promise<PhotoRecord[]>,
