@@ -31,7 +31,7 @@ export function createServices({ fetch, baseUrl = API_BASE || globalThis.locatio
     cursors: memoryCursors(),
     onMessage: cache.onMessage,
     onEvent: (event, payload) => {
-      cache.onEvent(event);
+      cache.onEvent(event, payload);
       events.emit(event, payload);
     },
   });

@@ -33,7 +33,7 @@ export function createServices() {
     cursors: memoryCursors(),
     onMessage: cache.onMessage,
     onEvent: (event, payload) => {
-      cache.onEvent(event);
+      cache.onEvent(event, payload);
       events.emit(event, payload);
     },
     newId: randomUUID,

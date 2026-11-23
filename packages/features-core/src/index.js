@@ -6,6 +6,15 @@ export {
   sanitizeProps,
 } from './analytics/index.js';
 export { createAuthFlow, errorKey } from './auth.js';
+export {
+  mergeMessages,
+  messageState,
+  unreadCount,
+  useConversations,
+  useMarkRead,
+  useMessages,
+  useSendMessage,
+} from './chat/index.js';
 export { mergePage, PREFETCH_AT, removeCard, restoreCard, useDeck } from './deck/index.js';
 export { createEventHub } from './events/index.js';
 export { useLikesCount, useMatches, useUnmatch } from './matches/index.js';
@@ -39,6 +48,17 @@ export {
 } from './react.jsx';
 export { createFeatureRegistry, defineClientFeature, SLOTS } from './registry.js';
 export { useBlock, useReport } from './safety/index.js';
+export {
+  minutesToTime,
+  timeToMinutes,
+  useAccountActions,
+  useBlockedUsers,
+  useExportData,
+  useNotificationPrefs,
+  useUnblock,
+  useUpdateNotificationPrefs,
+} from './settings/index.js';
+export { usePushRegistration } from './push/index.js';
 export { isRetryable, useSwipe } from './swipe/index.js';
 
 /**
@@ -51,4 +71,9 @@ export { isRetryable, useSwipe } from './swipe/index.js';
  * @typedef {import('./matches/index.js').MatchSummary} MatchSummary
  * @typedef {import('./profile/index.js').OwnProfile} OwnProfile
  * @typedef {import('./analytics/index.js').Analytics} Analytics
+ * @typedef {import('./chat/index.js').Message} Message
+ * @typedef {import('./chat/index.js').MessageState} MessageState
+ * @typedef {import('./chat/index.js').ConversationSummary} ConversationSummary
+ * @typedef {import('./settings/index.js').NotificationPrefs} NotificationPrefs
+ * @typedef {import('./push/index.js').PushPort} PushPort
  */

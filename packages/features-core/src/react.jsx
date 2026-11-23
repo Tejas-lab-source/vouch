@@ -23,6 +23,8 @@ import {
  *   storage (web: localStorage; mobile: secure store). Defaults to memory.
  * @property {import('./photos/index.js').PhotoIo} [photoIo]  Platform image resize and upload.
  * @property {() => string} [newId]  Random UUIDs (mobile: expo-crypto).
+ * @property {{ send: (m: { conversationId: string, body: string, clientMsgId?: string }) => Promise<unknown>, markRead: (conversationId: string, seq: number) => void }} [realtime]
+ * @property {import('./push/index.js').PushPort} [push]  Mobile push notifications.
  */
 
 const ServicesContext = createContext(/** @type {AppServices | null} */ (null));

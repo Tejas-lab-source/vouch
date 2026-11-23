@@ -18,6 +18,8 @@ async function startGateway() {
   const tokens = [];
   /** @type {any[]} */
   const refreshes = [];
+  /** @type {any[]} */
+  const reports = [];
   let dropNextAck = false;
   io.use((socket, next) => {
     tokens.push(socket.handshake.auth.token);
@@ -58,6 +60,8 @@ async function startGateway() {
       );
       ack({ ok: true, messages, truncated: false });
     });
+    socket.on('message.delivered', (payload) => reports.push({ type: 'delivered', ...payload }));
+    socket.on('message.read', (payload) => reports.push({ type: 'read', ...payload }));
     socket.on('auth.refresh', ({ token }, ack) => {
       refreshes.push(token);
       ack({ ok: true, expiresAt: new Date(Date.now() + 900_000).toISOString() });
@@ -71,6 +75,7 @@ async function startGateway() {
     stored,
     tokens,
     refreshes,
+    reports,
     dropNextAck: () => void (dropNextAck = true),
     /** A message written by "the other person" while we may be offline. */
     push: (/** @type {string} */ conversationId, /** @type {string} */ body) => {
@@ -197,6 +202,38 @@ describe('realtime client', () => {
   }, 15_000);
 });
 
+describe('receipts', () => {
+  it('reports delivered once per new high seq, sends read without an ack, and forwards receipt.updated', async () => {
+    const gateway = await startGateway();
+    cleanups.push(gateway.close);
+    /** @type {any[]} */
+    const events = [];
+    const { rt, received } = client(gateway, {
+      onEvent: (event, payload) => events.push([event, payload]),
+    });
+    rt.start();
+    await until(() => rt.socket.connected);
+    gateway.push('c1', 'one');
+    gateway.push('c1', 'two');
+    await until(() => received.length === 2);
+    gateway.io.emit('message.new', gateway.stored.at(0)); // a replay: no new report
+    rt.markRead('c1', 2);
+    await until(() => gateway.reports.length === 3);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(gateway.reports).toEqual([
+      { type: 'delivered', conversationId: 'c1', seq: 1 },
+      { type: 'delivered', conversationId: 'c1', seq: 2 },
+      { type: 'read', conversationId: 'c1', seq: 2 },
+    ]);
+    gateway.io.emit('receipt.updated', { conversationId: 'c1', deliveredSeq: 2, readSeq: 1 });
+    await until(() => events.length === 1);
+    expect(events[0]).toEqual([
+      'receipt.updated',
+      { conversationId: 'c1', deliveredSeq: 2, readSeq: 1 },
+    ]);
+  });
+});
+
 describe('delivery bookkeeping', () => {
   it('a message delivered twice (live and again by sync) reaches the app once', async () => {
     const gateway = await startGateway();
@@ -258,6 +295,11 @@ describe('query cache adapter', () => {
     adapter.onMessage(m(1));
     adapter.onMessage(m(2));
     expect(data.get('["m","c"]').items.map((/** @type {any} */ x) => x.seq)).toEqual([1, 2]);
+    adapter.onEvent('receipt.updated', { conversationId: 'c', deliveredSeq: 2, readSeq: 1 });
+    adapter.onEvent('receipt.updated', { conversationId: 'c', deliveredSeq: 1, readSeq: 0 });
+    expect(data.get('["m","c"]')).toMatchObject({ peerDeliveredSeq: 2, peerReadSeq: 1 });
+    adapter.onEvent('conversation.closed', { conversationId: 'c', reason: 'unmatched' });
+    expect(data.get('["m","c"]').closed).toBe('unmatched');
     adapter.onEvent('match.new');
     adapter.onEvent('config.changed');
     expect(invalidated).toEqual(expect.arrayContaining(['["matches"]', '["convs"]', '["config"]']));

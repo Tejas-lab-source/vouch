@@ -77,6 +77,8 @@ export function createRealtime({
 }) {
   /** @type {Set<string>} Delivered (conversation, seq) pairs. */
   const seen = new Set();
+  /** @type {Map<string, number>} The highest seq reported as delivered, per conversation. */
+  const delivered = new Map();
   /** @type {{ payload: any, resolve: (ack: any) => void, reject: (error: any) => void, inFlight: boolean }[]} */
   const outbox = [];
   /** @type {ReturnType<typeof setTimeout> | null} */
@@ -102,6 +104,16 @@ export function createRealtime({
     seen.add(key);
     cursors.advance(message.conversationId, message.seq);
     onMessage(message);
+    // Tell the server it reached this device (one report per new high seq).
+    if (message.seq > (delivered.get(message.conversationId) ?? 0)) {
+      delivered.set(message.conversationId, message.seq);
+      if (socket.connected) {
+        socket.emit('message.delivered', {
+          conversationId: message.conversationId,
+          seq: message.seq,
+        });
+      }
+    }
   }
 
   function scheduleRefresh() {
@@ -184,7 +196,7 @@ export function createRealtime({
   socket.on('auth.expired', async () => {
     await session.refresh().catch(() => {});
   });
-  for (const event of ['match.new', 'conversation.closed', 'config.changed']) {
+  for (const event of ['match.new', 'conversation.closed', 'config.changed', 'receipt.updated']) {
     socket.on(event, (/** @type {any} */ payload) => onEvent(event, payload));
   }
 
@@ -215,9 +227,14 @@ export function createRealtime({
         void flush();
       });
     },
-    /** @param {string} conversationId @param {number} seq */
-    markRead: (conversationId, seq) =>
-      socket.timeout(ACK_TIMEOUT_MS).emitWithAck('message.read', { conversationId, seq }),
+    /**
+     * Moves the read cursor (no ack: the server clamps it and never moves it backwards). Sent
+     * only while connected; the next open of the conversation reports it again.
+     * @param {string} conversationId @param {number} seq
+     */
+    markRead: (conversationId, seq) => {
+      if (socket.connected) socket.emit('message.read', { conversationId, seq });
+    },
     /** Messages waiting for an ack (for "sending…" indicators). */
     pending: () => outbox.map((item) => item.payload),
   };
@@ -244,8 +261,28 @@ export function queryCacheAdapter(queryClient, keys) {
       );
       queryClient.invalidateQueries({ queryKey: keys.conversations() });
     },
-    /** @param {string} event */
-    onEvent(event) {
+    /** @param {string} event @param {any} [payload] */
+    onEvent(event, payload) {
+      if (event === 'receipt.updated' && payload?.conversationId) {
+        queryClient.setQueryData(
+          keys.messages(payload.conversationId),
+          (/** @type {any} */ current) =>
+            current
+              ? {
+                  ...current,
+                  peerDeliveredSeq: Math.max(current.peerDeliveredSeq ?? 0, payload.deliveredSeq),
+                  peerReadSeq: Math.max(current.peerReadSeq ?? 0, payload.readSeq),
+                }
+              : current,
+        );
+      }
+      if (event === 'conversation.closed' && payload?.conversationId) {
+        queryClient.setQueryData(
+          keys.messages(payload.conversationId),
+          (/** @type {any} */ current) =>
+            current ? { ...current, closed: payload.reason } : current,
+        );
+      }
       if (event === 'match.new') queryClient.invalidateQueries({ queryKey: keys.matches() });
       if (event === 'match.new' || event === 'conversation.closed') {
         queryClient.invalidateQueries({ queryKey: keys.conversations() });
