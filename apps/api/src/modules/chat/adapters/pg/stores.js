@@ -47,6 +47,15 @@ export function createChatStores(tx) {
             ORDER BY x.activity_at DESC, x.id DESC
             LIMIT ${limit}`
         ),
+      allForUser: async (userId) =>
+        /** @type {any} */ (
+          await tx`SELECT ${CONVERSATION} FROM chat.conversations
+            WHERE user_low = ${userId} OR user_high = ${userId}`
+        ),
+      replaceMembers: async (id, userLow, userHigh) => {
+        await tx`UPDATE chat.conversations SET user_low = ${userLow}, user_high = ${userHigh}
+          WHERE id = ${id}`;
+      },
       openForUser: async (userId) =>
         /** @type {any} */ (
           await tx`SELECT ${CONVERSATION} FROM chat.conversations

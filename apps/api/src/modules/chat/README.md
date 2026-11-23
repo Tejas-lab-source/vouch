@@ -73,6 +73,14 @@ conversation opens), and `conversation.closed { conversationId, reason }`. The p
 
 A block or ban is never revealed: the other person sees exactly what an unmatch shows.
 
+**Account deletion (Phase 14):**
+
+- The deleted user's messages, read cursors and chat settings are erased.
+- In each of their conversations, their member id is replaced by a random tombstone, as
+  matching does for the match.
+- The other person keeps the closed conversation and their own messages, with nothing left
+  that points at the deleted account.
+
 ## Report evidence (Phase 10)
 
 Chat contributes the step `chat.reportEvidence` to safety's `safety.reportEvidence` pipeline.

@@ -25,12 +25,15 @@ let metricsPort = 19_500 + Math.floor(Math.random() * 2000);
  * A chat test stack: Postgres and Redis (Testcontainers), the 2,000-user seed, one `all`
  * runtime (REST and workers) and two `ws` gateways on random ports sharing one Redis.
  * @param {Record<string, string>} [env]
+ * @param {{ appRole?: 'all' | 'api' }} [options]  `api`: the in-process runtime serves REST only,
+ *   so events are processed only by workers spawned with `spawnGateway({ ROLE: 'worker' })`
+ *   (Phase 14 worker-kill invariant).
  */
-export async function startChatStack(env = {}) {
+export async function startChatStack(env = {}, options = {}) {
   const infra = await startInfra();
   const keys = await makeKeys({ kid: 'active-1' });
   await seed(infra.admin);
-  /** @param {'all' | 'ws'} role @param {boolean} listen */
+  /** @param {'all' | 'api' | 'ws'} role @param {boolean} listen */
   const start = async (role, listen) => {
     const config = loadConfig(
       testEnv({
@@ -52,7 +55,7 @@ export async function startChatStack(env = {}) {
     return startRole({ platform, modules, listen });
   };
   /** @type {any} */
-  const app = await start('all', false);
+  const app = await start(options.appRole ?? 'all', false);
   /** @type {any} */
   const gatewayA = await start('ws', true);
   /** @type {any} */
@@ -93,11 +96,11 @@ export async function startChatStack(env = {}) {
     new Promise((resolve) => socket.emit(event, payload, resolve));
 
   /**
-   * Two fresh seeded users matched through the real matching flow; resolves once the
-   * conversation exists.
+   * Two users like each other through the real swipe route; resolves with the match id as
+   * soon as the second like answers (the conversation is created later by chat's consumer).
+   * @param {any} a @param {any} b
    */
-  async function matchedPair() {
-    const [a, b] = [users[next++], users[next++]];
+  async function swipeMatch(a, b) {
     const redis = app.platform.redis.command;
     await redis.sadd(`discovery:served:${a.id}`, b.id);
     await redis.sadd(`discovery:served:${b.id}`, a.id);
@@ -112,8 +115,17 @@ export async function startChatStack(env = {}) {
       ).json();
     await like(a, b);
     const second = await like(b, a);
-    if (!second.matched) throw new Error(`matchedPair: ${JSON.stringify(second)}`);
-    const { matchId } = second;
+    if (!second.matched) throw new Error(`swipeMatch: ${JSON.stringify(second)}`);
+    return /** @type {string} */ (second.matchId);
+  }
+
+  /**
+   * Two fresh seeded users matched through the real matching flow; resolves once the
+   * conversation exists.
+   */
+  async function matchedPair() {
+    const [a, b] = [users[next++], users[next++]];
+    const matchId = await swipeMatch(a, b);
     await eventually(
       async () =>
         (await infra.admin`SELECT 1 FROM chat.conversations WHERE id = ${matchId}`).length === 1,
@@ -203,6 +215,7 @@ export async function startChatStack(env = {}) {
     socketFor,
     ask,
     matchedPair,
+    swipeMatch,
     rest,
     fresh: () => users[next++],
     spawnGateway,

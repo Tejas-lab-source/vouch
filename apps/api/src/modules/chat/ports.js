@@ -32,6 +32,8 @@
  *   close(id: string, at: Date): Promise<boolean>,
  *   forUser(userId: string, after: { activityAt: Date, id: string } | null, limit: number): Promise<(ConversationRecord & { activityAt: Date })[]>,
  *   openForUser(userId: string): Promise<ConversationRecord[]>,
+ *   allForUser(userId: string): Promise<ConversationRecord[]>,
+ *   replaceMembers(id: string, userLow: string, userHigh: string): Promise<void>,
  * }} conversations
  * @property {{
  *   insert(m: MessageRecord): Promise<void>,
@@ -82,6 +84,7 @@
  * @property {{ getMatch: (id: string) => Promise<{ id: string, userLow: string, userHigh: string, unmatchedAt: Date | null, anonymisedAt: Date | null } | null> }} matching
  * @property {{ messagesPerMinute: number, maxLinksPerMessage: number, linksAfterMessages: number }} settings
  * @property {{ now: () => Date }} clock
+ * @property {() => string} newId  Tombstone ids for deleted members (Phase 14).
  * @property {import('pino').Logger} logger
  */
 

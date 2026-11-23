@@ -10,19 +10,24 @@ export const CONSISTENCY_CRON = '37 4 * * *';
  * column naming the user (matches are anonymised, never deleted, and are checked by id).
  * Reports and active bans are kept on purpose (moderation records and ban evasion).
  */
-const USER_DATA = Object.freeze([
+export const USER_DATA = Object.freeze([
   ['profiles.profiles', 'user_id'],
   ['profiles.photos', 'user_id'],
+  ['profiles.profile_sections', 'user_id'],
   ['media.uploads', 'user_id'],
   ['safety.blocks', 'blocker_id'],
   ['safety.blocks', 'blocked_id'],
   ['safety.verification_reviews', 'user_id'],
+  ['safety.photo_rejections', 'user_id'],
   ['matching.swipes', 'swiper_id'],
   ['matching.swipes', 'target_id'],
   ['matching.matches', 'user_low'],
   ['matching.matches', 'user_high'],
+  ['chat.conversations', 'user_low'],
+  ['chat.conversations', 'user_high'],
   ['chat.messages', 'sender_id'],
   ['chat.read_cursors', 'user_id'],
+  ['chat.member_settings', 'user_id'],
   ['notifications.prefs', 'user_id'],
   ['notifications.deliveries', 'user_id'],
 ]);

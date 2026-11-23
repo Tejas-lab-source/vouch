@@ -10,9 +10,15 @@ export default mergeConfig(
       exclude: ['**/node_modules/**', 'test/invariants/**'],
       coverage: {
         provider: 'v8',
-        include: ['src/platform/**/*.js'],
-        reporter: ['text-summary', 'text'],
-        thresholds: { lines: 90 },
+        // Phase 14 targets: 90% on the platform, 85% on the modules (lines).
+        include: ['src/platform/**/*.js', 'src/modules/**/*.js'],
+        // The example module is a template for new modules, not product code.
+        exclude: ['src/modules/_example/**'],
+        reporter: ['text-summary', 'text', 'json-summary'],
+        thresholds: {
+          'src/platform/**/*.js': { lines: 90 },
+          'src/modules/**/*.js': { lines: 85 },
+        },
       },
     },
   }),

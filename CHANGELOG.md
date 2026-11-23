@@ -545,3 +545,14 @@ All notable changes are recorded here, grouped by roadmap phase.
   - a 64 KB HTTP body limit and a 16 KB socket message limit
   - `pnpm audit --prod` clean, using overrides for `glob` and `minimatch`
   - a secrets scan (`pnpm check:secrets --history`); the audit and the scan now run in CI
+- **Deletion erases everywhere:** chat replaces a deleted member's id in their conversations
+  with a tombstone. The nightly consistency check now covers every table that holds a user id
+  (`chat.member_settings`, `chat.conversations`, `profiles.profile_sections`,
+  `safety.photo_rejections` added). `test/db/user-data.test.js` keeps that list complete.
+- **Coverage:** thresholds of 85% (lines) on modules and 90% on the platform. Measured:
+  modules 94.8%, platform 97.4%.
+- **New invariants:**
+  - a worker killed mid-burst: no event lost, each processed once per consumer
+  - a block hides both users everywhere within one consumer cycle
+  - deletion erases everywhere
+  - gateway memory per idle socket
