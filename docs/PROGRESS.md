@@ -47,6 +47,27 @@ complete (the launch checklist fully ticked), send the Completion Report and sto
 
 The owner is working through items A1–A3 now.
 
+### Status (2026-11-23): everything buildable is done; blocked on owner items
+
+Built, tested and pushed (commits bb966cd … 3185621; CI green): steps 1–4 and 7–12 of the
+Start Plan as far as they need no account, plus three launch blockers found on the way:
+
+- CORS refused PATCH, PUT and DELETE from another origin (fixed; the browser suite now runs
+  in the deployed shape in CI).
+- A hosted, non-superuser login could not `SET ROLE` into the module roles it creates
+  (fixed in `migrate up`; tested).
+- A restore into a new Render instance would have failed on missing roles and the old
+  owner's default privileges (fixed in `scripts/backup.js restore`; tested end to end).
+
+Corrections to the Start Plan's checklist are listed in `docs/infrastructure.md` ("Changes
+from the Start Plan"): B3 is a Render API key plus service ids, B8's secret is
+`MODERATION_API_KEY`, and the Cloudflare and Sentry tokens are environment secrets.
+
+**Blocked on (in this order):** A1 (the domain name, sent in chat), then B1 and B2 (GitHub
+environments; the Render Blueprint with its secrets) for the first staging deploy. C5's
+exact JIIT student email domain is needed before `college-add.js` runs. Owner decision
+needed: `expo-updates` as a new dependency (the roadmap's over-the-air channels need it).
+
 ## Phase 14 approval and the beta plan (owner, 2026-11-23)
 
 **Approval:** "Approved: Phase 14 complete." PR #10 was merged by the owner. Phase 15 follows
