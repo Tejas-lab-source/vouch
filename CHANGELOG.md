@@ -578,6 +578,11 @@ All notable changes are recorded here, grouped by roadmap phase.
     503 beats a 60 s timeout.
   - Refusals are counted in `vouch_shed_total`.
   - The image gives V8 75% of the container (`--max-old-space-size-percentage=75`).
+- **Latency under contention** (found by the 20-run invariant loop):
+  - the swipe's block and pair checks run concurrently under the pair lock
+  - a chat send's independent lookups run concurrently
+  - the simultaneous-likes invariant runs the REST role only, so the consumers added since
+    Phase 13 do not skew its lock timing
 - **Performance:** synchronous pipeline steps run without a timer. The deck worker had
   allocated a timer and a promise race per scorer per candidate, and the same load now uses
   about a third less API CPU.

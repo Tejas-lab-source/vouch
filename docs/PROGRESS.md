@@ -18,7 +18,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 11  | Frontend foundation                                                     | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-11.md |
 | 12  | Frontend features I (onboarding, profile, discovery, matching)          | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-12.md |
 | 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-13.md |
-| 14  | End-to-end testing, security, privacy and performance                   | In progress | 2026-11-23 (batch rules) | —                  | —                  |
+| 14  | End-to-end testing, security, privacy and performance                   | Report sent | 2026-11-23 (batch rules) | —                  | phases/PHASE-14.md |
 | 15  | Deployment, observability and closed beta launch                        | Not started | —                        | —                  | —                  |
 
 ## Phase 14 run (owner, 2026-11-23)
@@ -57,11 +57,18 @@ anything needing the owner's decision) and stop.
 
 **Running log:**
 
-| Step              | Status      | Last commit | CI run | Next step       |
-| ----------------- | ----------- | ----------- | ------ | --------------- |
-| Phase 14          | In progress | —           | —      | Start plan      |
-| 1 Read receipts   | Done        | `50498ca`   | —      | Audit integrity |
-| 2 Audit integrity | Done        | `39a75e4`   | —      | Admin sessions  |
+| Step                                      | Status                                   | Last commit                     | CI run                                             | Next step                                     |
+| ----------------------------------------- | ---------------------------------------- | ------------------------------- | -------------------------------------------------- | --------------------------------------------- |
+| Phase 14                                  | Report sent                              | —                               | —                                                  | Stop                                          |
+| 1 Read receipts                           | Done                                     | `50498ca`                       | —                                                  | Audit integrity                               |
+| 2 Audit integrity                         | Done                                     | `39a75e4`                       | —                                                  | Admin sessions                                |
+| 3 Admin sessions and sensitive routes     | Done                                     | `c092dbe`                       | green                                              | Security review                               |
+| 4 Security review                         | Done                                     | `34b9b24`, `8781c23`            | red, then green (the scan flagged its own fixture) | Gateway memory                                |
+| 5 Gateway memory                          | Done                                     | `edc5bf5`                       | —                                                  | Coverage and invariants                       |
+| 6 Coverage and invariants                 | Done                                     | `a173f1f`                       | —                                                  | Privacy                                       |
+| 7 Privacy, runbooks, swipe, accessibility | Done                                     | `a1118c4`, `c904cd6`, `6cc23b0` | —                                                  | Load test                                     |
+| 8 Load, performance fixes, chaos          | Done                                     | `56ac7f9`, `d14ddac`, `e51ea87` | —                                                  | 20 invariant runs, report, PR                 |
+| 9 Report, PR                              | Done: report sent; waiting for the owner | (this commit)                   | see the PR                                         | Owner review; then "Approved: start Phase 15" |
 
 **Decisions taken without the owner (Phase 14):**
 
@@ -74,6 +81,41 @@ anything needing the owner's decision) and stop.
   the module-boundary rules are unchanged.
 - The migrations test now lists the Phase 14 chat migration (`4868beb`). The Task 1 commit had
   missed it.
+- **Read receipts:** the setting is its own chat endpoint, not a notification-prefs field as
+  the start plan said. Notifications depends on chat; the reverse would be a module cycle
+  (ADR 0024).
+- **Sensitive routes** that check the session (ADR 0026):
+  - device list, sign-out and push token; deletion; export; safety's self-unblock
+  - a repeated deletion needs no live session
+- **The security review** added a 64 KB HTTP body limit and a 16 KB socket message limit,
+  `glob` and `minimatch` overrides (audit clean), and an in-repo secrets scan. The gitleaks
+  image was blocked by the network, and running an unvetted npx package over the history was
+  refused here.
+- **Deletion** now tombstones the deleted member in chat conversations, as matching does.
+  The consistency check covers every user-id column (a schema test keeps it complete).
+- **Safety's export:** your blocks, the reports you filed, and your verification status.
+  Never reports about you.
+- **The privacy notice** is a versioned, structured draft marked "pending legal review". The
+  default version is `2026-11-draft`, and the clients refuse consent to a version they cannot
+  show.
+- **The swipe** moved to Gesture Handler 3.3.0, Reanimated 4.7.1 and Worklets 0.13.0 (Expo SDK
+  58's pins), as pre-approved (ADR 0027).
+- **The load test** runs `NODE_ENV=development`, because production refuses the dev
+  providers. The beta plan is assumed to be: API 0.5 CPU / 512 MB, Postgres 0.1 CPU / 256 MB,
+  Redis 256 MB.
+- **Overload protection** (found by the 10x run, where the API ran out of heap):
+  - 503 with `Retry-After` when the mean event-loop delay is over 250 ms, the heap is over
+    85%, or 128 requests are in flight
+  - new sockets refused under the same conditions
+  - V8 gets 75% of the container
+- **Synchronous pipeline steps run without a timer.** This cut API CPU by about a third.
+- **Two invariant timing targets each failed once** under noise: lock-hold p95 20.8 ms, and
+  load-smoke delivery p95 1,071 ms. The targets are kept. Fixes:
+  - concurrent checks under the swipe lock
+  - concurrent lookups in a chat send
+  - the likes invariant runs the REST role only, so later phases' consumers do not skew its
+    lock timing (Phase 8's isolation)
+  - the 20-run count restarted after each change
 
 ## Batch run: Phases 9–13
 
