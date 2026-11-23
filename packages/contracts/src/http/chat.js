@@ -63,10 +63,50 @@ export const listMessages = defineEndpoint({
         .nullable()
         .describe('With `beforeSeq`: pass back as `beforeSeq` for older messages (Phase 13).'),
       peerDeliveredSeq: z.int().min(0).describe('The other member’s delivered cursor (Phase 13).'),
-      peerReadSeq: z.int().min(0).describe('The other member’s read cursor (Phase 13).'),
+      peerReadSeq: z
+        .int()
+        .min(0)
+        .describe(
+          'The other member’s read cursor (Phase 13). 0 unless both members share read ' +
+            'receipts (Phase 14).',
+        ),
     }),
   },
   errors: ['NOT_FOUND', 'NOT_A_MEMBER'],
 });
 
-export const chatEndpoints = [listConversations, listMessages];
+/**
+ * Chat privacy settings (Phase 14, owner). Read receipts are off by default and reciprocal:
+ * you see the other person's read state only when both of you share it.
+ */
+export const ChatSettings = z.strictObject({
+  shareReadReceipts: z
+    .boolean()
+    .describe('Off by default. Reciprocal: read states are shown only when both people share.'),
+});
+
+export const getChatSettings = defineEndpoint({
+  id: 'getChatSettings',
+  module: 'chat',
+  method: 'GET',
+  path: '/v1/me/chat-settings',
+  auth: 'user',
+  summary: 'Your chat privacy settings (defaults until first saved).',
+  response: { status: 200, schema: ChatSettings },
+});
+
+export const putChatSettings = defineEndpoint({
+  id: 'putChatSettings',
+  module: 'chat',
+  method: 'PUT',
+  path: '/v1/me/chat-settings',
+  auth: 'user',
+  summary: 'Replace your chat privacy settings.',
+  description:
+    'Turning read receipts off stops yours being sent at once, and hides other people’s read ' +
+    'state from you (reciprocal).',
+  body: ChatSettings,
+  response: { status: 200, schema: ChatSettings },
+});
+
+export const chatEndpoints = [listConversations, listMessages, getChatSettings, putChatSettings];

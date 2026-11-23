@@ -8,7 +8,7 @@ export const SYNC_MAX = 500;
  * Replay and cursors over the socket.
  * @param {import('../ports.js').ChatDeps & { publicIdsOf: (ids: readonly string[]) => Promise<Map<string, string>> }} deps
  */
-export function makeSync({ read, uow, publicIdsOf, sockets }) {
+export function makeSync({ read, uow, publicIdsOf, sockets, useCase, clock }) {
   /**
    * Every message after each cursor, in seq order per conversation, for conversations the
    * caller belongs to (others are ignored). Capped at 500 with `truncated`.
@@ -58,21 +58,49 @@ export function makeSync({ read, uow, publicIdsOf, sockets }) {
         if (which === 'read') await stores.cursors.advanceRead(conversationId, me, upTo);
         else await stores.cursors.advanceDelivered(conversationId, me, upTo);
         const after = await stores.cursors.get(conversationId, me);
-        const changed =
-          after.readSeq !== before.readSeq || after.deliveredSeq !== before.deliveredSeq;
-        return changed ? { peer: otherMember(conversation, me), cursors: after } : null;
+        const peer = otherMember(conversation, me);
+        // Read receipts are reciprocal and off by default (Phase 14, ADR 0024): read state is
+        // visible only when both members share it. Otherwise only delivery is reported, and a
+        // read move reports nothing at all (not even an implied delivery).
+        const sharing = await stores.settings.sharing([me, peer]);
+        const shared = sharing.has(me) && sharing.has(peer);
+        const view = (/** @type {{ readSeq: number, deliveredSeq: number }} */ c) =>
+          shared
+            ? { deliveredSeq: Math.max(c.deliveredSeq, c.readSeq), readSeq: c.readSeq }
+            : { deliveredSeq: c.deliveredSeq, readSeq: 0 };
+        const [was, now] = [view(before), view(after)];
+        const changed = was.readSeq !== now.readSeq || was.deliveredSeq !== now.deliveredSeq;
+        return changed ? { peer, cursors: now } : null;
       });
-      // After commit: tell the other member (cursors only, never content). A read implies
-      // delivery, so `deliveredSeq` is never shown below `readSeq`.
+      // After commit: tell the other member (cursors only, never content).
       if (moved && sockets) {
-        sockets.emitToUser(moved.peer, 'receipt.updated', {
-          conversationId,
-          deliveredSeq: Math.max(moved.cursors.deliveredSeq, moved.cursors.readSeq),
-          readSeq: moved.cursors.readSeq,
-        });
+        sockets.emitToUser(moved.peer, 'receipt.updated', { conversationId, ...moved.cursors });
       }
       return {};
     };
 
-  return { sync, markRead: advance('read'), markDelivered: advance('delivered') };
+  /** `GET /v1/me/chat-settings`. */
+  const getChatSettings = useCase('chat.getSettings', async (/** @type {unknown} */ _i, ctx) => {
+    const me = /** @type {string} */ (ctx.actor?.userId);
+    return { shareReadReceipts: (await read((stores) => stores.settings.sharing([me]))).has(me) };
+  });
+
+  /** `PUT /v1/me/chat-settings`. */
+  const putChatSettings = useCase(
+    'chat.putSettings',
+    /** @param {{ shareReadReceipts: boolean }} input */
+    async (input, ctx) => {
+      const me = /** @type {string} */ (ctx.actor?.userId);
+      await uow.run(({ stores }) => stores.settings.put(me, input.shareReadReceipts, clock.now()));
+      return { shareReadReceipts: input.shareReadReceipts };
+    },
+  );
+
+  return {
+    sync,
+    markRead: advance('read'),
+    markDelivered: advance('delivered'),
+    getChatSettings,
+    putChatSettings,
+  };
 }

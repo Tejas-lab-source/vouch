@@ -521,3 +521,12 @@ All notable changes are recorded here, grouped by roadmap phase.
 - A burst of messages no longer refetches the conversation list per message.
 - Two flaky tests: the photo-reorder test no longer assumes upload order, and the
   invalid-push-token test waits for the delivery's final status.
+
+## Phase 14 — End-to-end testing, security, privacy and performance
+
+### Added
+
+- **Share read receipts** (owner, ADR 0024): `GET`/`PUT /v1/me/chat-settings`, off by default
+  and reciprocal. The server stops read receipts and the peer read cursor unless both people
+  share. It is a settings row on web and mobile, included in the export and erased with the
+  account.

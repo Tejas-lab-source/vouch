@@ -86,7 +86,7 @@ export function makeConversations(deps) {
       const conversation = await memberConversation(input.id, me);
       const peer = otherMember(conversation, me);
       const backwards = input.beforeSeq !== undefined;
-      const { rows, cursors } = await read(async (stores) => ({
+      const { rows, cursors, sharing } = await read(async (stores) => ({
         rows: backwards
           ? await stores.messages.before(
               conversation.id,
@@ -95,6 +95,7 @@ export function makeConversations(deps) {
             )
           : await stores.messages.after(conversation.id, input.afterSeq, input.limit + 1),
         cursors: await stores.cursors.get(conversation.id, peer),
+        sharing: await stores.settings.sharing([me, peer]),
       }));
       // Backwards pages hold the newest `limit` rows before `beforeSeq` (the extra row is the
       // oldest one, which only says that more exist).
@@ -106,8 +107,13 @@ export function makeConversations(deps) {
           !backwards && rows.length > input.limit ? (pageRows.at(-1)?.seq ?? null) : null,
         prevBeforeSeq:
           backwards && rows.length > input.limit ? (pageRows.at(0)?.seq ?? null) : null,
-        peerDeliveredSeq: cursors.deliveredSeq,
-        peerReadSeq: cursors.readSeq,
+        // Read state only when both members share read receipts (Phase 14, ADR 0024).
+        ...(sharing.has(me) && sharing.has(peer)
+          ? {
+              peerDeliveredSeq: Math.max(cursors.deliveredSeq, cursors.readSeq),
+              peerReadSeq: cursors.readSeq,
+            }
+          : { peerDeliveredSeq: cursors.deliveredSeq, peerReadSeq: 0 }),
       };
     },
   );

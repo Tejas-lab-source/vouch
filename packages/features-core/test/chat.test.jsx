@@ -11,6 +11,7 @@ import {
   unreadCount,
   useAccountActions,
   useBlockedUsers,
+  useChatSettings,
   useConversations,
   useMarkRead,
   useMessages,
@@ -18,6 +19,7 @@ import {
   usePushRegistration,
   useSendMessage,
   useUnblock,
+  useUpdateChatSettings,
   useUpdateNotificationPrefs,
 } from '../src/index.js';
 import { fakeApi, wrapper } from './support.jsx';
@@ -327,6 +329,28 @@ describe('settings, safety and push', () => {
     expect(minutesToTime(1320)).toBe('22:00');
     expect(timeToMinutes('07:00')).toBe(420);
     expect(timeToMinutes('24:00')).toBeNull();
+  });
+
+  it('share read receipts: off by default, saved, and open chats refetch their read state', async () => {
+    let share = false;
+    const api = fakeApi({
+      'GET /v1/me/chat-settings': () => [200, { shareReadReceipts: share }],
+      'PUT /v1/me/chat-settings': (body) => {
+        share = body.shareReadReceipts;
+        return [200, body];
+      },
+    });
+    const { Wrapper, queryClient } = wrapper(api);
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => ({ s: useChatSettings(), save: useUpdateChatSettings() }), {
+      wrapper: Wrapper,
+    });
+    await waitFor(() => expect(result.current.s.data).toEqual({ shareReadReceipts: false }));
+    await act(async () => {
+      await result.current.save.mutateAsync({ shareReadReceipts: true });
+    });
+    await waitFor(() => expect(result.current.s.data).toEqual({ shareReadReceipts: true }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['vouch', 'messages'] });
   });
 
   it('blocked users: list and unblock', async () => {

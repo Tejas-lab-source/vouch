@@ -49,14 +49,29 @@ test('two users chat in real time; read states; messages sent while offline arri
   const arjunLog = await openChat(arjun.page, 'Mira');
   expect(await seriousViolations(mira.page)).toEqual([]);
 
-  // Mira writes; Arjun sees it live; Mira's message shows "Read" once Arjun has it on screen.
+  // Mira writes; Arjun sees it live.
   const composer = mira.page.getByRole('textbox', { name: 'Message' });
   await composer.fill('Hi Arjun!');
   await composer.press('Enter');
   await expect(arjunLog.getByText('Hi Arjun!')).toBeVisible();
-  await expect(miraLog.getByTestId('message').filter({ hasText: 'Hi Arjun!' })).toContainText(
-    'Read',
-  );
+  // Read receipts are off by default (Phase 14, ADR 0024): Mira sees "Delivered", never "Read".
+  const first = miraLog.getByTestId('message').filter({ hasText: 'Hi Arjun!' });
+  await expect(first).toContainText('Delivered');
+  await mira.page.waitForTimeout(500);
+  await expect(first).not.toContainText('Read');
+  // Both turn "Share read receipts" on (reciprocal); Mira's message now shows "Read".
+  for (const [who, other] of /** @type {const} */ ([
+    [arjun, 'Mira'],
+    [mira, 'Arjun'],
+  ])) {
+    await who.page.getByRole('link', { name: 'Settings', exact: true }).click();
+    const toggle = who.page.getByRole('checkbox', { name: 'Share read receipts' });
+    await expect(toggle).not.toBeChecked();
+    await toggle.check();
+    await expect(toggle).toBeChecked();
+    await openChat(who.page, other);
+  }
+  await expect(first).toContainText('Read');
 
   // Arjun answers with the button.
   await arjun.page.getByRole('textbox', { name: 'Message' }).fill('Hello Mira');

@@ -5321,7 +5321,7 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 9007199254740991,
-                      "description": "The other member’s read cursor (Phase 13)."
+                      "description": "The other member’s read cursor (Phase 13). 0 unless both members share read receipts (Phase 14)."
                     }
                   },
                   "required": [
@@ -5368,6 +5368,263 @@
           },
           "404": {
             "description": "Error codes: NOT_FOUND.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/chat-settings": {
+      "get": {
+        "operationId": "getChatSettings",
+        "summary": "Your chat privacy settings (defaults until first saved).",
+        "tags": [
+          "chat"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Your chat privacy settings (defaults until first saved).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shareReadReceipts": {
+                      "type": "boolean",
+                      "description": "Off by default. Reciprocal: read states are shown only when both people share."
+                    }
+                  },
+                  "required": [
+                    "shareReadReceipts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Error codes: APP_VERSION_UNSUPPORTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error codes: RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error codes: INTERNAL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putChatSettings",
+        "summary": "Replace your chat privacy settings.",
+        "description": "Turning read receipts off stops yours being sent at once, and hides other people’s read state from you (reciprocal).",
+        "tags": [
+          "chat"
+        ],
+        "security": [
+          {
+            "userBearer": []
+          }
+        ],
+        "x-idempotency": {
+          "mode": "none"
+        },
+        "x-error-codes": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "ACCOUNT_BANNED",
+          "APP_VERSION_UNSUPPORTED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "description": "Client app version, for example 1.4.0.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shareReadReceipts": {
+                    "type": "boolean",
+                    "description": "Off by default. Reciprocal: read states are shown only when both people share."
+                  }
+                },
+                "required": [
+                  "shareReadReceipts"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replace your chat privacy settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shareReadReceipts": {
+                      "type": "boolean",
+                      "description": "Off by default. Reciprocal: read states are shown only when both people share."
+                    }
+                  },
+                  "required": [
+                    "shareReadReceipts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error codes: VALIDATION_FAILED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error codes: UNAUTHENTICATED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error codes: ACCOUNT_BANNED.",
             "content": {
               "application/json": {
                 "schema": {

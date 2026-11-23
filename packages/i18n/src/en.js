@@ -204,6 +204,10 @@ export const en = Object.freeze({
   'settings.saved': 'Saved.',
   'settings.pushDenied':
     'Notifications are off for Vouch in your device settings. Turn them on there to get pushes.',
+  'settings.privacy.chat.title': 'Chat privacy',
+  'settings.readReceipts': 'Share read receipts',
+  'settings.readReceipts.hint':
+    'Off by default. When on, people who also share theirs can see when you have read their messages, and you can see when they have read yours.',
   'settings.blocked.title': 'Blocked people',
   'settings.blocked.empty': 'You have not blocked anyone.',
   'settings.blocked.unknown': 'Someone (profile not visible)',

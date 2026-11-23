@@ -5,6 +5,7 @@ import { Card } from '@vouch/ui-web';
 import { Link } from 'react-router';
 import { AccountActions } from '../../features/account/AccountActions.jsx';
 import { BlockedUsers } from '../../features/blocked-users/BlockedUsers.jsx';
+import { ReadReceiptsSetting } from '../../features/chat-privacy/ReadReceiptsSetting.jsx';
 import { NotificationSettings } from '../../features/notification-settings/NotificationSettings.jsx';
 
 /** Settings: notifications, blocked people, safety and privacy, account and data. */
@@ -17,6 +18,12 @@ export function SettingsPage() {
           {t('settings.notifications.title')}
         </h2>
         <NotificationSettings />
+      </Card>
+      <Card as="section" aria-labelledby="s-chat-privacy">
+        <h2 id="s-chat-privacy" className="w-subtitle">
+          {t('settings.privacy.chat.title')}
+        </h2>
+        <ReadReceiptsSetting />
       </Card>
       <Card as="section" aria-labelledby="s-blocked">
         <h2 id="s-blocked" className="w-subtitle">

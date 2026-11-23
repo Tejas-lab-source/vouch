@@ -65,7 +65,7 @@ export function makeChatConsumers(deps) {
 
     /**
      * `user.deleted.v1`: close every conversation of the user (the other person is told
-     * `deleted`), then erase the user's messages and read cursors.
+     * `deleted`), then erase the user's messages, read cursors and chat settings.
      * @param {{ userId: string }} payload
      * @param {Scope} scope
      */
@@ -75,6 +75,7 @@ export function makeChatConsumers(deps) {
       }
       await scope.stores.messages.removeBySender(userId);
       await scope.stores.cursors.removeForUser(userId);
+      await scope.stores.settings.remove(userId);
     },
   };
 }

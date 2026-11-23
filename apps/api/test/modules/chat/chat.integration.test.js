@@ -195,6 +195,11 @@ describe('chat across two gateways (ROLE=ws ×2, one Redis)', () => {
       before = page.prevBeforeSeq;
     }
     expect(pages).toEqual([[4, 5], [2, 3], [1]]);
+    // Both share read receipts (off by default; Phase 14, ADR 0024).
+    for (const u of [a, b]) {
+      const put = await stack.rest(u, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: true });
+      expect(put.body).toEqual({ shareReadReceipts: true });
+    }
     // The recipient reports delivery then reading: the sender gets the cursors, no content.
     const recipient = await open(stack.gatewayB, b);
     recipient.emit('message.delivered', { conversationId, seq: 5 });
@@ -218,6 +223,70 @@ describe('chat across two gateways (ROLE=ws ×2, one Redis)', () => {
     stranger.emit('message.read', { conversationId, seq: 5 });
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(receipts).toHaveLength(count);
+  });
+
+  for (const [who, label] of /** @type {[string[], string][]} */ ([
+    [[], 'neither shares'],
+    [['sender'], 'only the sender shares'],
+    [['recipient'], 'only the recipient shares'],
+  ])) {
+    it(`read receipts are never sent or exposed when ${label} (reciprocal, off by default)`, async () => {
+      const { a, b, conversationId } = await stack.matchedPair();
+      expect((await stack.rest(a, '/v1/me/chat-settings')).body).toEqual({
+        shareReadReceipts: false,
+      });
+      if (who.includes('sender'))
+        await stack.rest(a, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: true });
+      if (who.includes('recipient'))
+        await stack.rest(b, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: true });
+      const sender = await open(stack.gatewayA, a);
+      const receipts = collect(sender, 'receipt.updated');
+      for (let i = 1; i <= 3; i += 1) await send(sender, conversationId, `r${i}`);
+      const recipient = await open(stack.gatewayB, b);
+      // Reading without a delivery report first: nothing at all reaches the sender.
+      recipient.emit('message.read', { conversationId, seq: 2 });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(receipts).toEqual([]);
+      // Delivery is still reported, with readSeq 0 (the read cursor is not revealed).
+      recipient.emit('message.delivered', { conversationId, seq: 3 });
+      await eventually(() => receipts.length > 0, WAIT_MS);
+      recipient.emit('message.read', { conversationId, seq: 3 });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(receipts).toEqual([{ conversationId, deliveredSeq: 3, readSeq: 0 }]);
+      // REST shows no read state either, to either side.
+      const history = (
+        await stack.rest(a, `/v1/conversations/${conversationId}/messages?beforeSeq=9`)
+      ).body;
+      expect(history).toMatchObject({ peerDeliveredSeq: 3, peerReadSeq: 0 });
+      // Turning it off again (after both shared) stops read receipts at once.
+      if (who.length === 0) {
+        await stack.rest(a, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: true });
+        await stack.rest(b, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: true });
+        await send(sender, conversationId, 'r4');
+        recipient.emit('message.read', { conversationId, seq: 4 });
+        await eventually(() => receipts.some((r) => r.readSeq === 4), WAIT_MS);
+        await stack.rest(b, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: false });
+        const before = receipts.length;
+        await send(sender, conversationId, 'r5');
+        recipient.emit('message.read', { conversationId, seq: 5 });
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        expect(receipts.slice(before).every((r) => r.readSeq === 0)).toBe(true);
+        expect(
+          (await stack.rest(a, `/v1/conversations/${conversationId}/messages?beforeSeq=9`)).body
+            .peerReadSeq,
+        ).toBe(0);
+      }
+    });
+  }
+
+  it('chat settings are only the caller’s own and need a session', async () => {
+    const { a, b } = await stack.matchedPair();
+    await stack.rest(a, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: true });
+    expect((await stack.rest(b, '/v1/me/chat-settings')).body).toEqual({
+      shareReadReceipts: false,
+    });
+    const bad = await stack.rest(a, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: 'yes' });
+    expect(bad.status).toBe(400);
   });
 
   it('message.created.v1 (for push) only when the recipient is offline, and never with the body', async () => {
@@ -348,6 +417,7 @@ describe('chat across two gateways (ROLE=ws ×2, one Redis)', () => {
     const socketB = await open(stack.gatewayB, b);
     const closed = collect(socketB, 'conversation.closed');
     await send(socketA, conversationId, 'bye');
+    await stack.rest(a, '/v1/me/chat-settings', 'PUT', { shareReadReceipts: true });
     const { status } = await stack.rest(a, '/v1/me', 'DELETE');
     expect(status).toBe(202);
     await eventually(() => closed.length === 1, WAIT_MS);
@@ -356,6 +426,13 @@ describe('chat across two gateways (ROLE=ws ×2, one Redis)', () => {
       async () =>
         (await stack.infra.admin`SELECT 1 FROM chat.messages WHERE sender_id = ${a.id}`).length ===
         0,
+      WAIT_MS,
+    );
+    // The chat settings row goes too.
+    await eventually(
+      async () =>
+        (await stack.infra.admin`SELECT 1 FROM chat.member_settings WHERE user_id = ${a.id}`)
+          .length === 0,
       WAIT_MS,
     );
     expect(socketA.connected).toBe(true); // disconnected by the client app, not the server
@@ -377,6 +454,7 @@ describe('chat across two gateways (ROLE=ws ×2, one Redis)', () => {
     await send(sb, conversationId, 'theirs');
     const exported = (await stack.rest(a, '/v1/me/export')).body;
     expect(exported.data.chat.sentMessages.map((/** @type {any} */ m) => m.body)).toEqual(['mine']);
+    expect(exported.data.chat.shareReadReceipts).toBe(false);
     await stack.infra
       .admin`UPDATE chat.conversations SET closed_at = now() - interval '31 days' WHERE id = ${conversationId}`;
     const job = stack.app.boot.jobs.find((/** @type {any} */ j) => j.name === 'chat.retentionTick');

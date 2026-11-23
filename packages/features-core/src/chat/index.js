@@ -104,8 +104,9 @@ export function useMessages(conversationId) {
       return /** @type {MessagesCache} */ ({
         items: mergeMessages(current?.items ?? [], page.items),
         prevBeforeSeq: page.prevBeforeSeq,
-        peerDeliveredSeq: Math.max(page.peerDeliveredSeq, current?.peerDeliveredSeq ?? 0),
-        peerReadSeq: Math.max(page.peerReadSeq, current?.peerReadSeq ?? 0),
+        // The server's cursors are the truth (they may go down when read receipts are turned off).
+        peerDeliveredSeq: page.peerDeliveredSeq,
+        peerReadSeq: page.peerReadSeq,
         closed: current?.closed ?? null,
         outgoing: current?.outgoing ?? [],
         loaded: true,

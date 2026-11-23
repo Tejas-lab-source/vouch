@@ -231,6 +231,15 @@ export const exportData = (client, input = {}) =>
   client.call(ENDPOINTS.exportData, /** @type {CallInput} */ (input));
 
 /**
+ * GET /v1/me/chat-settings — Your chat privacy settings (defaults until first saved).
+ * @param {ApiClient} client
+ * @param {{ signal?: AbortSignal }} [input]
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').getChatSettings.response.schema>>}
+ */
+export const getChatSettings = (client, input = {}) =>
+  client.call(ENDPOINTS.getChatSettings, /** @type {CallInput} */ (input));
+
+/**
  * GET /v1/config — Evaluated flags, minimum app version, limits and campus info.
  * @param {ApiClient} client
  * @param {{ signal?: AbortSignal }} [input]
@@ -328,6 +337,15 @@ export const listMyBlocks = (client, input = {}) =>
  */
 export const logout = (client, input) =>
   client.call(ENDPOINTS.logout, /** @type {CallInput} */ (input));
+
+/**
+ * PUT /v1/me/chat-settings — Replace your chat privacy settings.
+ * @param {ApiClient} client
+ * @param {{ body: import('zod').input<typeof import('@vouch/contracts').putChatSettings.body>, signal?: AbortSignal }} input
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').putChatSettings.response.schema>>}
+ */
+export const putChatSettings = (client, input) =>
+  client.call(ENDPOINTS.putChatSettings, /** @type {CallInput} */ (input));
 
 /**
  * PUT /v1/me/notification-prefs — Replace push preferences and quiet hours.
@@ -632,6 +650,13 @@ export const ENDPOINTS = Object.freeze({
     auth: 'user',
     idempotency: 'none',
   },
+  getChatSettings: {
+    id: 'getChatSettings',
+    method: 'GET',
+    path: '/v1/me/chat-settings',
+    auth: 'user',
+    idempotency: 'none',
+  },
   getConfig: {
     id: 'getConfig',
     method: 'GET',
@@ -702,6 +727,13 @@ export const ENDPOINTS = Object.freeze({
     path: '/v1/auth/logout',
     auth: 'user',
     idempotency: 'header',
+  },
+  putChatSettings: {
+    id: 'putChatSettings',
+    method: 'PUT',
+    path: '/v1/me/chat-settings',
+    auth: 'user',
+    idempotency: 'none',
   },
   putNotificationPrefs: {
     id: 'putNotificationPrefs',

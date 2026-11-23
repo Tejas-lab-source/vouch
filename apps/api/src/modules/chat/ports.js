@@ -52,6 +52,11 @@
  *   get(conversationId: string, userId: string): Promise<{ readSeq: number, deliveredSeq: number }>,
  *   removeForUser(userId: string): Promise<number>,
  * }} cursors
+ * @property {{
+ *   sharing(userIds: readonly string[]): Promise<Set<string>>,
+ *   put(userId: string, shareReadReceipts: boolean, at: Date): Promise<void>,
+ *   remove(userId: string): Promise<number>,
+ * }} settings  Chat privacy settings (Phase 14); a missing row means the defaults (off).
  */
 
 /**

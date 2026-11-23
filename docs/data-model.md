@@ -133,11 +133,12 @@ Views: `matching.seen_v` (`swiper_id, target_id`) and `matching.likes_in_v` (`us
 
 ### `chat`
 
-| Table           | Purpose                                                                | Key                          | Notable constraints and indexes                                                                                                    |
-| --------------- | ---------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `conversations` | One per match; `id` equals the match id (Phase 9)                      | `id`; unique `match_id`      | Pair copied from the match (`user_low < user_high`) for membership checks; `last_seq >= 0`; index on `closed_at` for retention     |
-| `messages`      | `PARTITION BY HASH (conversation_id)`, 16 partitions `messages_p0…p15` | `(conversation_id, seq)`     | Unique `(conversation_id, client_msg_id)`; `kind` is open-ended text; body or media key required; index on `sender_id` for erasure |
-| `read_cursors`  | One read/delivered cursor per user per conversation                    | `(conversation_id, user_id)` | FK `conversation_id` → `conversations`                                                                                             |
+| Table             | Purpose                                                                | Key                          | Notable constraints and indexes                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `conversations`   | One per match; `id` equals the match id (Phase 9)                      | `id`; unique `match_id`      | Pair copied from the match (`user_low < user_high`) for membership checks; `last_seq >= 0`; index on `closed_at` for retention     |
+| `messages`        | `PARTITION BY HASH (conversation_id)`, 16 partitions `messages_p0…p15` | `(conversation_id, seq)`     | Unique `(conversation_id, client_msg_id)`; `kind` is open-ended text; body or media key required; index on `sender_id` for erasure |
+| `member_settings` | Chat privacy settings: `share_read_receipts` (default off; Phase 14)   | `user_id`                    | —                                                                                                                                  |
+| `read_cursors`    | One read/delivered cursor per user per conversation                    | `(conversation_id, user_id)` | FK `conversation_id` → `conversations`                                                                                             |
 
 **Message identity (owner decision, Phase 3):** a message is identified by
 `(conversation_id, seq)`. There is no separate message id column. The `message.send` ack is

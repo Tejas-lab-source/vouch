@@ -22,6 +22,11 @@ Presence details never leave the module.
 | `message.delivered` | `markDelivered`: the same, for the delivered cursor                               |
 | `sync`              | Up to 500 messages after each `{ conversationId, lastSeq }`, in seq order         |
 
+**Read receipts are opt-in and reciprocal (Phase 14, ADR 0024):** `GET`/`PUT
+/v1/me/chat-settings` `{ shareReadReceipts }` (default off, `chat.member_settings`). A read state
+is passed on only when both members share; otherwise read moves send nothing, delivery moves
+send `readSeq: 0`, and `listMessages` returns `peerReadSeq: 0`.
+
 When a read or delivered cursor moves forward, the other member gets `receipt.updated`
 `{ conversationId, deliveredSeq, readSeq }` (cursors only, never content; Phase 13). A repeated or
 older cursor sends nothing.

@@ -294,6 +294,18 @@ export const httpFixtures = {
   // safety
   'blockUser.body': { valid: [{ targetId: s.PUBLIC_ID }], invalid: [{ targetId: s.ID }] },
   'blockUser.response': { valid: [{ blocked: true }], invalid: [{ blocked: 'yes' }] },
+  'getChatSettings.response': {
+    valid: [{ shareReadReceipts: false }],
+    invalid: [{}, { shareReadReceipts: 'no' }],
+  },
+  'putChatSettings.body': {
+    valid: [{ shareReadReceipts: true }],
+    invalid: [{}, { shareReadReceipts: true, extra: 1 }],
+  },
+  'putChatSettings.response': {
+    valid: [{ shareReadReceipts: true }],
+    invalid: [{ shareReadReceipts: null }],
+  },
   'listMyBlocks.response': {
     valid: [
       { items: [] },
