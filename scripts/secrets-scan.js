@@ -32,8 +32,16 @@ const RULES = [
   ['Turnstile secret', /\b0x4[A-Za-z0-9_-]{30,}\b/],
 ];
 
-/** Paths that are never real secrets: generated or vendored. */
-const SKIP = [/^pnpm-lock\.yaml$/, /(^|\/)node_modules\//, /\.(png|jpe?g|webp|ico|woff2?)$/];
+/**
+ * Paths that are never real secrets: generated or vendored files, and this scanner's own test,
+ * whose fixtures are synthetic credentials (built at runtime since Phase 14).
+ */
+const SKIP = [
+  /^pnpm-lock\.yaml$/,
+  /(^|\/)node_modules\//,
+  /\.(png|jpe?g|webp|ico|woff2?)$/,
+  /^apps\/api\/test\/platform\/secrets-scan\.test\.js$/,
+];
 
 /** An env file other than the committed examples. @param {string} path */
 const isEnvFile = (path) => {
@@ -74,11 +82,19 @@ function main() {
     const commits = git(['rev-list', '--all']).split('\n').filter(Boolean);
     for (const commit of commits) {
       const patch = git(['show', '--no-color', '--format=', '--unified=0', commit]);
-      const added = patch
-        .split('\n')
-        .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
-        .join('\n');
-      findings.push(...scan(`commit ${commit.slice(0, 10)}`, added));
+      // Added lines, grouped by the file they were added to (so skipped paths stay skipped).
+      /** @type {Map<string, string[]>} */
+      const added = new Map();
+      let file = '';
+      for (const line of patch.split('\n')) {
+        if (line.startsWith('+++ ')) file = line.slice(4).replace(/^b\//, '');
+        else if (line.startsWith('+') && !SKIP.some((re) => re.test(file))) {
+          added.set(file, [...(added.get(file) ?? []), line.slice(1)]);
+        }
+      }
+      for (const [path, lines] of added) {
+        findings.push(...scan(`commit ${commit.slice(0, 10)} ${path}`, lines.join('\n')));
+      }
       for (const file of git(['show', '--name-only', '--format=', commit]).split('\n')) {
         if (isEnvFile(file)) {
           findings.push(`commit ${commit.slice(0, 10)} added ${file}`);

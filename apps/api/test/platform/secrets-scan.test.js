@@ -5,7 +5,8 @@ import { scan } from '../../../../scripts/secrets-scan.js';
 describe('secrets scan (Phase 14)', () => {
   it('finds each credential format and never prints the value', () => {
     const fake = [
-      ['private key', '-----BEGIN PRIVATE KEY-----'],
+      // Built at runtime, so this file never holds a credential-shaped literal.
+      ['private key', ['-----BEGIN', 'PRIVATE KEY-----'].join(' ')],
       ['AWS access key id', `key = "AKIA${'Q'.repeat(16)}"`],
       ['GitHub token', `ghp_${'a1'.repeat(18)}`],
       ['Stripe live key', `sk_live_${'x'.repeat(24)}`],
