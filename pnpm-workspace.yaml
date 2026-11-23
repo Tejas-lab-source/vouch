@@ -13,5 +13,8 @@ ignoredBuiltDependencies:
 # Expo SDK 58: pin the CLI and its router-server to releases at least two weeks old, which
 # accept the pinned expo-constants 58.0.15 (newer ones want 58.0.16, released 2026-11-11).
 overrides:
+  # Phase 14 security review: pnpm audit --prod (GHSA-3g3m-2fjr-6pw4, GHSA-g3hv-75wg-m249).
+  'glob@>=9.0.0 <14.0.2': ^14.0.2
+  'minimatch@>=7.0.0 <11.0.1': ^11.0.1
   '@expo/cli': 58.1.19
   '@expo/router-server': 58.0.21

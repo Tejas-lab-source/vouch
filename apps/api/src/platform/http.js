@@ -22,6 +22,11 @@ import { registerHealthRoutes } from './health.js';
 
 /** Upper bound for receiving a whole request. */
 const REQUEST_TIMEOUT_MS = 30_000;
+/**
+ * Largest accepted request body (Phase 14 security review). Every contract body is far smaller
+ * (the largest, a profile section, is a few KB); files go straight to storage.
+ */
+export const BODY_LIMIT_BYTES = 64 * 1024;
 /** Global limiter window; the limits come from config (ADR 0015). */
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
@@ -71,6 +76,7 @@ export async function buildHttpServer({
       Fastify({
         loggerInstance: logger,
         requestTimeout: REQUEST_TIMEOUT_MS,
+        bodyLimit: BODY_LIMIT_BYTES,
         requestIdHeader: 'x-request-id',
         genReqId: () => randomUUID(),
         trustProxy: config.TRUSTED_PROXIES.length > 0 ? proxyTrust.trustProxy : false,

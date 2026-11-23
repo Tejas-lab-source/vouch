@@ -538,3 +538,10 @@ All notable changes are recorded here, grouped by roadmap phase.
   a session id, checked on every admin request, so logout and revocation take effect at once.
 - **Sensitive user routes** (ADR 0026): device management, deletion, export and self-unblock
   check that the session is still live, so a signed-out session's access token cannot use them.
+- **Security review** (`docs/security/threat-model.md`):
+  - an authorisation matrix over every route (no token, the wrong kind of token, a forged
+    token) and a wrong-user ids test
+  - header, CORS and injection tests
+  - a 64 KB HTTP body limit and a 16 KB socket message limit
+  - `pnpm audit --prod` clean, using overrides for `glob` and `minimatch`
+  - a secrets scan (`pnpm check:secrets --history`); the audit and the scan now run in CI

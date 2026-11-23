@@ -16,6 +16,11 @@ const normaliseError = (error) => /** @type {AppError} */ (normalise(error));
 /** Socket.IO pings every 25 s (ARCHITECTURE.md 9.3); a client that misses 20 s more is gone. */
 const PING_INTERVAL_MS = 25_000;
 const PING_TIMEOUT_MS = 20_000;
+/**
+ * Largest accepted socket message (Phase 14 security review): a chat message is at most a few
+ * KB. A larger frame closes the connection instead of being buffered (the default is 1 MB).
+ */
+export const SOCKET_MAX_MESSAGE_BYTES = 16 * 1024;
 /** Disconnects on shutdown are spread over at most this long, inside the drain window. */
 const DRAIN_SPREAD_MS = 20_000;
 
@@ -144,6 +149,7 @@ export function createSocketGateway({ server, config, logger, verifier, redis, c
     transports: ['websocket'],
     pingInterval: PING_INTERVAL_MS,
     pingTimeout: PING_TIMEOUT_MS,
+    maxHttpBufferSize: SOCKET_MAX_MESSAGE_BYTES,
     serveClient: false,
     cors: { origin: config.CORS_ORIGINS, credentials: true },
     adapter: createAdapter(redis.publisher, redis.subscriber),
