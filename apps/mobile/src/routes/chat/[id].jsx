@@ -1,6 +1,6 @@
 // @ts-check
-import { ChatPlaceholderScreen } from '../../pages/chat/ChatPlaceholderScreen.jsx';
+import { ChatScreen } from '../../pages/chat/ChatScreen.jsx';
 
 export default function Chat() {
-  return <ChatPlaceholderScreen />;
+  return <ChatScreen />;
 }

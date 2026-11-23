@@ -12,3 +12,8 @@ export const APP_VERSION = expo.expoConfig?.version ?? '1.0.0';
 export const API_URL = /** @type {string} */ (
   expo.expoConfig?.extra?.apiUrl ?? 'http://localhost:3000'
 );
+
+/** The grievance officer's address (DPDP); a placeholder until the owner provides it (Phase 15). */
+export const GRIEVANCE_EMAIL =
+  /** @type {string | undefined} */ (expo.expoConfig?.extra?.grievanceEmail) ??
+  'grievance@vouch.example';

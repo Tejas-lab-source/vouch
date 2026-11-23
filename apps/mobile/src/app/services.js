@@ -1,6 +1,12 @@
 // @ts-check
 import { createSession, createSessionClient, keys } from '@vouch/api-client';
-import { createAuthFlow, createEventHub, createLogAnalytics } from '@vouch/features-core';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  createAuthFlow,
+  createEventHub,
+  createLogAnalytics,
+  createMessagePersistence,
+} from '@vouch/features-core';
 import { createRealtime, memoryCursors, queryCacheAdapter } from '@vouch/realtime';
 import { QueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
@@ -10,6 +16,7 @@ import { API_URL, APP_VERSION } from '../shared/config/index.js';
 import { captchaToken } from '../shared/lib/captcha.js';
 import { nativePhotoIo } from '../shared/lib/photo-io.js';
 import { securePrefs } from '../shared/lib/prefs.js';
+import { expoPush } from '../shared/lib/push.js';
 import { secureTokenStorage } from '../shared/lib/secure-storage.js';
 import { createMobileRegistry } from './features.js';
 
@@ -38,11 +45,21 @@ export function createServices() {
     },
     newId: randomUUID,
   });
+  // The last 50 messages per conversation stay on the device for offline reading; they are
+  // removed at sign-out (and account deletion, which signs out).
+  // AsyncStorage's default export, typed as the module namespace under nodenext.
+  const storage = /** @type {import('@vouch/features-core').KeyValueStorage} */ (
+    /** @type {any} */ (AsyncStorage).default ?? AsyncStorage
+  );
+  const messages = createMessagePersistence({ storage, queryClient });
+  void messages.restore();
+  messages.start();
   session.subscribe((signedIn) => {
     if (signedIn) realtime.start();
     else {
       realtime.stop();
       queryClient.clear();
+      void messages.clear();
     }
   });
   const platform = Platform.OS === 'ios' ? 'ios' : 'android';
@@ -64,5 +81,6 @@ export function createServices() {
     prefs: securePrefs,
     photoIo: nativePhotoIo,
     newId: randomUUID,
+    push: expoPush,
   };
 }

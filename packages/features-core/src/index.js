@@ -58,7 +58,8 @@ export {
   useUnblock,
   useUpdateNotificationPrefs,
 } from './settings/index.js';
-export { usePushRegistration } from './push/index.js';
+export { notificationTarget, usePushRegistration } from './push/index.js';
+export { createMessagePersistence, KEEP_PER_CONVERSATION } from './chat/persist.js';
 export { isRetryable, useSwipe } from './swipe/index.js';
 
 /**
@@ -76,4 +77,5 @@ export { isRetryable, useSwipe } from './swipe/index.js';
  * @typedef {import('./chat/index.js').ConversationSummary} ConversationSummary
  * @typedef {import('./settings/index.js').NotificationPrefs} NotificationPrefs
  * @typedef {import('./push/index.js').PushPort} PushPort
+ * @typedef {import('./chat/persist.js').KeyValueStorage} KeyValueStorage
  */

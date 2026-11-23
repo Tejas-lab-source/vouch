@@ -2,6 +2,7 @@
 import { Slot, useMyProfile } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { Button, Card, EmptyState, Skeleton, useTheme } from '@vouch/ui-native';
+import { useRouter } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import { PhotoManager } from '../../features/photo-manager/PhotoManager.jsx';
 import {
@@ -21,6 +22,7 @@ const STATUS = new Map([
 /** Your profile: status, photos, fields, and the `profile.sections` / `profile.editor` slots. */
 export function ProfileScreen() {
   const { colors, space, type } = useTheme();
+  const router = useRouter();
   const profile = useMyProfile();
   if (profile.isLoading) return <Skeleton height={200} />;
   if (!profile.data) {
@@ -47,6 +49,11 @@ export function ProfileScreen() {
       <Text style={{ color: colors.textMuted }}>
         {t(/** @type {import('@vouch/i18n').MessageKey} */ (STATUS.get(me.status)))}
       </Text>
+      <Button
+        variant="secondary"
+        title={t('settings.open')}
+        onPress={() => router.push('/settings')}
+      />
       <Slot name="profile.sections" render={(item) => <item.component profile={me} />} />
       <PhotoManager profile={me} />
       {[BasicsForm, BioForm, InterestedInForm, AgeRangeForm].map((Form, i) => (

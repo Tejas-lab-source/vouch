@@ -1,5 +1,5 @@
 // @ts-check
-import { useRealtimeEvent, useServices } from '@vouch/features-core';
+import { usePushRegistration, useRealtimeEvent, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { Avatar, Button, Sheet, useTheme } from '@vouch/ui-native';
 import { useRouter } from 'expo-router';
@@ -21,10 +21,21 @@ export const useShowMatch = () => useContext(MatchContext);
  * @param {{ children: import('react').ReactNode }} props
  */
 export function MatchMomentProvider({ children }) {
-  const { analytics } = useServices();
+  const services = useServices();
+  const { analytics } = services;
   const { colors, space } = useTheme();
   const router = useRouter();
   const [match, setMatch] = useState(/** @type {MatchMomentData | null} */ (null));
+  // After the first match (never at install) the app offers push notifications once.
+  const push = usePushRegistration();
+  const [askPush, setAskPush] = useState(false);
+  const asked = useRef(false);
+  const offerPush = async () => {
+    const { push: port } = /** @type {any} */ (services);
+    if (asked.current || !port) return;
+    asked.current = true;
+    if ((await port.status()) === 'undetermined') setAskPush(true);
+  };
   const shown = useRef(new Set());
   const show = useCallback((/** @type {MatchMomentData} */ next) => {
     if (shown.current.has(next.matchId)) return false;
@@ -53,12 +64,31 @@ export function MatchMomentProvider({ children }) {
               onPress={() => {
                 const target = match.conversationId ?? match.matchId;
                 setMatch(null);
+                void offerPush();
                 router.push(`/chat/${target}`);
               }}
             />
-            <Button variant="secondary" title={t('match.later')} onPress={() => setMatch(null)} />
+            <Button
+              variant="secondary"
+              title={t('match.later')}
+              onPress={() => {
+                setMatch(null);
+                void offerPush();
+              }}
+            />
           </View>
         ) : null}
+      </Sheet>
+      <Sheet open={askPush} onClose={() => setAskPush(false)} title={t('push.prompt.title')}>
+        <Text style={{ color: colors.text, marginBottom: space[3] }}>{t('push.prompt.body')}</Text>
+        <Button
+          title={t('push.prompt.allow')}
+          onPress={() => {
+            setAskPush(false);
+            void push.askNow();
+          }}
+        />
+        <Button variant="ghost" title={t('push.prompt.later')} onPress={() => setAskPush(false)} />
       </Sheet>
     </MatchContext.Provider>
   );

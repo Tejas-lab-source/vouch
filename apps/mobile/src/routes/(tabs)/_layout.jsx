@@ -3,6 +3,7 @@ import { useOnboarding, useSession, useSlotItems } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { Skeleton, useTheme } from '@vouch/ui-native';
 import { Redirect, Tabs } from 'expo-router';
+import { NotificationTaps } from '../../app/NotificationTaps.jsx';
 import { MatchMomentProvider } from '../../features/match-moment/MatchMoment.jsx';
 
 /**
@@ -25,6 +26,7 @@ function OnboardedTabs() {
   const visible = new Set(tabs.map((tab) => tab.id));
   return (
     <MatchMomentProvider>
+      <NotificationTaps />
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: colors.accent,

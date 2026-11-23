@@ -52,3 +52,22 @@ export function usePushRegistration() {
 
   return { askNow, available: Boolean(push) };
 }
+
+/**
+ * Where a notification tap goes, from the push `data` the server sends (no message text is
+ * ever in it). Unknown or malformed data opens the home screen.
+ * @param {unknown} data
+ * @returns {{ screen: 'chat', conversationId: string } | { screen: 'matches' } | { screen: 'discover' } | { screen: 'home' }}
+ */
+export function notificationTarget(data) {
+  const fields = new Map(Object.entries(data && typeof data === 'object' ? data : {}));
+  const type = fields.get('type');
+  const conversationId = fields.get('conversationId');
+  const valid = typeof conversationId === 'string' && /^[0-9a-f-]{36}$/.test(conversationId);
+  if ((type === 'message.new' || type === 'match.new') && valid) {
+    return { screen: 'chat', conversationId: /** @type {string} */ (conversationId) };
+  }
+  if (type === 'match.new') return { screen: 'matches' };
+  if (type === 'likes.digest') return { screen: 'discover' };
+  return { screen: 'home' };
+}

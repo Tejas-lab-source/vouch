@@ -1,13 +1,14 @@
 // @ts-check
 import { createFeatureRegistry, defineClientFeature } from '@vouch/features-core';
 import { DiscoverScreen } from '../pages/discover/DiscoverScreen.jsx';
-import { ComingSoon } from '../pages/home/ComingSoon.jsx';
+import { TextMessage } from '../entities/message/TextMessage.jsx';
+import { ChatsScreen } from '../pages/chats/ChatsScreen.jsx';
 import { MatchesScreen } from '../pages/matches/MatchesScreen.jsx';
 import { ProfileScreen } from '../pages/profile/ProfileScreen.jsx';
 
 /**
  * The mobile app's client features, each registering its home tab (the ids are the Expo
- * Router tab routes). Chats is a placeholder until Phase 13.
+ * Router tab routes); chat also registers the `text` message renderer.
  */
 export function createMobileRegistry() {
   return createFeatureRegistry([
@@ -38,10 +39,16 @@ export function createMobileRegistry() {
       },
     }),
     defineClientFeature({
-      id: 'core.chats',
+      id: 'chat.conversations',
       slots: {
+        'chat.messageRenderers': [{ id: 'text', component: TextMessage, props: { kind: 'text' } }],
         'home.tabs': [
-          { id: 'chats', order: 30, component: ComingSoon, props: { labelKey: 'home.tabs.chats' } },
+          {
+            id: 'chats',
+            order: 30,
+            component: ChatsScreen,
+            props: { labelKey: 'home.tabs.chats' },
+          },
         ],
       },
     }),
