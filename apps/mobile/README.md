@@ -19,6 +19,14 @@ The same flows as web: onboarding, deck, match moment, matches and profile.
 - **Swiping:** drag the card (`PanResponder`), use the buttons, or use the card's
   accessibility actions.
 
+## Chat, push and settings (Phase 13)
+
+- **Chat:** the Chats tab and `/chat/[id]` (an inverted `FlatList`). The last 50 messages per
+  conversation are kept in AsyncStorage for offline reading and cleared at sign-out.
+- **Push** (`expo-notifications`): permission is offered after a match, never at install.
+  Tapping a notification opens the conversation, and opening it clears its notifications.
+- **Settings:** `/settings` (from the Profile tab), with safety and privacy screens.
+
 ## Commands
 
 - `pnpm dev` runs `expo start`. Set `extra.apiUrl` in `app.json` to an API address the

@@ -234,6 +234,34 @@ describe('receipts', () => {
   });
 });
 
+describe('delivered reports', () => {
+  it('an older message arriving after a newer one (sync after live) reports nothing new', async () => {
+    const gateway = await startGateway();
+    cleanups.push(gateway.close);
+    const { rt, received } = client(gateway);
+    rt.start();
+    await until(() => rt.socket.connected);
+    const at = new Date().toISOString();
+    const make = (/** @type {number} */ seq) => ({
+      conversationId: 'c9',
+      seq,
+      clientMsgId: `x${seq}`,
+      senderId: 'other',
+      kind: 'text',
+      body: `b${seq}`,
+      createdAt: at,
+    });
+    gateway.io.emit('message.new', make(2));
+    await until(() => received.length === 1);
+    gateway.io.emit('message.new', make(1));
+    await until(() => received.length === 2);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(gateway.reports.filter((r) => r.conversationId === 'c9')).toEqual([
+      { type: 'delivered', conversationId: 'c9', seq: 2 },
+    ]);
+  });
+});
+
 describe('delivery bookkeeping', () => {
   it('a message delivered twice (live and again by sync) reaches the app once', async () => {
     const gateway = await startGateway();

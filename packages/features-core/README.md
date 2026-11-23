@@ -28,6 +28,15 @@ Platform-neutral app logic shared by web and mobile, and the feature registry.
   - onboarding: `useOnboarding` and `nextOnboardingStep` (resumes through the `Prefs` port)
   - analytics and events: `createLogAnalytics` with an allow-list (`docs/analytics.md`),
     `createEventHub` and `useRealtimeEvent`
+- **Phase 13 hooks:**
+  - chat: `useConversations` (unread counts), `useMessages` (newest page first, `loadOlder`, live
+    appends, `stateOf`), `useSendMessage` (sending → sent → delivered → read; failed and retry
+    with the same `clientMsgId`) and `useMarkRead` (only while visible)
+  - settings: `useNotificationPrefs` / `useUpdateNotificationPrefs`, `useBlockedUsers` /
+    `useUnblock`, `useExportData` and `useAccountActions` (sign out, sign out everywhere,
+    delete)
+  - push: `usePushRegistration` (asks only when the app asks) and `notificationTarget`
+  - offline: `createMessagePersistence` (the last 50 messages per conversation; mobile)
 - **Platform ports in `AppServices`:** `photoIo` (resize and upload), `prefs`, `analytics`,
   `events` and `newId`.
 

@@ -470,3 +470,54 @@ All notable changes are recorded here, grouped by roadmap phase.
 
 - The Phase 11 sign-in now lands in onboarding until the profile is set up.
 - The `ui-native` `Button` accepts an `accessibilityLabel` for icon buttons.
+
+## Phase 13 — Frontend features II: chat, notifications, safety, settings and admin app
+
+### Added
+
+- **API (additive):**
+  - `receipt.updated` socket event to the sender (cursors only)
+  - `listMessages` `beforeSeq`/`prevBeforeSeq` and `peerDeliveredSeq`/`peerReadSeq`
+  - `GET /v1/me/notification-prefs`
+  - `GET /v1/me/blocks` and `DELETE /v1/blocks/{userId}`
+- **`features-core`:**
+  - chat hooks: conversations; backward history; the send state machine (sending → sent →
+    delivered → read, failed and retry with the same `clientMsgId`); mark-read while
+    visible
+  - settings hooks: prefs, blocks, export, sign out everywhere, delete
+  - push: the registration port and notification-tap targets
+  - the mobile offline message cache (last 50 per conversation)
+- **Realtime:** delivered reports once per new seq, `receipt.updated`, and `message.read`
+  without an ack. Conversation-list refreshes during a burst are coalesced (at most one a
+  second).
+- **Web:**
+  - chat: the list with unread counts; a virtualised conversation with date separators and
+    states; the composer slot; renderers by kind; the closed state; report and block in the
+    header
+  - settings: notifications and quiet hours, blocked people, export, log out everywhere,
+    delete account
+  - the safety centre and privacy pages
+- **Mobile:** the same, plus push (permission after a match, token registration, taps open the
+  chat, clearing on open) and the offline cache.
+- **Admin:**
+  - every panel rendered from its definition, with confirmed actions that show their audit
+    entry
+  - user lookup with ban, and the flag toggle
+- **Playwright:**
+  - live chat with read states, offline catch-up (in order, once), and sending while offline
+  - a block closes the chat; settings round trip
+  - 1,000 messages stay virtualised
+  - report → admin ban → user signed out
+  - axe on every new page
+- **Docs:** ADR 0023.
+
+### Changed
+
+- The "New" matches row shows matches with no messages yet (was: the last 3 days).
+- The admin JSON field is keyboard-focusable (axe `scrollable-region-focusable`).
+
+### Fixed
+
+- A burst of messages no longer refetches the conversation list per message.
+- Two flaky tests: the photo-reorder test no longer assumes upload order, and the
+  invalid-push-token test waits for the delivery's final status.
