@@ -36,7 +36,7 @@ export const EnvSchema = z
       .string()
       .regex(/^\d+\.\d+\.\d+$/)
       .default('0.0.0'),
-    PRIVACY_NOTICE_VERSION: z.string().min(1).max(40).default('draft'),
+    PRIVACY_NOTICE_VERSION: z.string().min(1).max(40).default('2026-11-draft'),
     METRICS_PORT: z.coerce
       .number()
       .int()

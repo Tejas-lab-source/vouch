@@ -18,6 +18,8 @@ export default defineModule({
   version: 1,
   dependsOn: ['identity', 'media', 'profiles'],
   api: async (/** @type {any} */ ctx) => createSafetyApi(await handlersOf(ctx)),
+  // Phase 14: the user's own blocks, filed reports and verification status (DPDP access).
+  exports: async (/** @type {any} */ ctx) => (await handlersOf(ctx)).exportFor,
   contribute: {
     'safety.contentChecks': async (/** @type {any} */ ctx) => (await handlersOf(ctx)).contentStep,
   },

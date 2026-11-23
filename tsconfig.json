@@ -29,6 +29,8 @@
     "packages/ui-web/**",
     "packages/ui-native/**",
     "**/dist/**",
-    "**/.expo/**"
+    "**/.expo/**",
+    "load/k6/**",
+    "load/out/**"
   ]
 }

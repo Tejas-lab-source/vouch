@@ -32,7 +32,7 @@ const H = { 'x-app-version': '1.0.0' };
 const SIGNUP = {
   birthDate: '2005-01-31',
   gradYear: 2028,
-  consent: { noticeVersion: 'draft', purposes: ['matching'] },
+  consent: { noticeVersion: '2026-11-draft', purposes: ['matching'] },
 };
 const WAIT_MS = 30_000;
 

@@ -8,7 +8,8 @@
     "node": ">=24 <25"
   },
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./privacy-notice": "./src/privacy-notice.js"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@vouch/config": "workspace:*",
+    "@vouch/contracts": "workspace:*",
     "eslint": "9.39.5",
     "vitest": "5.1.1"
   }

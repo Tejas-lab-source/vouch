@@ -556,3 +556,11 @@ All notable changes are recorded here, grouped by roadmap phase.
   - a block hides both users everywhere within one consumer cycle
   - deletion erases everywhere
   - gateway memory per idle socket
+- **Privacy (DPDP):**
+  - a versioned privacy notice (`@vouch/i18n/privacy-notice`, version `2026-11-draft`) shown
+    in full at sign-up (a "Read the privacy notice" dialog), on `/privacy` (public) and in
+    Settings, on web and mobile
+  - consent is only asked for a version the app can show
+  - the export now includes safety: your own blocks, reports filed and verification status,
+    never reports about you
+  - runbooks `docs/runbooks/{breach,incident,restore}.md`, with the 72-hour clock in breach

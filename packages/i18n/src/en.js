@@ -36,6 +36,7 @@ export const en = Object.freeze({
   'auth.signup.underage': 'You must be 18 or older to use Vouch.',
   'auth.signup.consent': 'I agree to the privacy notice (version {version}).',
   'auth.signup.consent.required': 'Accept the privacy notice to continue.',
+  'auth.signup.readNotice': 'Read the privacy notice',
   'auth.signup.submit': 'Create my account',
   'auth.banned': 'This account has been suspended.',
   'auth.pendingReview': 'Your account is being reviewed. We will let you know soon.',
@@ -245,6 +246,10 @@ export const en = Object.freeze({
   'privacy.summary':
     'Vouch keeps only what it needs to run the app: your college email (stored as a one-way code), your profile, photos and messages. You can download your data or delete your account at any time from Settings.',
   'privacy.version': 'Notice version: {version}',
+  'privacy.notice.effective': 'effective {date}',
+  'privacy.notice.draft': 'draft, pending legal review',
+  'privacy.notice.unavailable':
+    'This version of the app cannot show the current privacy notice. Update the app to continue.',
   'privacy.grievance.title': 'Grievance officer',
   'privacy.grievance.body':
     'For privacy questions or complaints, write to the grievance officer at {email}. We reply within 30 days.',

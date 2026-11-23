@@ -24,7 +24,7 @@ const H = { 'x-app-version': '1.0.0' };
 const SIGNUP = {
   birthDate: '2005-01-31',
   gradYear: 2028,
-  consent: { noticeVersion: 'draft', purposes: ['matching'] },
+  consent: { noticeVersion: '2026-11-draft', purposes: ['matching'] },
 };
 
 describe('identity module (ROLE=all, real Postgres and Redis)', () => {

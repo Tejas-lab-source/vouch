@@ -2,9 +2,11 @@
 import { isAdult, isEmail, isIsoDate, isOtp } from '@vouch/domain';
 import { errorKey, useConfig, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Input, OtpInput, useTheme } from '@vouch/ui-native';
+import { privacyNotice } from '@vouch/i18n/privacy-notice';
+import { Button, Input, OtpInput, Sheet, useTheme } from '@vouch/ui-native';
 import { useState } from 'react';
-import { Switch, Text, View } from 'react-native';
+import { ScrollView, Switch, Text, View } from 'react-native';
+import { PrivacyNoticeText } from '../../entities/privacy-notice/PrivacyNoticeText.jsx';
 
 /** Sign-in on mobile: the same steps and rules as the web (shared flow in features-core). */
 export function SignInForm() {
@@ -18,7 +20,10 @@ export function SignInForm() {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
-  const noticeVersion = config.data?.privacyNoticeVersion ?? 'draft';
+  const noticeVersion = config.data?.privacyNoticeVersion ?? null;
+  // Consent is only asked for a notice this build can show (Phase 14).
+  const noticeShown = privacyNotice(noticeVersion) !== null;
+  const [readingNotice, setReadingNotice] = useState(false);
 
   /** @param {() => Promise<any>} action */
   const run = async (action) => {
@@ -105,18 +110,33 @@ export function SignInForm() {
           <Switch
             value={consent}
             onValueChange={setConsent}
-            accessibilityLabel={t('auth.signup.consent', { version: noticeVersion })}
+            accessibilityLabel={t('auth.signup.consent', { version: noticeVersion ?? '—' })}
           />
           <Text style={{ color: colors.text, marginLeft: space[2], flex: 1 }}>
-            {t('auth.signup.consent', { version: noticeVersion })}
+            {t('auth.signup.consent', { version: noticeVersion ?? '—' })}
           </Text>
         </View>
+        <Button
+          variant="ghost"
+          title={t('auth.signup.readNotice')}
+          onPress={() => setReadingNotice(true)}
+        />
+        <Sheet
+          open={readingNotice}
+          onClose={() => setReadingNotice(false)}
+          title={t('settings.privacy.title')}
+        >
+          <ScrollView style={{ maxHeight: 480 }}>
+            <PrivacyNoticeText version={noticeVersion} />
+          </ScrollView>
+        </Sheet>
         <Button
           title={t('auth.signup.submit')}
           loading={busy}
           onPress={() => {
             if (!isIsoDate(birthDate) || !isAdult(birthDate, new Date()))
               return setError(t('auth.signup.underage'));
+            if (!noticeShown || !noticeVersion) return setError(t('privacy.notice.unavailable'));
             if (!consent) return setError(t('auth.signup.consent.required'));
             void run(() =>
               auth.verify({

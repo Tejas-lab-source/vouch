@@ -513,6 +513,9 @@ importers:
       '@vouch/config':
         specifier: workspace:*
         version: link:../config
+      '@vouch/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       eslint:
         specifier: 9.39.5
         version: 9.39.5(jiti@2.7.0)

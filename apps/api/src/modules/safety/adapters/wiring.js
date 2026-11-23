@@ -1,4 +1,5 @@
 // @ts-check
+import { makeSafetyExport } from '../application/export.js';
 import { PIPELINES } from '@vouch/contracts';
 import { makeBans, makeBlocks } from '../application/blocks.js';
 import { CONTENT_CHECKS, imageModerationStep } from '../application/content-checks.js';
@@ -86,6 +87,7 @@ export function buildSafetyHandlers(deps) {
     bans: makeBans(deps),
     contentStep: imageModerationStep(deps),
     ...makeModeration(/** @type {any} */ (deps)),
+    exportFor: makeSafetyExport(deps),
     /**
      * `user.deleted.v1`: erases the user's blocks, ID-card reviews and images, and offence
      * counts. Reports stay as moderation records (1 year after close); an active ban stays so
