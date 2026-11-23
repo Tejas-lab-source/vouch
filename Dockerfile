@@ -17,6 +17,8 @@ COPY apps/api/src apps/api/src
 COPY apps/api/migrations apps/api/migrations
 COPY apps/api/scripts/admin-create.js apps/api/scripts/admin-create.js
 COPY apps/api/scripts/backup.js apps/api/scripts/backup.js
+COPY apps/api/scripts/college-add.js apps/api/scripts/college-add.js
+COPY apps/api/scripts/invite-create.js apps/api/scripts/invite-create.js
 COPY packages/contracts/src packages/contracts/src
 RUN pnpm --filter @vouch/api deploy --prod --legacy --ignore-scripts /out
 # Image trim (Phase 15): source maps, type declarations and docs are never read at runtime.
@@ -43,6 +45,9 @@ COPY --from=build /out/migrations ./migrations
 COPY --from=build /out/scripts/admin-create.js ./scripts/admin-create.js
 # Nightly backup (a Render Cron Job runs `node scripts/backup.js`).
 COPY --from=build /out/scripts/backup.js ./scripts/backup.js
+# Launch colleges and invite codes (Phase 15), run in the Render shell.
+COPY --from=build /out/scripts/college-add.js ./scripts/college-add.js
+COPY --from=build /out/scripts/invite-create.js ./scripts/invite-create.js
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \

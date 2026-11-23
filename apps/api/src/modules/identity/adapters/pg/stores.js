@@ -24,8 +24,8 @@ export function createIdentityStores(tx) {
           ? []
           : (await tx`SELECT * FROM identity.users WHERE public_id = ANY(${publicIds})`).map(user),
       insert: async (u) => {
-        await tx`INSERT INTO identity.users (id, public_id, college_id, email_hmac, status, birth_date, grad_year, created_at, updated_at)
-          VALUES (${u.id}, ${u.publicId}, ${u.collegeId}, ${u.emailHmac}, ${u.status}, ${u.birthDate}, ${u.gradYear}, ${u.createdAt}, ${u.createdAt})`;
+        await tx`INSERT INTO identity.users (id, public_id, college_id, email_hmac, status, birth_date, grad_year, created_at, updated_at, invite_code_id)
+          VALUES (${u.id}, ${u.publicId}, ${u.collegeId}, ${u.emailHmac}, ${u.status}, ${u.birthDate}, ${u.gradYear}, ${u.createdAt}, ${u.createdAt}, ${u.inviteCodeId ?? null})`;
       },
       deletedBefore: async (cutoff, limit) =>
         (
@@ -131,6 +131,27 @@ export function createIdentityStores(tx) {
           await tx`SELECT 1 FROM identity.banned_emails WHERE email_hmac = ${emailHmac}
             AND (expires_at IS NULL OR expires_at > ${now}) LIMIT 1`
         ).length > 0,
+    },
+    inviteCodes: {
+      insert: async (c) => {
+        await tx`INSERT INTO identity.invite_codes (id, code_hash, college_id, label, max_uses, expires_at, created_at)
+          VALUES (${c.id}, ${c.codeHash}, ${c.collegeId}, ${c.label}, ${c.maxUses}, ${c.expiresAt}, ${c.at})`;
+      },
+      findUsable: async (codeHash, collegeId, now) =>
+        (
+          await tx`SELECT id FROM identity.invite_codes
+            WHERE code_hash = ${codeHash} AND college_id = ${collegeId} AND revoked_at IS NULL
+              AND (expires_at IS NULL OR expires_at > ${now})
+              AND (max_uses IS NULL OR uses < max_uses)`
+        ).at(0)?.id ?? null,
+      redeem: async (codeHash, collegeId, now) =>
+        (
+          await tx`UPDATE identity.invite_codes SET uses = uses + 1
+            WHERE code_hash = ${codeHash} AND college_id = ${collegeId} AND revoked_at IS NULL
+              AND (expires_at IS NULL OR expires_at > ${now})
+              AND (max_uses IS NULL OR uses < max_uses)
+            RETURNING id`
+        ).at(0)?.id ?? null,
     },
     consents: {
       insert: async (c) => {

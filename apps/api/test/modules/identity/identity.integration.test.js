@@ -11,6 +11,11 @@ import identityModule from '../../../src/modules/identity/manifest.js';
 import { createPlatform, startRole } from '../../../src/platform/boot.js';
 import { loadConfig } from '../../../src/platform/config.js';
 import { createLogger } from '../../../src/platform/logger.js';
+import { FLAG_CACHE_KEY } from '../../../src/platform/flags.js';
+import { createIdGenerator } from '../../../src/platform/ids.js';
+import { systemClock } from '../../../src/platform/clock.js';
+import { addCollege } from '../../../scripts/college-add.js';
+import { createInvites } from '../../../scripts/invite-create.js';
 import {
   eventually,
   HOOK_TIMEOUT_MS,
@@ -36,6 +41,8 @@ describe('identity module (ROLE=all, real Postgres and Redis)', () => {
   const mail = [];
   /** @type {string[]} */
   const logLines = [];
+  /** Invite codes handed out in tests: never logged. @type {string[]} */
+  const inviteCodes = [];
   /** @type {Awaited<ReturnType<typeof start>>} */
   let app;
   let n = 0;
@@ -509,8 +516,90 @@ describe('identity module (ROLE=all, real Postgres and Redis)', () => {
     ).toHaveLength(0);
   }, 30_000);
 
+  it('invite-only college (Phase 15): college-add and invite-create, then sign-up needs a usable code', async () => {
+    const newId = createIdGenerator({ clock: systemClock });
+    const { collegeId } = await addCollege({
+      sql: infra.admin,
+      newId,
+      name: 'Invite College',
+      city: 'Noida',
+      cluster: 'Noida',
+      domains: ['Invite.Example.edu'],
+      inviteOnly: true,
+    });
+    // The domain is taken now; adding it again is refused.
+    await expect(
+      addCollege({
+        sql: infra.admin,
+        newId,
+        name: 'Again',
+        city: 'Noida',
+        cluster: 'Noida',
+        domains: ['invite.example.edu'],
+        inviteOnly: false,
+      }),
+    ).rejects.toThrow(/already belongs/);
+    const { codes } = await createInvites({
+      sql: infra.admin,
+      newId,
+      college: 'invite.example.edu',
+      count: 2,
+      uses: 1,
+      expiresDays: 30,
+      label: 'test batch',
+      now: new Date(),
+    });
+    inviteCodes.push(...codes);
+    expect(codes).toHaveLength(2);
+    expect(codes[0]).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    const stored =
+      await infra.admin`SELECT code_hash, college_id, max_uses FROM identity.invite_codes
+      WHERE college_id = ${collegeId}`;
+    expect(stored).toHaveLength(2);
+    expect(JSON.stringify(stored)).not.toContain(String(codes[0]).replaceAll('-', ''));
+    await app.platform.redis.command.del(FLAG_CACHE_KEY);
+
+    /** @param {string} email @param {string | undefined} inviteCode */
+    const verify = (email, inviteCode) =>
+      post(app, '/v1/auth/verify', {
+        email,
+        code: lastCodeFor(email),
+        device: { platform: 'web' },
+        signup: { ...SIGNUP, ...(inviteCode ? { inviteCode } : {}) },
+      });
+    const first = `first${++n}@invite.example.edu`;
+    await post(app, '/v1/auth/otp', { email: first, turnstileToken: 'dev' });
+    const missing = await verify(first, undefined);
+    expect(missing.statusCode).toBe(422);
+    expect(missing.json().error.code).toBe('INVITE_CODE_REQUIRED');
+    const wrong = await verify(first, 'ZZZZ-ZZZZ-ZZZZ-ZZZZ');
+    expect(wrong.json().error.code).toBe('INVITE_CODE_INVALID');
+    // The same OTP still works with a valid code, typed in lowercase.
+    const ok = await verify(first, String(codes[0]).toLowerCase());
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().user.newUser).toBe(true);
+    const [user] = await infra.admin`SELECT u.invite_code_id, c.uses FROM identity.users u
+      JOIN identity.invite_codes c ON c.id = u.invite_code_id
+      WHERE u.college_id = ${collegeId}`;
+    expect(user?.uses).toBe(1);
+
+    // A single-use code is used up.
+    const second = `second${++n}@invite.example.edu`;
+    await post(app, '/v1/auth/otp', { email: second, turnstileToken: 'dev' });
+    expect((await verify(second, codes[0])).json().error.code).toBe('INVITE_CODE_INVALID');
+    expect((await verify(second, codes[1])).statusCode).toBe(200);
+
+    // Other colleges are not invite-only.
+    await signUp();
+  }, 30_000);
+
   it('logs contain no email address, OTP code or token', async () => {
-    const secrets = [DOMAIN, ...mail.map((m) => m.code)];
+    const secrets = [
+      DOMAIN,
+      ...mail.map((m) => m.code),
+      ...inviteCodes,
+      ...inviteCodes.map((c) => c.replaceAll('-', '')),
+    ];
     const text = logLines.join('');
     expect(text.length).toBeGreaterThan(0);
     for (const secret of secrets) expect(text).not.toContain(secret);

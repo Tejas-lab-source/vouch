@@ -19,6 +19,7 @@ export function SignInForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
@@ -114,7 +115,11 @@ export function SignInForm() {
             auth.verify({
               email: state.email,
               code: state.code,
-              signup: { birthDate, consent: { noticeVersion, purposes: ['matching'] } },
+              signup: {
+                birthDate,
+                consent: { noticeVersion, purposes: ['matching'] },
+                ...(inviteCode.trim() ? { inviteCode: inviteCode.trim() } : {}),
+              },
             }),
           );
         }}
@@ -127,6 +132,16 @@ export function SignInForm() {
           value={birthDate}
           onChange={(event) => setBirthDate(event.target.value)}
           required
+        />
+        <Input
+          label={t('auth.signup.invite')}
+          hint={t('auth.signup.invite.hint')}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={24}
+          value={inviteCode}
+          onChange={(event) => setInviteCode(event.target.value)}
         />
         <label className="w-check">
           <input

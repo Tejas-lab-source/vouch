@@ -17,6 +17,7 @@ export function SignInForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
@@ -99,6 +100,15 @@ export function SignInForm() {
           onChangeText={setBirthDate}
           error={error}
         />
+        <Input
+          label={t('auth.signup.invite')}
+          hint={t('auth.signup.invite.hint')}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={24}
+          value={inviteCode}
+          onChangeText={setInviteCode}
+        />
         <View
           style={{
             flexDirection: 'row',
@@ -142,7 +152,11 @@ export function SignInForm() {
               auth.verify({
                 email: state.email,
                 code: state.code,
-                signup: { birthDate, consent: { noticeVersion, purposes: ['matching'] } },
+                signup: {
+                  birthDate,
+                  consent: { noticeVersion, purposes: ['matching'] },
+                  ...(inviteCode.trim() ? { inviteCode: inviteCode.trim() } : {}),
+                },
               }),
             );
           }}

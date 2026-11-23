@@ -12,7 +12,9 @@
     "src",
     "migrations",
     "scripts/admin-create.js",
-    "scripts/backup.js"
+    "scripts/backup.js",
+    "scripts/college-add.js",
+    "scripts/invite-create.js"
   ],
   "scripts": {
     "dev": "node --watch src/main.js",

@@ -203,4 +203,31 @@ describe('sign-in flow', () => {
     expect(errorKey(error)).toBe('auth.code.invalid');
     expect(errorKey(new Error('boom'))).toBe('common.error');
   });
+
+  it('sends the invite code with the sign-up details and maps invite errors (Phase 15)', async () => {
+    /** @type {any[]} */
+    const bodies = [];
+    const { auth } = setup(
+      {},
+      {
+        'POST /v1/auth/verify': (/** @type {any} */ body) => {
+          bodies.push(body);
+          return [422, { error: { code: 'INVITE_CODE_INVALID', message: 'x', requestId: 'r' } }];
+        },
+      },
+    );
+    const error = await auth
+      .verify({
+        email: 'a@college.edu',
+        code: '123456',
+        signup: {
+          birthDate: '2005-01-31',
+          inviteCode: 'ABCD-EFGH-JKMN-PQRS',
+          consent: { noticeVersion: 'draft', purposes: ['matching'] },
+        },
+      })
+      .catch((e) => e);
+    expect(bodies[0]?.signup.inviteCode).toBe('ABCD-EFGH-JKMN-PQRS');
+    expect(errorKey(error)).toBe('auth.signup.invite.invalid');
+  });
 });

@@ -20,6 +20,8 @@ const ERROR_KEYS = new Map([
   ['OTP_EXPIRED', 'auth.code.expired'],
   ['OTP_ATTEMPTS_EXHAUSTED', 'auth.code.expired'],
   ['UNDERAGE', 'auth.signup.underage'],
+  ['INVITE_CODE_REQUIRED', 'auth.signup.invite.required'],
+  ['INVITE_CODE_INVALID', 'auth.signup.invite.invalid'],
   ['ACCOUNT_BANNED', 'auth.banned'],
   ['ACCOUNT_PENDING_REVIEW', 'auth.pendingReview'],
   ['RATE_LIMITED', 'auth.rateLimited'],
@@ -50,8 +52,9 @@ export function createAuthFlow({ client, session, platform, appVersion, captchaT
     },
     /**
      * Verifies the code. A new account answers SIGNUP_DETAILS_REQUIRED (the code is kept) and
-     * the flow asks for the birth date and consent.
-     * @param {{ email: string, code: string, signup?: { birthDate: string, consent: { noticeVersion: string, purposes: string[] } } }} input
+     * the flow asks for the birth date, consent and (at invite-only colleges) an invite code.
+     * An invite error keeps the step: the code is still valid, so the user fixes the invite.
+     * @param {{ email: string, code: string, signup?: { birthDate: string, inviteCode?: string, consent: { noticeVersion: string, purposes: string[] } } }} input
      * @returns {Promise<AuthState>}
      */
     async verify({ email, code, signup }) {

@@ -7,7 +7,11 @@ import {
   makeOnUserUnbanned,
   makeOnVerificationDecided,
 } from '../../../src/modules/identity/application/ban.js';
-import { COLLEGE, CTX, fakeDeps, SIGNUP } from './fakes.js';
+import {
+  formatInviteCode,
+  normaliseInviteCode,
+} from '../../../src/modules/identity/domain/invite.js';
+import { COLLEGE, CTX, fakeDeps, NOW, SIGNUP } from './fakes.js';
 
 const EMAIL = 'Aditi+x@northfield.example.edu';
 const DEVICE = { platform: /** @type {const} */ ('ios') };
@@ -464,5 +468,110 @@ describe('ID-card fallback and bans (Phase 10)', () => {
     await makeOnVerificationDecided()({ userId: user.id, decision: 'approved' }, stores);
     expect(user.status).toBe('active');
     await expect(api.assertActive(user.id)).resolves.toBeUndefined();
+  });
+});
+
+describe('invite-only colleges (Phase 15)', () => {
+  /** Stores an invite for the test college and returns its plaintext. */
+  async function invite(
+    /** @type {ReturnType<typeof setup>} */ { deps },
+    /** @type {{ maxUses?: number | null, expiresAt?: Date | null, collegeId?: string }} */ opts = {},
+  ) {
+    const code = formatInviteCode(new Uint8Array(16).map((_, i) => i * 7 + 3));
+    await deps.read((stores) =>
+      stores.inviteCodes.insert({
+        id: '01936f3e-8a4b-7c2d-9e1f-0a1b2c3d4e99',
+        codeHash: deps.crypto.hashToken(/** @type {string} */ (normaliseInviteCode(code))),
+        collegeId: opts.collegeId ?? COLLEGE.id,
+        label: 'test batch',
+        maxUses: opts.maxUses === undefined ? 1 : opts.maxUses,
+        expiresAt: opts.expiresAt ?? null,
+        at: new Date(),
+      }),
+    );
+    return code;
+  }
+  const verify = (
+    /** @type {ReturnType<typeof setup>['h']} */ h,
+    /** @type {string | undefined} */ inviteCode,
+    email = EMAIL,
+  ) =>
+    h.verifyOtp(
+      {
+        email,
+        code: '123456',
+        device: DEVICE,
+        signup: { ...SIGNUP, ...(inviteCode ? { inviteCode } : {}) },
+      },
+      CTX,
+    );
+
+  it('needs a code; a missing or wrong one keeps the OTP so the client can retry', async () => {
+    const t = setup({ inviteOnly: true });
+    const code = await invite(t);
+    await requestCode(t.h);
+    await expect(verify(t.h, undefined)).rejects.toMatchObject({ code: 'INVITE_CODE_REQUIRED' });
+    await expect(verify(t.h, 'AAAA-AAAA-AAAA-AAAA')).rejects.toMatchObject({
+      code: 'INVITE_CODE_INVALID',
+    });
+    await expect(verify(t.h, 'not a code')).rejects.toMatchObject({
+      code: 'INVITE_CODE_INVALID',
+    });
+    expect(t.state.otp.size).toBe(1);
+    expect(t.state.users.size).toBe(0);
+    // Lowercase, without hyphens: still the same code.
+    const result = await verify(t.h, code.replaceAll('-', '').toLowerCase());
+    expect(result.user).toMatchObject({ status: 'active', newUser: true });
+    const [user] = [...t.state.users.values()];
+    expect(user.inviteCodeId).toBe('01936f3e-8a4b-7c2d-9e1f-0a1b2c3d4e99');
+    expect([...t.state.inviteCodes.values()][0].uses).toBe(1);
+  });
+
+  it('refuses a used-up, expired or other-college code; existing users never need one', async () => {
+    const t = setup({ inviteOnly: true, codes: ['123456'] });
+    const code = await invite(t, { maxUses: 1 });
+    await requestCode(t.h);
+    await verify(t.h, code);
+    // Used up.
+    await requestCode(t.h, 'second@northfield.example.edu');
+    await expect(verify(t.h, code, 'second@northfield.example.edu')).rejects.toMatchObject({
+      code: 'INVITE_CODE_INVALID',
+    });
+    // The first user signs in again without a code.
+    await requestCode(t.h);
+    const again = await t.h.verifyOtp({ email: EMAIL, code: '123456', device: DEVICE }, CTX);
+    expect(again.user.newUser).toBe(false);
+
+    const expired = setup({ inviteOnly: true });
+    const old = await invite(expired, { expiresAt: new Date(NOW.getTime() - 1000) });
+    await requestCode(expired.h);
+    await expect(verify(expired.h, old)).rejects.toMatchObject({ code: 'INVITE_CODE_INVALID' });
+
+    const elsewhere = setup({ inviteOnly: true });
+    const other = await invite(elsewhere, { collegeId: '01936f3e-8a4b-7c2d-9e1f-0a1b2c3d4e00' });
+    await requestCode(elsewhere.h);
+    await expect(verify(elsewhere.h, other)).rejects.toMatchObject({
+      code: 'INVITE_CODE_INVALID',
+    });
+  });
+
+  it('a college that is not invite-only ignores the code', async () => {
+    const t = setup();
+    await requestCode(t.h);
+    const result = await verify(t.h, 'AAAA-AAAA-AAAA-AAAA');
+    expect(result.user.newUser).toBe(true);
+    expect([...t.state.users.values()][0].inviteCodeId).toBeNull();
+  });
+});
+
+describe('invite code format', () => {
+  it('formats 80 random bits as XXXX-XXXX-XXXX-XXXX in Crockford base32 and normalises input', () => {
+    const code = formatInviteCode(new Uint8Array(16).fill(255));
+    expect(code).toBe('ZZZZ-ZZZZ-ZZZZ-ZZZZ');
+    expect(normaliseInviteCode(' zzzz zzzz-zzzz-zzzz ')).toBe('Z'.repeat(16));
+    expect(normaliseInviteCode('OIL0-0000-0000-0000')).toBe('0110000000000000');
+    expect(normaliseInviteCode('UUUU-0000-0000-0000')).toBeNull();
+    expect(normaliseInviteCode('ZZZZ')).toBeNull();
+    expect(() => formatInviteCode(new Uint8Array(8))).toThrow();
   });
 });
