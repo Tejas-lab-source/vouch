@@ -67,6 +67,7 @@ services:
       REDIS_URL: redis://redis:6379
       # LOAD_NODE_OPTIONS: for example --cpu-prof (profiling runs; written on a graceful stop).
       NODE_OPTIONS: ${LOAD_NODE_OPTIONS:-}
+      DATABASE_POOL_MAX: ${LOAD_DB_POOL_MAX:-10}
     ports:
       - '127.0.0.1:53000:3000'
       - '127.0.0.1:59464:9464'

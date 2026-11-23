@@ -55,7 +55,7 @@ SAMPLER=$!
 # Redis, and time each recovery. Gateway-only and worker-only kills are invariant tests.
 ready_after() {
   local start=$(date +%s%N)
-  until curl -fsS --max-time 1 http://127.0.0.1:53000/ready >/dev/null 2>&1; do sleep 0.2; done
+  until curl -fsS --max-time 5 http://127.0.0.1:53000/ready >/dev/null 2>&1; do sleep 0.2; done
   echo $(( ($(date +%s%N) - start) / 1000000 ))
 }
 chaos() {
