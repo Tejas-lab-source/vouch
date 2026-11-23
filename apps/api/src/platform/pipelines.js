@@ -62,10 +62,17 @@ export function createPipelines({ logger }) {
    */
   const runStep = async (name, options, step, input) => {
     try {
-      const value = await withTimeout(
-        Promise.resolve().then(() => step.run(input)),
-        step.timeoutMs ?? options.stepTimeoutMs,
-      );
+      const result = step.run(input);
+      // A synchronous step cannot be timed out (it holds the event loop until it returns), so
+      // only a promise gets the timer and the race. The deck worker scores hundreds of
+      // candidates per build; a timer per step was most of its allocations (Phase 14 profile).
+      const value =
+        result && typeof (/** @type {any} */ (result).then) === 'function'
+          ? await withTimeout(
+              /** @type {Promise<unknown>} */ (result),
+              step.timeoutMs ?? options.stepTimeoutMs,
+            )
+          : result;
       return { ok: true, value };
     } catch (err) {
       if (options.failClosed) {

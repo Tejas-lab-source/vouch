@@ -1,6 +1,6 @@
 // @ts-check
 import pino from 'pino';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '../../src/platform/errors.js';
 import { createPipelines } from '../../src/platform/pipelines.js';
 
@@ -76,6 +76,24 @@ describe('pipelines', () => {
       { id: 'one', value: { score: 0.5 } },
       { id: 'two', value: { score: 1 } },
     ]);
+  });
+
+  it('synchronous steps run without a timer (the deck scores hundreds of candidates per build)', async () => {
+    const p = createPipelines({ logger });
+    p.define('demo.sync');
+    p.contribute('demo.sync', { id: 'a.one', order: 10, run: () => 1 });
+    p.contribute('demo.sync', { id: 'b.two', order: 20, run: () => 2 });
+    const timers = vi.spyOn(globalThis, 'setTimeout');
+    try {
+      expect(await p.collect('demo.sync', {})).toEqual([
+        { id: 'a.one', value: 1 },
+        { id: 'b.two', value: 2 },
+      ]);
+      expect(await p.run('demo.sync', {})).toBe(2);
+      expect(timers).not.toHaveBeenCalled();
+    } finally {
+      timers.mockRestore();
+    }
   });
 
   it('refuses unknown chains, duplicate chains and duplicate steps', () => {
