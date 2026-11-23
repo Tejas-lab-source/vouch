@@ -1,5 +1,6 @@
 // @ts-check
 import { AdminPanel, ServiceError } from '@vouch/contracts';
+import { createAuditTrail } from '../../../platform/uow.js';
 import { verifyTotp } from '../domain/totp.js';
 
 const MINUTE_MS = 60_000;
@@ -25,8 +26,11 @@ function decodeCursor(cursor) {
  * The admin backend (Phase 10, ADR 0018). Sign-in is email + password + TOTP. Every other use
  * case needs a `vouch:admin` token with MFA (checked by the use-case chain), an account that is
  * still active (checked here on every call, so disabling takes effect at once) and, for
- * admin-only actions, the `admin` role. Every action writes exactly one audit entry, after the
- * action succeeded; details never hold notes or anything personal.
+ * admin-only actions, the `admin` role. Every change an action makes is audited in the same
+ * transaction as the change (ADR 0025): the module making it emits `audit.recorded.v1` through
+ * its outbox, and `onAuditRecorded` stores it (idempotent on the audit id). Admin's own changes
+ * (flags, sign-in) insert the entry in their own transaction. Details never hold notes or
+ * anything personal.
  * @param {import('../ports.js').AdminDeps} deps
  */
 export function makeAdmin(deps) {
@@ -48,21 +52,42 @@ export function makeAdmin(deps) {
   }
 
   /**
-   * @param {any} ctx
-   * @param {import('../ports.js').StaffMember} staff
-   * @param {{ action: string, targetType: string, targetId: string, details?: Record<string, unknown> }} entry
+   * The audit trail of one staff request, passed into the module that makes the change.
+   * @param {any} ctx @param {import('../ports.js').StaffMember} staff
    */
-  const audit = (ctx, staff, entry) =>
-    uow.run(({ stores }) =>
-      stores.audit.insert({
-        id: newId(),
-        actorId: staff.id,
-        details: {},
-        ...entry,
-        requestId: ctx.requestId ?? null,
-        createdAt: clock.now(),
-      }),
-    );
+  const trailOf = (ctx, staff) =>
+    createAuditTrail({
+      actorId: staff.id,
+      requestId: ctx.requestId ?? null,
+      newId,
+      now: clock.now,
+    });
+
+  /**
+   * Inserts an audit entry inside the caller's transaction (admin's own changes).
+   * @param {any} stores
+   * @param {import('../../../platform/uow.js').AuditTrail} trail
+   * @param {import('../../../platform/uow.js').AuditFacts} facts
+   */
+  const auditIn = (stores, trail, facts) => stores.audit.insert(entryRow(trail.entry(facts)));
+
+  /** @param {import('zod').infer<typeof import('@vouch/contracts').adminActionRecorded.payload>} e */
+  const entryRow = (e) => ({
+    id: e.auditId,
+    actorId: e.actorId,
+    action: e.action,
+    targetType: e.targetType,
+    targetId: e.targetId,
+    details: e.details,
+    requestId: e.requestId,
+    createdAt: new Date(/** @type {string} */ (e.occurredAt)),
+  });
+
+  /**
+   * Consumer of `audit.recorded.v1`: stores the entry (at-least-once delivery, so idempotent).
+   * @param {any} payload @param {{ stores: any }} scope
+   */
+  const onAuditRecorded = (payload, { stores }) => stores.audit.insert(entryRow(payload));
 
   /**
    * A read-only admin use case.
@@ -79,11 +104,12 @@ export function makeAdmin(deps) {
     );
 
   /**
-   * An admin action: runs, then audits.
+   * An admin action. `run` gets the request's audit trail and must pass it to every change it
+   * makes, so each change is audited in its own transaction (ADR 0025).
    * @template I, O
    * @param {string} name
    * @param {'moderator' | 'admin' | ((input: I) => 'moderator' | 'admin')} role
-   * @param {(input: I, staff: import('../ports.js').StaffMember) => Promise<{ result: O, audit: { action: string, targetType: string, targetId: string, details?: Record<string, unknown> } }>} run
+   * @param {(input: I, staff: import('../ports.js').StaffMember, trail: import('../../../platform/uow.js').AuditTrail) => Promise<O>} run
    */
   const action = (name, role, run) =>
     useCase(
@@ -91,9 +117,7 @@ export function makeAdmin(deps) {
       /** @param {I} input */
       async (input, ctx) => {
         const staff = await staffOf(ctx, typeof role === 'function' ? role(input) : role);
-        const outcome = await run(input, staff);
-        await audit(ctx, staff, outcome.audit);
-        return outcome.result;
+        return run(input, staff, trailOf(ctx, staff));
       },
       { authz: 'admin' },
     );
@@ -141,16 +165,24 @@ export function makeAdmin(deps) {
       }
       const now = clock.now();
       const step = verifyTotp(crypto.decryptSecret(staff.totpSecretEnc), input.totp, now, crypto);
-      // A code is accepted once: its step must be newer than the last one used.
+      const member = { id: staff.id, displayName: staff.displayName, role: staff.role };
+      // A code is accepted once: its step must be newer than the last one used. The sign-in is
+      // audited in the same transaction that spends the code.
       if (
         step === null ||
-        !(await uow.run(({ stores }) => stores.staff.useTotpStep(staff.id, step, now)))
+        !(await uow.run(async ({ stores }) => {
+          if (!(await stores.staff.useTotpStep(staff.id, step, now))) return false;
+          await auditIn(stores, trailOf(ctx, member), {
+            action: 'admin.login',
+            targetType: 'admin',
+            targetId: staff.id,
+          });
+          return true;
+        }))
       ) {
         throw refused();
       }
-      const member = { id: staff.id, displayName: staff.displayName, role: staff.role };
       const { token, expiresAt } = await tokens.sign(member);
-      await audit(ctx, member, { action: 'admin.login', targetType: 'admin', targetId: staff.id });
       return {
         accessToken: token,
         expiresAt: expiresAt.toISOString(),
@@ -216,21 +248,12 @@ export function makeAdmin(deps) {
     'unblock',
     'admin',
     /** @param {{ userId: string, otherUserId: string, note: string }} input */
-    async ({ userId, otherUserId }) => {
+    async ({ userId, otherUserId }, _staff, trail) => {
       const [blocker, blocked] = [await userIdOf(userId), await userIdOf(otherUserId)];
-      const result = await safety.unblock(
-        { blockerId: blocker.id, blockedId: blocked.id },
-        { actor: { audience: 'vouch:admin', mfa: true } },
+      return safety.unblock(
+        { blockerId: blocker.id, blockedId: blocked.id, auditTarget: { userId, otherUserId } },
+        { actor: { audience: 'vouch:admin', mfa: true }, audit: trail },
       );
-      return {
-        result,
-        audit: {
-          action: 'block.remove',
-          targetType: 'user',
-          targetId: userId,
-          details: { otherUserId, removed: result.unblocked },
-        },
-      };
     },
   );
 
@@ -250,15 +273,7 @@ export function makeAdmin(deps) {
     'actOnReport',
     /** @param {any} input */ (input) => (input.action === 'ban' ? 'admin' : 'moderator'),
     /** @param {{ id: string, action: any, note: string, banExpiresAt?: string }} input */
-    async ({ id, ...body }, staff) => ({
-      result: await moderation.actOnReport(id, body, staff.id),
-      audit: {
-        action: `report.${body.action}`,
-        targetType: 'report',
-        targetId: id,
-        details: body.banExpiresAt ? { banExpiresAt: body.banExpiresAt } : {},
-      },
-    }),
+    async ({ id, ...body }, staff, trail) => moderation.actOnReport(id, body, staff.id, trail),
   );
 
   const listPhotoReviews = reader(
@@ -270,10 +285,7 @@ export function makeAdmin(deps) {
     'decidePhoto',
     'moderator',
     /** @param {{ id: string, decision: 'approve' | 'reject' }} input */
-    async ({ id, decision }) => ({
-      result: await moderation.decidePhoto(id, { decision }),
-      audit: { action: `photo.${decision}`, targetType: 'photo', targetId: id },
-    }),
+    async ({ id, decision }, _staff, trail) => moderation.decidePhoto(id, { decision }, trail),
   );
 
   const listVerificationReviews = reader(
@@ -285,10 +297,8 @@ export function makeAdmin(deps) {
     'decideVerification',
     'moderator',
     /** @param {{ id: string, decision: 'approve' | 'reject', reason?: string }} input */
-    async ({ id, ...body }, staff) => ({
-      result: await moderation.decideVerification(id, body, staff.id),
-      audit: { action: `verification.${body.decision}`, targetType: 'verification', targetId: id },
-    }),
+    async ({ id, ...body }, staff, trail) =>
+      moderation.decideVerification(id, body, staff.id, trail),
   );
 
   const listBans = reader(
@@ -300,34 +310,24 @@ export function makeAdmin(deps) {
     'createBan',
     'admin',
     /** @param {{ userId: string, reason: string, expiresAt?: string }} input */
-    async ({ userId, reason, expiresAt }, staff) => {
+    async ({ userId, reason, expiresAt }, staff, trail) => {
       const user = await userIdOf(userId);
       if (user.status === 'deleted') throw new ServiceError('NOT_FOUND');
-      const ban = await moderation.createBan({
+      return moderation.createBan({
         userId: user.id,
         reason,
         expiresAt: expiresAt ?? null,
         actorId: staff.id,
+        trail,
+        targetId: userId,
       });
-      return {
-        result: ban,
-        audit: {
-          action: 'ban.create',
-          targetType: 'user',
-          targetId: userId,
-          details: { banId: ban.banId, expiresAt: ban.expiresAt },
-        },
-      };
     },
   );
   const liftBan = action(
     'liftBan',
     'admin',
     /** @param {{ id: string }} input */
-    async ({ id }, staff) => ({
-      result: await moderation.liftBan(id, staff.id),
-      audit: { action: 'ban.lift', targetType: 'ban', targetId: id },
-    }),
+    async ({ id }, staff, trail) => moderation.liftBan(id, staff.id, trail),
   );
 
   // --- Audit log and flags --------------------------------------------------------------
@@ -377,19 +377,20 @@ export function makeAdmin(deps) {
     'putFlag',
     'admin',
     /** @param {{ key: string, enabled: boolean, rules: unknown[] }} input */
-    async ({ key, enabled, rules }) => {
-      const row = await uow.run(({ stores }) => stores.flags.put(key, enabled, rules, clock.now()));
-      await flags.invalidate();
-      sockets.broadcast('config.changed', {});
-      return {
-        result: flagView(row),
-        audit: {
+    async ({ key, enabled, rules }, _staff, trail) => {
+      const row = await uow.run(async ({ stores }) => {
+        const put = await stores.flags.put(key, enabled, rules, clock.now());
+        await auditIn(stores, trail, {
           action: 'flag.put',
           targetType: 'flag',
           targetId: key,
           details: { enabled, rules: rules.length },
-        },
-      };
+        });
+        return put;
+      });
+      await flags.invalidate();
+      sockets.broadcast('config.changed', {});
+      return flagView(row);
     },
   );
 
@@ -419,5 +420,6 @@ export function makeAdmin(deps) {
     listFlags,
     putFlag,
     retention,
+    onAuditRecorded,
   };
 }

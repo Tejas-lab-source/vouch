@@ -1,8 +1,9 @@
 // @ts-check
-import { adminListAuditLog, ApiError, ENDPOINTS } from '@vouch/api-client';
+import { ApiError, ENDPOINTS } from '@vouch/api-client';
 import { t } from '@vouch/i18n';
 import { Button, Modal } from '@vouch/ui-web';
 import { useId, useRef, useState } from 'react';
+import { awaitAuditEntry, newestAuditEntry } from '../../entities/audit-entry/await.js';
 import { describeAudit } from '../../entities/audit-entry/describe.js';
 import { getPath, pathParams, rowId } from '../../shared/lib/panels.js';
 
@@ -39,17 +40,17 @@ export function ActionButton({ client, action, row, onDone }) {
         ]),
       );
       const body = { ...action.body, ...(action.needsNote ? { note: note.trim() } : {}) };
+      const before = await newestAuditEntry(client, id ? String(id) : null);
       await client.call(endpoint, {
         params,
         ...(endpoint.method === 'GET' ? {} : { body }),
       });
-      // The entry this action wrote: the newest one about this item (or the newest of all).
-      const mine = await adminListAuditLog(client, {
-        query: { limit: 1, ...(id ? { targetId: id } : {}) },
+      // The entry this action wrote: the newest one about this item, once stored (ADR 0025).
+      const entry = await awaitAuditEntry(client, {
+        targetId: id ? String(id) : null,
+        beforeId: before?.id ?? null,
       });
-      const entry =
-        mine.items.at(0) ?? (await adminListAuditLog(client, { query: { limit: 1 } })).items.at(0);
-      setAudit(/** @type {AuditEntry | null} */ (entry ?? null));
+      setAudit(/** @type {AuditEntry | null} */ (entry));
       done.current = true;
     } catch (failure) {
       setError(

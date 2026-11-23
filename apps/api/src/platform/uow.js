@@ -1,4 +1,5 @@
 // @ts-check
+import { adminActionRecorded } from '@vouch/contracts';
 import { getContext } from './context.js';
 import { insertOutbox } from './events/outbox.js';
 
@@ -40,4 +41,44 @@ export function createUnitOfWork({ db, module, stores = () => /** @type {Stores}
         }),
       ),
   };
+}
+
+// --- Staff audit trail (ADR 0025) ------------------------------------------------------
+
+/**
+ * @typedef {{ action: string, targetType: string, targetId: string, details?: Record<string, unknown> }} AuditFacts
+ * @typedef {object} AuditTrail  Who is acting, passed from the admin module into the module
+ *   that makes the change. That module records each change in the same transaction (ADR 0025).
+ * @property {(facts: AuditFacts) => import('zod').infer<typeof adminActionRecorded.payload>} entry
+ */
+
+/**
+ * The trail of one staff request.
+ * @param {{ actorId: string, requestId: string | null, newId: () => string, now: () => Date }} input
+ * @returns {AuditTrail}
+ */
+export function createAuditTrail({ actorId, requestId, newId, now }) {
+  return {
+    entry: ({ action, targetType, targetId, details = {} }) => ({
+      auditId: newId(),
+      actorId,
+      action,
+      targetType,
+      targetId: String(targetId),
+      details,
+      requestId,
+      occurredAt: now().toISOString(),
+    }),
+  };
+}
+
+/**
+ * Records one staff change through the outbox of the transaction that makes it, so the change
+ * and its audit entry commit together. A no-op when the change is not made by staff.
+ * @param {(event: any, payload: unknown) => Promise<unknown>} emit  The transaction's `emit`.
+ * @param {AuditTrail | null | undefined} trail
+ * @param {AuditFacts} facts
+ */
+export async function recordAudit(emit, trail, facts) {
+  if (trail) await emit(adminActionRecorded, trail.entry(facts));
 }

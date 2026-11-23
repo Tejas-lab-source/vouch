@@ -135,7 +135,7 @@ describe('admin backend: sign-in, roles, audit, flags, panels (Phase 10)', () =>
     socket.disconnect();
   });
 
-  it('every admin action writes exactly one audit entry, with no notes or personal data', async () => {
+  it('every admin action is audited, with no notes or personal data', async () => {
     const target = await b.signUp();
     const other = await b.signUp();
     await b.call('POST', '/v1/blocks', { token: target.token, body: { targetId: other.publicId } });
@@ -173,7 +173,7 @@ describe('admin backend: sign-in, roles, audit, flags, panels (Phase 10)', () =>
         liftedAt: expect.any(String),
       },
     );
-    const rows = (await b.auditRows()).slice(start);
+    const rows = (await b.auditRowsAtLeast(start + 4)).slice(start);
     expect(rows.map((r) => r.action)).toEqual([
       'ban.create',
       'ban.lift',
@@ -201,6 +201,62 @@ describe('admin backend: sign-in, roles, audit, flags, panels (Phase 10)', () =>
     await b.call('GET', '/v1/admin/reports', { token: adminToken });
     await b.call('GET', `/v1/admin/users/${target.publicId}`, { token: adminToken });
     expect((await b.auditRows()).length).toBe(count);
+  });
+
+  it('an action never happens without its audit entry: a failed audit write rolls the action back (ADR 0025)', async () => {
+    const target = await b.signUp();
+    const [{ id: userId }] = await b.infra
+      .admin`SELECT id FROM identity.users WHERE public_id = ${target.publicId}`;
+    const auditOf = async () =>
+      b.infra.admin`SELECT action FROM admin.audit_log WHERE target_id = ${target.publicId}`;
+    // Inject a failure between the change and its audit entry: the outbox refuses the event.
+    await b.infra.admin`ALTER TABLE platform.outbox ADD CONSTRAINT test_no_audit
+      CHECK (name <> 'audit.recorded.v1') NOT VALID`;
+    try {
+      const ban = await b.call('POST', '/v1/admin/bans', {
+        token: adminToken,
+        body: { userId: target.publicId, reason: 'spam' },
+      });
+      expect(ban.status).toBe(500);
+      const flag = await b.call('PUT', '/v1/admin/flags/test.audit', {
+        token: adminToken,
+        body: { enabled: true, rules: [] },
+      });
+      // Admin's own changes insert the entry directly (no outbox), so this one goes through.
+      expect(flag.status).toBe(200);
+    } finally {
+      await b.infra.admin`ALTER TABLE platform.outbox DROP CONSTRAINT test_no_audit`;
+    }
+    expect(await b.infra.admin`SELECT 1 FROM safety.bans WHERE user_id = ${userId}`).toHaveLength(
+      0,
+    );
+    expect(await auditOf()).toHaveLength(0);
+
+    // The same for admin's own changes: the audit insert fails, so the flag edit rolls back.
+    await b.infra.admin`ALTER TABLE admin.audit_log ADD CONSTRAINT test_no_flag_audit
+      CHECK (action <> 'flag.put') NOT VALID`;
+    try {
+      const flag = await b.call('PUT', '/v1/admin/flags/test.audit', {
+        token: adminToken,
+        body: { enabled: false, rules: [] },
+      });
+      expect(flag.status).toBe(500);
+    } finally {
+      await b.infra.admin`ALTER TABLE admin.audit_log DROP CONSTRAINT test_no_flag_audit`;
+    }
+    const [stored] = await b.infra
+      .admin`SELECT enabled FROM platform.feature_flags WHERE key = 'test.audit'`;
+    expect(stored?.enabled).toBe(true);
+
+    // Without the failure, the same action commits with exactly one entry.
+    const ban = await b.call('POST', '/v1/admin/bans', {
+      token: adminToken,
+      body: { userId: target.publicId, reason: 'spam' },
+    });
+    expect(ban.status).toBe(201);
+    await expect
+      .poll(async () => (await auditOf()).map((r) => r.action), { timeout: 20_000 })
+      .toEqual(['ban.create']);
   });
 
   it('looks a user up by public id', async () => {

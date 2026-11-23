@@ -74,9 +74,10 @@ describe('endpoint definitions', () => {
 });
 
 describe('events', () => {
-  it('defines the 15 v1 events, all named noun.verb.vN', () => {
+  it('defines the 16 v1 events, all named noun.verb.vN', () => {
     expect(Object.keys(EVENTS).sort()).toEqual(
       [
+        'audit.recorded.v1',
         'deck.served.v1',
         'match.created.v1',
         'match.unmatched.v1',

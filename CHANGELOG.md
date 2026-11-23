@@ -530,3 +530,7 @@ All notable changes are recorded here, grouped by roadmap phase.
   and reciprocal. The server stops read receipts and the peer read cursor unless both people
   share. It is a settings row on web and mobile, included in the export and erased with the
   account.
+- **Audit integrity** (owner, ADR 0025): every staff change and its audit entry commit in the
+  same transaction. The owning module emits `audit.recorded.v1` (additive) through its outbox,
+  and admin stores it idempotently. Flags and sign-in write the row in their own transaction.
+  A failure-injection test proves an action never happens without its entry.

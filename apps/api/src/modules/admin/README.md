@@ -2,7 +2,15 @@
 
 The staff backend (ADR 0018): sign-in, the moderation routes, feature flags, the audit log and
 admin panel definitions. Admin owns no business rules. It authenticates staff, checks roles,
-calls the owning module's public API and audits the action.
+calls the owning module's public API, and passes it the audit trail.
+
+**Audit integrity (ADR 0025).** Every change is audited in the transaction that makes it:
+
+- The owning module emits `audit.recorded.v1` through its outbox. Admin consumes the event and
+  stores the row, idempotent on `auditId`.
+- Admin's own changes (flags, sign-in) insert the row in their own transaction.
+
+An action can never happen without its entry.
 
 ## Accounts
 

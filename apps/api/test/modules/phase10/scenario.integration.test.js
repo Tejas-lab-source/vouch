@@ -147,8 +147,9 @@ describe('full backend scenario: sign-up → profile → photos → deck → mat
     step(
       'ban: kabir banned (sessions revoked, refresh 401); asha told "unmatched", kabir "banned"; out of decks; sending refused',
     );
-    const audit = (await b.auditRows()).map((r) => r.action);
-    expect(audit).toEqual(['admin.login', 'report.ban']);
+    // The ban and the report's resolution are each audited in their own transaction (ADR 0025).
+    const audit = (await b.auditRowsAtLeast(3)).map((r) => r.action);
+    expect(audit).toEqual(['admin.login', 'ban.create', 'report.ban']);
     step(`audit: ${audit.join(', ')}`);
     kabirSocket.disconnect();
     ashaSocket.disconnect();

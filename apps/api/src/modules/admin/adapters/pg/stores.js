@@ -40,7 +40,8 @@ export function createAdminStores(tx) {
       insert: async (e) => {
         await tx`INSERT INTO admin.audit_log (id, actor_id, action, target_type, target_id, details, request_id, created_at)
           VALUES (${e.id}, ${e.actorId}, ${e.action}, ${e.targetType}, ${e.targetId},
-            ${tx.json(e.details)}, ${e.requestId}, ${e.createdAt})`;
+            ${tx.json(e.details)}, ${e.requestId}, ${e.createdAt})
+          ON CONFLICT (id) DO NOTHING`;
       },
       list: async ({ before, limit, targetType, targetId }) =>
         /** @type {any} */ (

@@ -1,4 +1,5 @@
 // @ts-check
+import { recordAudit } from '../../../platform/uow.js';
 import { photoApproved, photoRejected } from '@vouch/contracts';
 import { ImageRejected } from '../domain/errors.js';
 import {
@@ -48,8 +49,10 @@ export function makeProcessing(deps) {
    * @param {string} uploadId
    * @param {import('../domain/errors.js').RejectionReason} reason
    * @param {readonly string[]} [expect]
+   * @param {import('../../../platform/uow.js').AuditTrail | null} [trail]  A staff decision
+   *   (the review queue): audited in the same transaction (ADR 0025).
    */
-  async function reject(uploadId, reason, expect = ['processing']) {
+  async function reject(uploadId, reason, expect = ['processing'], trail = null) {
     const at = clock.now();
     const outcome = await finish(
       uploadId,
@@ -61,6 +64,11 @@ export function makeProcessing(deps) {
           userId: upload.userId,
           reason,
           rejectedAt: at.toISOString(),
+        });
+        await recordAudit(emit, trail, {
+          action: 'photo.reject',
+          targetType: 'photo',
+          targetId: upload.id,
         });
       },
       expect,
@@ -158,9 +166,10 @@ export function makeProcessing(deps) {
    * @param {import('../ports.js').UploadRecord} upload  With its photo key.
    * @param {(variant: import('../domain/upload.js').VariantName) => Buffer} bytes
    * @param {readonly string[]} [expect]  Statuses the upload may be in (default processing).
+   * @param {import('../../../platform/uow.js').AuditTrail | null} [trail]  A staff decision.
    * @returns {Promise<'approved' | 'released' | 'finished'>}
    */
-  async function publish(upload, bytes, expect = ['processing']) {
+  async function publish(upload, bytes, expect = ['processing'], trail = null) {
     const uploadId = upload.id;
     const photoKey = /** @type {string} */ (upload.photoKey);
     const published = {
@@ -186,6 +195,11 @@ export function makeProcessing(deps) {
           userId: row.userId,
           keys: published,
           approvedAt: at.toISOString(),
+        });
+        await recordAudit(emit, trail, {
+          action: 'photo.approve',
+          targetType: 'photo',
+          targetId: row.id,
         });
       },
       expect,
@@ -218,12 +232,12 @@ export function makeProcessing(deps) {
    * @param {'approve' | 'reject'} decision
    * @returns {Promise<'approved' | 'rejected' | 'released' | 'finished'>}
    */
-  async function resolveReview(uploadId, decision) {
+  async function resolveReview(uploadId, decision, trail = null) {
     const upload = await uow.run(({ stores }) => stores.uploads.findForUpdate(uploadId));
     if (!upload) return 'released';
     if (upload.status !== 'in_review') return 'finished';
     if (decision === 'reject') {
-      const outcome = await reject(uploadId, 'moderation', ['in_review']);
+      const outcome = await reject(uploadId, 'moderation', ['in_review'], trail);
       await storage.remove(objectsOf({ id: uploadId, photoKey: null }));
       return outcome;
     }
@@ -231,7 +245,7 @@ export function makeProcessing(deps) {
     for (const variant of VARIANT_NAMES) {
       held.set(variant, await storage.read(keys.review(uploadId, variant), 10_485_760));
     }
-    const outcome = await publish(upload, (variant) => held.get(variant), ['in_review']);
+    const outcome = await publish(upload, (variant) => held.get(variant), ['in_review'], trail);
     if (outcome === 'approved') await removePrivate(upload.rawKey, uploadId, 'review');
     return outcome;
   }

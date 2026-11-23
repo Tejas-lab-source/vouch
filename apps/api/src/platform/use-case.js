@@ -10,6 +10,8 @@ import { AppError } from './errors.js';
  * @property {import('./flags.js').FlagSubject} [flagSubject]
  * @property {string} [ip]  Client IP (behind the trusted proxy).
  * @property {string} [refreshCookie]  The `vouch_refresh` cookie, when present.
+ * @property {import('./uow.js').AuditTrail} [audit]  Set only by in-process staff calls
+ *   (admin → another module), never from a request: the change is audited in its transaction.
  */
 
 /**

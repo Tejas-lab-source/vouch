@@ -1,4 +1,5 @@
 // @ts-check
+import { recordAudit } from '../../../platform/uow.js';
 import { MIN_APPROVED_PHOTOS, missingRequirements } from '../domain/profile.js';
 import { applyChange } from './changes.js';
 
@@ -13,9 +14,11 @@ export function makeProfileModeration({ uow, read, cards, clock }) {
   /**
    * @param {string} userId
    * @param {boolean} hidden
+   * @param {import('../../../platform/uow.js').AuditTrail | null} [trail]
+   * @param {string} [targetId]  The id shown in the audit log (the public id).
    * @returns {Promise<{ status: string } | null>} null when the user has no profile
    */
-  async function setHidden(userId, hidden) {
+  async function setHidden(userId, hidden, trail = null, targetId = userId) {
     const result = await uow.run(async ({ stores, emit }) => {
       const profile = await stores.profiles.findForUpdate(userId);
       if (!profile) return null;
@@ -27,6 +30,7 @@ export function makeProfileModeration({ uow, read, cards, clock }) {
           ['status'],
           clock.now(),
         );
+        await recordAudit(emit, trail, { action: 'profile.hide', targetType: 'user', targetId });
         return { status: next.status };
       }
       const photos = await stores.photos.listForUser(userId);
@@ -38,6 +42,7 @@ export function makeProfileModeration({ uow, read, cards, clock }) {
         ['status'],
         clock.now(),
       );
+      await recordAudit(emit, trail, { action: 'profile.unhide', targetType: 'user', targetId });
       return { status: next.status };
     });
     if (result) await cards.invalidate(userId);
@@ -45,10 +50,17 @@ export function makeProfileModeration({ uow, read, cards, clock }) {
   }
 
   return {
-    /** @param {string} userId */
-    hide: (userId) => setHidden(userId, true),
-    /** @param {string} userId */
-    unhide: (userId) => setHidden(userId, false),
+    /**
+     * @param {string} userId
+     * @param {{ trail?: import('../../../platform/uow.js').AuditTrail, targetId?: string }} [staff]
+     *   A staff action: audited in the same transaction (ADR 0025), with `targetId` the public id.
+     */
+    hide: (userId, staff = {}) => setHidden(userId, true, staff.trail ?? null, staff.targetId),
+    /**
+     * @param {string} userId
+     * @param {{ trail?: import('../../../platform/uow.js').AuditTrail, targetId?: string }} [staff]
+     */
+    unhide: (userId, staff = {}) => setHidden(userId, false, staff.trail ?? null, staff.targetId),
     minApprovedPhotos: MIN_APPROVED_PHOTOS,
     /** @param {string} userId */
     statusOf: async (userId) =>

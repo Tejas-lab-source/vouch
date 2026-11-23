@@ -6,9 +6,10 @@
  *   profiles that cannot be shown are skipped. Cached for 10 minutes.
  * - `getCard(userId)`: one card, or null.
  * - `isActive(userId)`: whether the profile is complete and visible (Phase 8: swipes).
- * - `hide(userId)`, `unhide(userId)`: moderation (Phase 10); idempotent, null without a profile.
+ * - `hide(userId, staff?)`, `unhide(userId, staff?)`: moderation (Phase 10); idempotent, null
+ *   without a profile. A staff call passes its audit trail (ADR 0025).
  * - `statusOf(userId)`: `pending`, `active`, `hidden`, or null without a profile (admin view).
- * @param {{ getCards: (ids: readonly string[]) => Promise<unknown[]>, isActive: (userId: string) => Promise<boolean>, hide: (userId: string) => Promise<{ status: string } | null>, unhide: (userId: string) => Promise<{ status: string } | null>, statusOf: (userId: string) => Promise<string | null>, minApprovedPhotos: number }} queries
+ * @param {{ getCards: (ids: readonly string[]) => Promise<unknown[]>, isActive: (userId: string) => Promise<boolean>, hide: (userId: string, staff?: { trail?: import("../../platform/uow.js").AuditTrail, targetId?: string }) => Promise<{ status: string } | null>, unhide: (userId: string, staff?: { trail?: import("../../platform/uow.js").AuditTrail, targetId?: string }) => Promise<{ status: string } | null>, statusOf: (userId: string) => Promise<string | null>, minApprovedPhotos: number }} queries
  */
 export function createProfilesApi({
   getCards,
