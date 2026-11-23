@@ -3,23 +3,45 @@
 Status values: `Not started`, `Plan sent`, `In progress`, `Report sent`, `Approved`.
 See `docs/ROADMAP.md` Part A for the approval protocol.
 
-| #   | Phase                                                                   | Status      | Start approved           | Completed approved | Report             |
-| --- | ----------------------------------------------------------------------- | ----------- | ------------------------ | ------------------ | ------------------ |
-| 1   | Repository foundation and tooling                                       | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-01.md |
-| 2   | Database architecture and migrations                                    | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-02.md |
-| 3   | API, event and socket contracts                                         | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-03.md |
-| 4   | Backend platform kernel                                                 | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-04.md |
-| 5   | Identity and authentication                                             | Approved    | 2026-11-21               | 2026-11-22         | phases/PHASE-05.md |
-| 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-06.md |
-| 7   | Safety core and discovery engine                                        | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-07.md |
-| 8   | Matching                                                                | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-08.md |
-| 9   | Realtime chat                                                           | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-09.md |
-| 10  | Notifications, moderation and admin backend                             | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-10.md |
-| 11  | Frontend foundation                                                     | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-11.md |
-| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-12.md |
-| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-13.md |
-| 14  | End-to-end testing, security, privacy and performance                   | Report sent | 2026-11-23 (batch rules) | —                  | phases/PHASE-14.md |
-| 15  | Deployment, observability and closed beta launch                        | Not started | —                        | —                  | —                  |
+| #   | Phase                                                                   | Status    | Start approved           | Completed approved | Report             |
+| --- | ----------------------------------------------------------------------- | --------- | ------------------------ | ------------------ | ------------------ |
+| 1   | Repository foundation and tooling                                       | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-01.md |
+| 2   | Database architecture and migrations                                    | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-02.md |
+| 3   | API, event and socket contracts                                         | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-03.md |
+| 4   | Backend platform kernel                                                 | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-04.md |
+| 5   | Identity and authentication                                             | Approved  | 2026-11-21               | 2026-11-22         | phases/PHASE-05.md |
+| 6   | Profiles, media and photo pipeline                                      | Approved  | 2026-11-22               | 2026-11-22         | phases/PHASE-06.md |
+| 7   | Safety core and discovery engine                                        | Approved  | 2026-11-22               | 2026-11-22         | phases/PHASE-07.md |
+| 8   | Matching                                                                | Approved  | 2026-11-22               | 2026-11-22         | phases/PHASE-08.md |
+| 9   | Realtime chat                                                           | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-09.md |
+| 10  | Notifications, moderation and admin backend                             | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-10.md |
+| 11  | Frontend foundation                                                     | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-11.md |
+| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-12.md |
+| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-13.md |
+| 14  | End-to-end testing, security, privacy and performance                   | Approved  | 2026-11-23 (batch rules) | 2026-11-23         | phases/PHASE-14.md |
+| 15  | Deployment, observability and closed beta launch                        | Plan sent | —                        | —                  | phases/PHASE-15.md |
+
+## Phase 14 approval and the beta plan (owner, 2026-11-23)
+
+**Approval:** "Approved: Phase 14 complete." PR #10 was merged by the owner. Phase 15 follows
+the normal per-phase rules again: send the Start Plan and wait for "Approved: start Phase 15".
+
+**Beta hosting decision (ADR 0028):**
+
+| Component | Plan                         | Resources       |
+| --------- | ---------------------------- | --------------- |
+| API       | Render web service, Standard | 1 CPU, 2 GB     |
+| Postgres  | Render Postgres, Basic-1gb   | 0.5 CPU, 1 GB   |
+| Redis     | Render Key Value, Starter    | persistence off |
+
+- **Measured at the beta peak on this plan:**
+  - no errors
+  - HTTP p95 26–37 ms, deck p95 45 ms, message delivery p95 69 ms
+  - API CPU 21% of a core on average, Postgres 9%
+- **The assumed plan** (Starter API, Postgres Basic-256mb) failed 37% of requests at the same
+  load.
+- **Stepping the API down to Starter later** is allowed if production metrics show headroom
+  (criteria in ADR 0028).
 
 ## Phase 14 run (owner, 2026-11-23)
 
@@ -59,7 +81,7 @@ anything needing the owner's decision) and stop.
 
 | Step                                      | Status                                   | Last commit                     | CI run                                             | Next step                                     |
 | ----------------------------------------- | ---------------------------------------- | ------------------------------- | -------------------------------------------------- | --------------------------------------------- |
-| Phase 14                                  | Report sent                              | —                               | —                                                  | Stop                                          |
+| Phase 14                                  | Approved (2026-11-23), PR #10 merged     | —                               | —                                                  | Phase 15 Start Plan sent                      |
 | 1 Read receipts                           | Done                                     | `50498ca`                       | —                                                  | Audit integrity                               |
 | 2 Audit integrity                         | Done                                     | `39a75e4`                       | —                                                  | Admin sessions                                |
 | 3 Admin sessions and sensitive routes     | Done                                     | `c092dbe`                       | green                                              | Security review                               |
@@ -280,6 +302,11 @@ Owner instructions recorded here so the phase that owns them picks them up.
     socket address is used. The mechanism ships in Phase 8.
   - Chat (from the Phase 9 report): re-measure gateway memory per socket on Render (about
     0.8 MB per socket under load locally).
+- **Post-launch — socket load under overload (owner, 2026-11-23, approved follow-up from the
+  Phase 14 report):** shed or limit socket message load under overload, the way HTTP returns a
+  quick 503. At 10x on the assumed beta plan, chat acks took 35–42 s because `message.send` is
+  not shed. Use the same pressure signal (`platform/pressure.js`), and answer
+  `TEMPORARILY_UNAVAILABLE` so clients retry with backoff.
 - **Phases 11–13 — chat clients (from the Phase 9 report):** live delivery is best effort.
   After every (re)connect, a client must send `sync` with its last seq per conversation,
   merge messages by `(conversationId, seq)`, and send `auth.refresh` before the access token
