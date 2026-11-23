@@ -3,23 +3,63 @@
 Status values: `Not started`, `Plan sent`, `In progress`, `Report sent`, `Approved`.
 See `docs/ROADMAP.md` Part A for the approval protocol.
 
-| #   | Phase                                                                   | Status                          | Start approved     | Completed approved | Report             |
-| --- | ----------------------------------------------------------------------- | ------------------------------- | ------------------ | ------------------ | ------------------ |
-| 1   | Repository foundation and tooling                                       | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-01.md |
-| 2   | Database architecture and migrations                                    | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-02.md |
-| 3   | API, event and socket contracts                                         | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-03.md |
-| 4   | Backend platform kernel                                                 | Approved                        | 2026-11-21         | 2026-11-21         | phases/PHASE-04.md |
-| 5   | Identity and authentication                                             | Approved                        | 2026-11-21         | 2026-11-22         | phases/PHASE-05.md |
-| 6   | Profiles, media and photo pipeline                                      | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-06.md |
-| 7   | Safety core and discovery engine                                        | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-07.md |
-| 8   | Matching                                                                | Approved                        | 2026-11-22         | 2026-11-22         | phases/PHASE-08.md |
-| 9   | Realtime chat                                                           | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-09.md |
-| 10  | Notifications, moderation and admin backend                             | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-10.md |
-| 11  | Frontend foundation                                                     | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-11.md |
-| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-12.md |
-| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-13.md |
-| 14  | End-to-end testing, security, privacy and performance                   | Not started                     | —                  | —                  | —                  |
-| 15  | Deployment, observability and closed beta launch                        | Not started                     | —                  | —                  | —                  |
+| #   | Phase                                                                   | Status      | Start approved           | Completed approved | Report             |
+| --- | ----------------------------------------------------------------------- | ----------- | ------------------------ | ------------------ | ------------------ |
+| 1   | Repository foundation and tooling                                       | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-01.md |
+| 2   | Database architecture and migrations                                    | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-02.md |
+| 3   | API, event and socket contracts                                         | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-03.md |
+| 4   | Backend platform kernel                                                 | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-04.md |
+| 5   | Identity and authentication                                             | Approved    | 2026-11-21               | 2026-11-22         | phases/PHASE-05.md |
+| 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-06.md |
+| 7   | Safety core and discovery engine                                        | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-07.md |
+| 8   | Matching                                                                | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-08.md |
+| 9   | Realtime chat                                                           | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-09.md |
+| 10  | Notifications, moderation and admin backend                             | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-10.md |
+| 11  | Frontend foundation                                                     | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-11.md |
+| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-12.md |
+| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-13.md |
+| 14  | End-to-end testing, security, privacy and performance                   | In progress | 2026-11-23 (batch rules) | —                  | —                  |
+| 15  | Deployment, observability and closed beta launch                        | Not started | —                        | —                  | —                  |
+
+## Phase 14 run (owner, 2026-11-23)
+
+**Owner decisions:** "Approved: Phases 9–13 complete." PR #9 was merged by the owner. All
+decisions taken without the owner in Phases 9–13 are accepted, except the changes listed below,
+which Phase 14 makes.
+
+**Authorisation:** "Approved: start Phase 14", with the same batch rules as Phases 9–13 (below):
+write the plan into `docs/phases/PHASE-14.md` without waiting, no questions, decide by the same
+rules, record every decision, stop only for the listed reasons. **Phase 15 returns to normal:**
+after Phase 14, stop and wait for "Approved: start Phase 15".
+
+**Phase 14 tasks, in addition to its roadmap scope and the notes below:**
+
+1. **Privacy fix (first):** a "Share read receipts" setting, off by default and reciprocal (a
+   user sees others' read receipts only if they share their own). Additive contract change, a
+   settings row on web and mobile, tests that receipts are never sent when either side has it
+   off, and an ADR.
+2. **Audit integrity:** every admin action and its `audit_log` entry are written in the same
+   transaction (or via the outbox), so an action can never happen without its audit entry. A
+   test simulates a failure between them.
+3. **Admin sessions:** an admin logout route and immediate revocation of admin sessions, checked
+   on every admin request. Also the recorded session-revocation check for sensitive user routes.
+4. **Gateway memory per socket:** investigate and fix toward under 100 KB per idle socket.
+5. **Swipe performance:** profile the mobile swipe gesture. If it cannot reliably hold 60 fps on
+   the JS thread, switch to `react-native-gesture-handler` + `react-native-reanimated`
+   (pre-approved), with an ADR. Add the 60 fps check to the owner's manual list either way.
+6. **Before launch:** list every remaining placeholder that must be real before launch
+   (grievance contact, privacy notice text, terms, support email, brand, mobile `apiUrl`) in a
+   "Before launch" section of the Phase 14 report.
+
+**At the end:** open a PR "Phase 14 — Testing, security, privacy and performance", send the
+owner its summary (what was tested, k6 results, chaos results, security and privacy findings,
+anything needing the owner's decision) and stop.
+
+**Running log:**
+
+| Step     | Status      | Last commit | CI run | Next step  |
+| -------- | ----------- | ----------- | ------ | ---------- |
+| Phase 14 | In progress | —           | —      | Start plan |
 
 ## Batch run: Phases 9–13
 
@@ -104,13 +144,13 @@ gzipped.
 
 **Running log** (updated as the batch goes; resume from the last row after an interruption):
 
-| Phase | Status                          | Last commit     | CI run                                                                          | Next step                                     |
-| ----- | ------------------------------- | --------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
-| 9     | Complete — pending owner review | `f8519dd`       | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan                           |
-| 10    | Complete — pending owner review | `62e108d`       | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                                             |
-| 11    | Complete — pending owner review | `d0c3b16`       | [run 74](https://github.com/Tejas-lab-source/vouch/actions/runs/45055946738) ✅ | —                                             |
-| 12    | Complete — pending owner review | `9875936`       | [run 82](https://github.com/Tejas-lab-source/vouch/actions/runs/45061138745) ✅ | —                                             |
-| 13    | Complete — pending owner review | (report commit) | see the PR                                                                      | Owner review; then "Approved: start Phase 14" |
+| Phase | Status                | Last commit     | CI run                                                                          | Next step                                     |
+| ----- | --------------------- | --------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
+| 9     | Approved (2026-11-23) | `f8519dd`       | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan                           |
+| 10    | Approved (2026-11-23) | `62e108d`       | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                                             |
+| 11    | Approved (2026-11-23) | `d0c3b16`       | [run 74](https://github.com/Tejas-lab-source/vouch/actions/runs/45055946738) ✅ | —                                             |
+| 12    | Approved (2026-11-23) | `9875936`       | [run 82](https://github.com/Tejas-lab-source/vouch/actions/runs/45061138745) ✅ | —                                             |
+| 13    | Approved (2026-11-23) | (report commit) | see the PR                                                                      | Owner review; then "Approved: start Phase 14" |
 
 ## Notes for later phases
 
