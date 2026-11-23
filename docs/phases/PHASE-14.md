@@ -393,7 +393,7 @@ LOAD_API_CPUS=1 LOAD_PG_CPUS=0.5 load/run.sh 300 0.1              # the recommen
 CHAOS=1 LOAD_API_CPUS=1 LOAD_PG_CPUS=0.5 load/run.sh 300 0.1      # chaos
 ```
 
-**Pull request:** PR_LINK · Branch: `claude/lucid-rubin-foq2uj`
+**Pull request:** https://github.com/Tejas-lab-source/vouch/pull/10 · Branch: `claude/lucid-rubin-foq2uj`
 
 ⏸️ I have stopped. Reply "Approved: Phase 14 complete" to close this phase. I will not start
 Phase 15 until you reply "Approved: start Phase 15".
