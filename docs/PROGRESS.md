@@ -57,9 +57,23 @@ anything needing the owner's decision) and stop.
 
 **Running log:**
 
-| Step     | Status      | Last commit | CI run | Next step  |
-| -------- | ----------- | ----------- | ------ | ---------- |
-| Phase 14 | In progress | —           | —      | Start plan |
+| Step              | Status      | Last commit | CI run | Next step       |
+| ----------------- | ----------- | ----------- | ------ | --------------- |
+| Phase 14          | In progress | —           | —      | Start plan      |
+| 1 Read receipts   | Done        | `50498ca`   | —      | Audit integrity |
+| 2 Audit integrity | Done        | `39a75e4`   | —      | Admin sessions  |
+
+**Decisions taken without the owner (Phase 14):**
+
+- The read-receipts commit is marked `feat(chat)!` by mistake. It is a behaviour change, not a
+  contract break (the contract change is additive). History is not rewritten.
+- Audit integrity uses the outbox (ADR 0025). Each module emits `audit.recorded.v1` in the
+  transaction that makes the change, and admin stores it idempotently. A multi-step action
+  (for example, a report resolved with a ban) writes one entry per change.
+- The audit helper lives in `platform/uow.js`, which application code may already import, so
+  the module-boundary rules are unchanged.
+- The migrations test now lists the Phase 14 chat migration (`4868beb`). The Task 1 commit had
+  missed it.
 
 ## Batch run: Phases 9–13
 
