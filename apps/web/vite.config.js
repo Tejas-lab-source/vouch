@@ -1,5 +1,6 @@
 // @ts-check
 import react from '@vitejs/plugin-react';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { defineConfig } from 'vite';
 
 /**
@@ -13,9 +14,28 @@ const proxy = {
   '/socket.io': { target: api, ws: true, changeOrigin: false },
 };
 
+/**
+ * Source maps go to Sentry, not to the public site (Phase 15): with SENTRY_AUTH_TOKEN (the
+ * deploy job), maps are built hidden, uploaded for the release (VITE_RELEASE) and deleted
+ * before the Pages upload. Without it (local builds) nothing is uploaded.
+ */
+const uploadMaps = Boolean(process.env.SENTRY_AUTH_TOKEN);
+const sentry = uploadMaps
+  ? [
+      sentryVitePlugin({
+        org: process.env.SENTRY_ORG,
+        project: process.env.SENTRY_PROJECT_WEB ?? 'vouch-web',
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        release: { name: process.env.VITE_RELEASE },
+        sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+        telemetry: false,
+      }),
+    ]
+  : [];
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), ...sentry],
   server: { port: 5173, proxy },
   preview: { port: 4173, proxy },
-  build: { manifest: true, sourcemap: true, target: 'es2022' },
+  build: { manifest: true, sourcemap: uploadMaps ? 'hidden' : true, target: 'es2022' },
 });

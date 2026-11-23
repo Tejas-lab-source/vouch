@@ -4,11 +4,17 @@ packages:
 
 # Install scripts stay blocked (pnpm 10 default). These optional native helpers
 # (testcontainers' ssh2/grpc, bullmq's msgpackr) are not needed.
+# Phase 15: @sentry/cli, esbuild and workerd ship their binaries as platform packages (their
+# install scripts only verify them); dtrace-provider is an optional native helper of eas-cli.
 ignoredBuiltDependencies:
+  - '@sentry/cli'
   - cpu-features
+  - dtrace-provider
+  - esbuild
   - msgpackr-extract
   - protobufjs
   - ssh2
+  - workerd
 
 # Expo SDK 58: pin the CLI and its router-server to releases at least two weeks old, which
 # accept the pinned expo-constants 58.0.15 (newer ones want 58.0.16, released 2026-11-11).

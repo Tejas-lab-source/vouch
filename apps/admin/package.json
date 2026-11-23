@@ -15,14 +15,17 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sentry/react": "11.11.0",
     "@tanstack/react-query": "5.107.1",
     "@vouch/api-client": "workspace:*",
+    "@vouch/features-core": "workspace:*",
     "@vouch/i18n": "workspace:*",
     "@vouch/ui-web": "workspace:*",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "11.11.0",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/react": "19.3.0",

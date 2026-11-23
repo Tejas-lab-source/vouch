@@ -5,6 +5,8 @@ import { codeAfter, codeCount } from './stack.js';
 
 export const SHOTS = new URL('../../../docs/phases/assets/', import.meta.url);
 export const BASE = () => /** @type {string} */ (process.env.E2E_BASE_URL);
+/** The API for direct (non-browser) calls: its own origin, so it works in both stack modes. */
+export const API = () => /** @type {string} */ (process.env.E2E_API_URL);
 /** Seeded synthetic users are 18–25; these two are older and look for 30–40, so their decks hold each other. */
 const BIRTH_DATE = '1990-04-12';
 

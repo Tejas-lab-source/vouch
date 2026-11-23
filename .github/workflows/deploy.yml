@@ -1,0 +1,186 @@
+name: Deploy
+
+# Phase 15. On every push to main: the full CI, then staging (API, backup job, web, admin),
+# smoke and browser checks on staging, then production after the owner approves the
+# `production` environment. Production gets the same commit that passed on staging, watched
+# for 10 minutes; a failure rolls the API back to the deploy that was live before.
+#
+# Configuration lives in two GitHub environments, `staging` and `production`
+# (docs/infrastructure.md lists every name; checklist B1, B3, B5, B9):
+#   secrets: RENDER_API_KEY, CLOUDFLARE_API_TOKEN, SENTRY_AUTH_TOKEN, METRICS_SCRAPE_TOKEN
+#   vars:    RENDER_SERVICE_ID, RENDER_BACKUP_SERVICE_ID, API_URL, WEB_URL, ADMIN_URL, CDN_URL,
+#            UPLOAD_ORIGIN, CLOUDFLARE_ACCOUNT_ID, PAGES_PROJECT_WEB, PAGES_PROJECT_ADMIN,
+#            SENTRY_ORG, SENTRY_INGEST, SENTRY_DSN_WEB, SENTRY_DSN_ADMIN, TURNSTILE_SITE_KEY,
+#            GRIEVANCE_EMAIL
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      rehearse_rollback:
+        description: 'On staging: roll back to the previous deploy, smoke it, then redeploy'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: '1'
+  DO_NOT_TRACK: '1'
+  WRANGLER_SEND_METRICS: 'false'
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  staging:
+    name: Staging
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: staging
+      url: ${{ vars.WEB_URL }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Record the live API deploy (for the rollback rehearsal)
+        id: previous
+        run: echo "id=$(node scripts/render-deploy.js current --service '${{ vars.RENDER_SERVICE_ID }}')" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy the API (migrations run as the pre-deploy command)
+        run: node scripts/render-deploy.js deploy --service '${{ vars.RENDER_SERVICE_ID }}' --commit "$RELEASE"
+
+      - name: Deploy the backup job
+        run: node scripts/render-deploy.js deploy --service '${{ vars.RENDER_BACKUP_SERVICE_ID }}' --commit "$RELEASE"
+
+      - name: Build and deploy web and admin to Cloudflare Pages
+        env:
+          DEPLOY_ENV: staging
+          API_URL: ${{ vars.API_URL }}
+          CDN_URL: ${{ vars.CDN_URL }}
+          UPLOAD_ORIGIN: ${{ vars.UPLOAD_ORIGIN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_INGEST: ${{ vars.SENTRY_INGEST }}
+          SENTRY_DSN_WEB: ${{ vars.SENTRY_DSN_WEB }}
+          SENTRY_DSN_ADMIN: ${{ vars.SENTRY_DSN_ADMIN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          GRIEVANCE_EMAIL: ${{ vars.GRIEVANCE_EMAIL }}
+          PAGES_PROJECT_WEB: ${{ vars.PAGES_PROJECT_WEB }}
+          PAGES_PROJECT_ADMIN: ${{ vars.PAGES_PROJECT_ADMIN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: scripts/deploy-pages.sh
+
+      - name: Smoke suite (read-only)
+        run: node scripts/smoke.js --api '${{ vars.API_URL }}' --web '${{ vars.WEB_URL }}' --admin '${{ vars.ADMIN_URL }}'
+
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @vouch/web exec playwright install --with-deps chromium
+
+      - name: Browser checks (read-only)
+        env:
+          REMOTE_WEB_URL: ${{ vars.WEB_URL }}
+          REMOTE_ADMIN_URL: ${{ vars.ADMIN_URL }}
+          REMOTE_API_URL: ${{ vars.API_URL }}
+        run: pnpm --filter @vouch/web e2e:remote
+
+      - name: Rollback rehearsal (roll back, smoke, redeploy)
+        if: inputs.rehearse_rollback && steps.previous.outputs.id != ''
+        run: |
+          node scripts/render-deploy.js rollback --service '${{ vars.RENDER_SERVICE_ID }}' --to '${{ steps.previous.outputs.id }}'
+          node scripts/smoke.js --api '${{ vars.API_URL }}'
+          node scripts/render-deploy.js deploy --service '${{ vars.RENDER_SERVICE_ID }}' --commit "$RELEASE"
+          node scripts/smoke.js --api '${{ vars.API_URL }}'
+
+  production:
+    name: Production
+    needs: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Required reviewers on this environment: the owner approves each promotion.
+    environment:
+      name: production
+      url: ${{ vars.WEB_URL }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Record the live API deploy (the rollback target)
+        id: previous
+        run: echo "id=$(node scripts/render-deploy.js current --service '${{ vars.RENDER_SERVICE_ID }}')" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy the API (the commit that passed on staging)
+        id: api
+        run: node scripts/render-deploy.js deploy --service '${{ vars.RENDER_SERVICE_ID }}' --commit "$RELEASE"
+
+      - name: Deploy the backup job
+        run: node scripts/render-deploy.js deploy --service '${{ vars.RENDER_BACKUP_SERVICE_ID }}' --commit "$RELEASE"
+
+      - name: Build and deploy web and admin to Cloudflare Pages
+        env:
+          DEPLOY_ENV: production
+          API_URL: ${{ vars.API_URL }}
+          CDN_URL: ${{ vars.CDN_URL }}
+          UPLOAD_ORIGIN: ${{ vars.UPLOAD_ORIGIN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_INGEST: ${{ vars.SENTRY_INGEST }}
+          SENTRY_DSN_WEB: ${{ vars.SENTRY_DSN_WEB }}
+          SENTRY_DSN_ADMIN: ${{ vars.SENTRY_DSN_ADMIN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          GRIEVANCE_EMAIL: ${{ vars.GRIEVANCE_EMAIL }}
+          PAGES_PROJECT_WEB: ${{ vars.PAGES_PROJECT_WEB }}
+          PAGES_PROJECT_ADMIN: ${{ vars.PAGES_PROJECT_ADMIN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: scripts/deploy-pages.sh
+
+      - name: Smoke suite (read-only)
+        run: node scripts/smoke.js --api '${{ vars.API_URL }}' --web '${{ vars.WEB_URL }}' --admin '${{ vars.ADMIN_URL }}'
+
+      - name: Watch for 10 minutes (5xx share above 2% fails)
+        env:
+          METRICS_SCRAPE_TOKEN: ${{ secrets.METRICS_SCRAPE_TOKEN }}
+        run: node scripts/deploy-watch.js --api '${{ vars.API_URL }}' --minutes 10 --max-error 0.02
+
+      # Migrations are expand-only (ADR 0006), so the previous API runs on the new schema.
+      # Web and admin stay on the new build: contracts are additive, so it works with either API.
+      - name: Roll the API back to the previous deploy
+        if: failure() && steps.api.conclusion != 'skipped' && steps.previous.outputs.id != ''
+        run: |
+          node scripts/render-deploy.js rollback --service '${{ vars.RENDER_SERVICE_ID }}' --to '${{ steps.previous.outputs.id }}'
+          node scripts/smoke.js --api '${{ vars.API_URL }}'

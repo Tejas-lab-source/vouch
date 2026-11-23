@@ -2,13 +2,16 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    # main runs CI inside the Deploy workflow (workflow_call), before it deploys.
+    branches-ignore: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # In a call from Deploy, github.workflow is "Deploy": its CI never cancels a branch CI.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -75,7 +78,7 @@ jobs:
   web:
     name: Web build, bundle budget and end-to-end tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -100,6 +103,11 @@ jobs:
 
       - name: End-to-end tests (real API in Testcontainers)
         run: pnpm --filter @vouch/web e2e
+
+      - name: End-to-end tests, deployed shape (API on its own origin, CORS, no proxy)
+        run: pnpm --filter @vouch/web e2e
+        env:
+          E2E_CROSS_ORIGIN: '1'
 
   mobile:
     name: Mobile bundle (Expo export, Android and iOS)

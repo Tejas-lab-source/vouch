@@ -39,6 +39,11 @@ async function waitFor(url, ms) {
  * The real backend for the web end-to-end tests: Postgres and Redis (Testcontainers), the
  * real migrations and seed, the API (`ROLE=all`, development email and captcha), and the
  * built web app served by `vite preview`, which proxies `/v1` and `/socket.io` to the API.
+ *
+ * With `E2E_CROSS_ORIGIN=1` (Phase 15) the apps are built the way they are deployed instead:
+ * `VITE_API_BASE` is the API's own origin (another port: the same site, a different origin),
+ * there is no proxy, and the API allows both apps' origins in CORS_ORIGINS. The refresh
+ * cookie, CORS with credentials and the socket then work exactly as on Pages and Render.
  */
 export async function startStack() {
   const [containers, storage] = await Promise.all([startTestContainers(), startTestStorage()]);
@@ -78,7 +83,7 @@ export async function startStack() {
     R2_SECRET_ACCESS_KEY: TEST_STORAGE.secretAccessKey,
     R2_BUCKET: TEST_STORAGE.bucket,
     CDN_BASE_URL: storage.publicBaseUrl,
-    CORS_ORIGINS: `http://127.0.0.1:${webPort}`,
+    CORS_ORIGINS: `http://127.0.0.1:${webPort},http://127.0.0.1:${adminPort}`,
     MODERATION_PROVIDER: 'dev',
     // The 1,000-message chat test sends quickly from one user.
     RATE_LIMIT_MESSAGES_MINUTE: '5000',
@@ -133,8 +138,18 @@ export async function startStack() {
   api.stderr.pipe(log);
   await waitFor(`http://127.0.0.1:${apiPort}/ready`, 60_000);
 
+  const crossOrigin = process.env.E2E_CROSS_ORIGIN === '1';
+  const apiOrigin = `http://127.0.0.1:${apiPort}`;
+  /** Build env: the API's own origin when cross-origin; otherwise same-origin via the proxy. */
+  const buildEnv = { ...process.env, ...(crossOrigin ? { VITE_API_BASE: apiOrigin } : {}) };
+  /** Preview env: no proxy target when cross-origin (requests go straight to the API). */
+  const previewEnv = {
+    ...process.env,
+    VOUCH_API: crossOrigin ? 'http://127.0.0.1:9' : apiOrigin,
+  };
   const build = spawnSync('pnpm', ['exec', 'vite', 'build', '--logLevel', 'error'], {
     cwd: WEB,
+    env: buildEnv,
     encoding: 'utf8',
   });
   if (build.status !== 0) throw new Error(`vite build failed: ${build.stderr}`);
@@ -143,7 +158,7 @@ export async function startStack() {
     ['exec', 'vite', 'preview', '--port', String(webPort), '--strictPort', '--host', '127.0.0.1'],
     {
       cwd: WEB,
-      env: { ...process.env, VOUCH_API: `http://127.0.0.1:${apiPort}` },
+      env: previewEnv,
       stdio: 'ignore',
     },
   );
@@ -152,6 +167,7 @@ export async function startStack() {
   // The staff console, built and served the same way (same-origin /v1 proxy).
   const adminBuild = spawnSync('pnpm', ['exec', 'vite', 'build', '--logLevel', 'error'], {
     cwd: ADMIN,
+    env: buildEnv,
     encoding: 'utf8',
   });
   if (adminBuild.status !== 0) throw new Error(`admin build failed: ${adminBuild.stderr}`);
@@ -160,7 +176,7 @@ export async function startStack() {
     ['exec', 'vite', 'preview', '--port', String(adminPort), '--strictPort', '--host', '127.0.0.1'],
     {
       cwd: ADMIN,
-      env: { ...process.env, VOUCH_API: `http://127.0.0.1:${apiPort}` },
+      env: previewEnv,
       stdio: 'ignore',
     },
   );
@@ -169,6 +185,7 @@ export async function startStack() {
   return {
     baseURL: `http://127.0.0.1:${webPort}`,
     adminURL: `http://127.0.0.1:${adminPort}`,
+    apiURL: apiOrigin,
     admin: { email: 'e2e-admin@vouch.example', password: ADMIN_PASSWORD, totpSecret },
     stop: async () => {
       web.kill('SIGTERM');

@@ -2,7 +2,7 @@
 import { expect, test } from '@playwright/test';
 import { io } from 'socket.io-client';
 import { seriousViolations, wcagViolations } from './axe.js';
-import { BASE, matchedPair, openChat, SHOTS } from './flows.js';
+import { API, matchedPair, openChat, SHOTS } from './flows.js';
 import { codeAfter, codeCount } from './stack.js';
 
 /**
@@ -13,14 +13,14 @@ import { codeAfter, codeCount } from './stack.js';
 async function secondDevice(email) {
   const headers = { 'content-type': 'application/json', 'x-app-version': '1.0.0' };
   const before = await codeCount();
-  const otp = await fetch(`${BASE()}/v1/auth/otp`, {
+  const otp = await fetch(`${API()}/v1/auth/otp`, {
     method: 'POST',
     headers: { ...headers, 'idempotency-key': crypto.randomUUID() },
     body: JSON.stringify({ email, turnstileToken: 'dev' }),
   });
   expect(otp.ok).toBe(true);
   await expect.poll(() => codeAfter(before), { timeout: 10_000 }).not.toBeNull();
-  const verified = await fetch(`${BASE()}/v1/auth/verify`, {
+  const verified = await fetch(`${API()}/v1/auth/verify`, {
     method: 'POST',
     headers: { ...headers, 'idempotency-key': crypto.randomUUID() },
     body: JSON.stringify({
@@ -31,7 +31,7 @@ async function secondDevice(email) {
     }),
   });
   const { tokens } = await verified.json();
-  const socket = io(BASE(), { transports: ['websocket'], auth: { token: tokens.accessToken } });
+  const socket = io(API(), { transports: ['websocket'], auth: { token: tokens.accessToken } });
   await new Promise((resolve, reject) => {
     socket.once('connect', () => resolve(undefined));
     socket.once('connect_error', reject);

@@ -9,9 +9,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { UpdateRequired } from '../pages/update/UpdateRequired.jsx';
 import { APP_VERSION } from '../shared/config/index.js';
+import { startMonitoring } from './monitoring.js';
 import { createServices } from './services.js';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
+startMonitoring();
 
 /**
  * The app root: services, the query cache, the session restore from secure storage (behind

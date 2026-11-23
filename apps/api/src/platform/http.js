@@ -163,7 +163,16 @@ export async function buildHttpServer({
   });
 
   await app.register(helmet, { global: true });
-  await app.register(cors, { origin: config.CORS_ORIGINS, credentials: true });
+  // The web and admin apps call the API from their own origins (Phase 15). The plugin's
+  // default methods are GET, HEAD and POST only; every method a route uses must be listed, or
+  // the browser's preflight refuses PATCH, PUT and DELETE.
+  await app.register(cors, {
+    origin: config.CORS_ORIGINS,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    exposedHeaders: ['x-request-id', 'retry-after'],
+    maxAge: 600,
+  });
   await app.register(cookie, { secret: config.COOKIE_SECRET });
   // The limiter's hook is route-level, so it runs after the app-level `authenticate` hook below
   // and before `enforce` rejects unauthenticated requests.

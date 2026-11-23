@@ -10,6 +10,7 @@ export default async function globalSetup() {
   const stack = await startStack();
   process.env.E2E_BASE_URL = stack.baseURL;
   process.env.E2E_ADMIN_URL = stack.adminURL;
+  process.env.E2E_API_URL = stack.apiURL;
   process.env.E2E_ADMIN = JSON.stringify(stack.admin);
   return stack.stop;
 }
