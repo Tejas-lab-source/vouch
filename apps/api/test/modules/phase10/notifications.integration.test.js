@@ -85,14 +85,21 @@ describe(
         data: { type: 'message.new', conversationId },
       });
       expect(JSON.stringify(b.pushes)).not.toContain('secret body');
-      const messageRows = (await deliveries(c.id)).filter((r) => r.template === 'message.new');
-      expect(messageRows.map((r) => r.status).sort()).toEqual([
+      // The fake provider records the push a moment before the worker marks the row sent.
+      const statuses = async () =>
+        (await deliveries(c.id))
+          .filter((r) => r.template === 'message.new')
+          .map((r) => r.status)
+          .sort();
+      await eventually(async () => !(await statuses()).includes('queued') || null, WAIT_MS);
+      expect(await statuses()).toEqual([
         'sent',
         'suppressed',
         'suppressed',
         'suppressed',
         'suppressed',
       ]);
+      const messageRows = (await deliveries(c.id)).filter((r) => r.template === 'message.new');
       expect(
         messageRows
           .filter((r) => r.status === 'suppressed')
