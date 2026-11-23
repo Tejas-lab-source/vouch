@@ -8,6 +8,8 @@ import { startTestContainers, startTestStorage, TEST_STORAGE } from '@vouch/conf
 
 const ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const WEB = fileURLToPath(new URL('..', import.meta.url));
+const ADMIN = fileURLToPath(new URL('../../admin', import.meta.url));
+const ADMIN_PASSWORD = 'e2e-admin-password-0123';
 export const API_LOG = fileURLToPath(new URL('../test-results/api.log', import.meta.url));
 
 /** @returns {Promise<number>} */
@@ -50,7 +52,12 @@ export async function startStack() {
       .split('\n')
       .map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]),
   );
-  const [apiPort, metricsPort, webPort] = [await freePort(), await freePort(), await freePort()];
+  const [apiPort, metricsPort, webPort, adminPort] = [
+    await freePort(),
+    await freePort(),
+    await freePort(),
+    await freePort(),
+  ];
   const env = {
     ...process.env,
     NODE_ENV: 'development',
@@ -63,6 +70,8 @@ export async function startStack() {
     REDIS_URL: containers.redisUrl,
     EMAIL_HMAC_SECRET: 'e2e-email-hmac-secret-0123456789abcdef',
     COOKIE_SECRET: 'e2e-cookie-secret-0123456789abcdef0123',
+    // Encrypts admin TOTP secrets (32 bytes, base64); a fixed test-only value.
+    ADMIN_TOTP_KEY: Buffer.alloc(32, 7).toString('base64'),
     // SeaweedFS stands in for R2 and the CDN; the browser uploads to it directly (CORS).
     R2_ENDPOINT: storage.endpoint,
     R2_ACCESS_KEY_ID: TEST_STORAGE.accessKeyId,
@@ -75,17 +84,33 @@ export async function startStack() {
     RATE_LIMIT_MESSAGES_MINUTE: '5000',
     ...keyEnv,
   };
-  /** @param {string[]} args */
-  const runApi = (args) => {
+  /** @param {string[]} args @param {Record<string, string>} [extra] */
+  const runApi = (args, extra = {}) => {
     const result = spawnSync(process.execPath, args, {
       cwd: `${ROOT}/apps/api`,
-      env,
+      env: { ...env, ...extra },
       encoding: 'utf8',
     });
     if (result.status !== 0) throw new Error(`${args.join(' ')} failed: ${result.stderr}`);
+    return result.stdout;
   };
   runApi(['migrations/run.js', 'up']);
   runApi(['scripts/seed.js']);
+  // One admin for the moderation tests (the password comes from the environment, never a flag).
+  const created = runApi(
+    [
+      'scripts/admin-create.js',
+      '--email',
+      'e2e-admin@vouch.example',
+      '--name',
+      'E2E Admin',
+      '--role',
+      'admin',
+    ],
+    { ADMIN_CREATE_PASSWORD: ADMIN_PASSWORD },
+  );
+  const totpSecret = /secret=([A-Z2-7]+)/.exec(created)?.[1];
+  if (!totpSecret) throw new Error('admin-create printed no TOTP secret');
   // The bucket and its upload CORS rule; SeaweedFS needs a moment before it accepts buckets.
   for (let attempt = 0; ; attempt += 1) {
     try {
@@ -124,10 +149,30 @@ export async function startStack() {
   );
   await waitFor(`http://127.0.0.1:${webPort}/`, 30_000);
 
+  // The staff console, built and served the same way (same-origin /v1 proxy).
+  const adminBuild = spawnSync('pnpm', ['exec', 'vite', 'build', '--logLevel', 'error'], {
+    cwd: ADMIN,
+    encoding: 'utf8',
+  });
+  if (adminBuild.status !== 0) throw new Error(`admin build failed: ${adminBuild.stderr}`);
+  const admin = spawn(
+    'pnpm',
+    ['exec', 'vite', 'preview', '--port', String(adminPort), '--strictPort', '--host', '127.0.0.1'],
+    {
+      cwd: ADMIN,
+      env: { ...process.env, VOUCH_API: `http://127.0.0.1:${apiPort}` },
+      stdio: 'ignore',
+    },
+  );
+  await waitFor(`http://127.0.0.1:${adminPort}/`, 30_000);
+
   return {
     baseURL: `http://127.0.0.1:${webPort}`,
+    adminURL: `http://127.0.0.1:${adminPort}`,
+    admin: { email: 'e2e-admin@vouch.example', password: ADMIN_PASSWORD, totpSecret },
     stop: async () => {
       web.kill('SIGTERM');
+      admin.kill('SIGTERM');
       api.kill('SIGTERM');
       await new Promise((resolve) => api.once('exit', resolve));
       await Promise.all([containers.stop(), storage.stop()]);

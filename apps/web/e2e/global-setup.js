@@ -9,5 +9,7 @@ export default async function globalSetup() {
   await mkdir(dirname(API_LOG), { recursive: true });
   const stack = await startStack();
   process.env.E2E_BASE_URL = stack.baseURL;
+  process.env.E2E_ADMIN_URL = stack.adminURL;
+  process.env.E2E_ADMIN = JSON.stringify(stack.admin);
   return stack.stop;
 }
