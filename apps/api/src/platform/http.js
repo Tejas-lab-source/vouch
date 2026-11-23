@@ -22,6 +22,11 @@ import { registerHealthRoutes } from './health.js';
 
 /** Upper bound for receiving a whole request. */
 const REQUEST_TIMEOUT_MS = 30_000;
+/**
+ * Largest accepted request body (Phase 14 security review). Every contract body is far smaller
+ * (the largest, a profile section, is a few KB); files go straight to storage.
+ */
+export const BODY_LIMIT_BYTES = 64 * 1024;
 /** Global limiter window; the limits come from config (ADR 0015). */
 const RATE_LIMIT_WINDOW_MS = 60_000;
 
@@ -44,6 +49,8 @@ export const rateLimitKey = (request) =>
  * @property {(error: unknown) => void} [reportError]
  * @property {boolean} [apiRoutes]  false for the ws and worker roles (health only).
  * @property {{ module: string, plugin: any }[]} [routes]  Module route plugins.
+ * @property {import('./pressure.js').PressureGauge} [pressure]  Sheds new requests under
+ *   overload (503, Retry-After); health checks are never shed.
  */
 
 /**
@@ -63,6 +70,7 @@ export async function buildHttpServer({
   reportError,
   apiRoutes = true,
   routes = [],
+  pressure,
 }) {
   const proxyTrust = createProxyTrust(config.TRUSTED_PROXIES);
   // Cast: Fastify types the instance by pino's Logger, which is wider than FastifyBaseLogger.
@@ -71,6 +79,7 @@ export async function buildHttpServer({
       Fastify({
         loggerInstance: logger,
         requestTimeout: REQUEST_TIMEOUT_MS,
+        bodyLimit: BODY_LIMIT_BYTES,
         requestIdHeader: 'x-request-id',
         genReqId: () => randomUUID(),
         trustProxy: config.TRUSTED_PROXIES.length > 0 ? proxyTrust.trustProxy : false,
@@ -94,6 +103,26 @@ export async function buildHttpServer({
       route: request.routeOptions.url ?? 'unmatched',
       statusCode: reply.statusCode,
       seconds: reply.elapsedTime / 1000,
+    });
+  });
+
+  // Overload: refuse new work before it is parsed, so accepted work can finish (Phase 14).
+  // Besides the process signals (event-loop delay, heap), requests in progress are capped:
+  // when the database is the bottleneck the process looks healthy while requests queue for
+  // connections, and an immediate 503 beats a 60 s timeout.
+  let inFlight = 0;
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.url === '/health' || request.url === '/ready') return;
+    const reason =
+      pressure?.overloaded() ?? (inFlight >= config.PRESSURE_MAX_IN_FLIGHT ? 'in_flight' : null);
+    if (reason) {
+      metrics.countShed('http', reason);
+      reply.header('retry-after', '5');
+      throw new AppError('TEMPORARILY_UNAVAILABLE');
+    }
+    inFlight += 1;
+    reply.raw.once('close', () => {
+      inFlight -= 1;
     });
   });
 

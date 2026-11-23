@@ -2,10 +2,12 @@
 import {
   deleteAccount,
   exportData,
+  getChatSettings,
   getNotificationPrefs,
   listDevices,
   listMyBlocks,
   logout,
+  putChatSettings,
   putNotificationPrefs,
   revokeDevice,
   unblockUser,
@@ -49,6 +51,39 @@ export function timeToMinutes(value) {
   if (!match) return null;
   const [h, m] = [Number(match[1]), Number(match[2])];
   return h < 24 && m < 60 ? h * 60 + m : null;
+}
+
+const CHAT_SETTINGS = /** @type {const} */ (['vouch', 'chat-settings']);
+
+/**
+ * Chat privacy (Phase 14): "Share read receipts", off by default and reciprocal — you see
+ * other people's read state only while you share yours, and only with people who share theirs.
+ */
+export function useChatSettings() {
+  const { client } = useServices();
+  return useQuery({
+    queryKey: CHAT_SETTINGS,
+    queryFn: async () =>
+      /** @type {{ shareReadReceipts: boolean }} */ (await getChatSettings(client)),
+  });
+}
+
+/** Saves the chat privacy settings; open conversations refetch their (now hidden or shown) read state. */
+export function useUpdateChatSettings() {
+  const { client } = useServices();
+  const queryClient = useQueryClient();
+  return useMutation({
+    /** @param {{ shareReadReceipts: boolean }} body */
+    mutationFn: (body) => putChatSettings(client, { body }),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(CHAT_SETTINGS, settings);
+      // Read state may now be shown or hidden: every conversation refetches its cursors.
+      queryClient.setQueriesData({ queryKey: ['vouch', 'messages'] }, (/** @type {any} */ data) =>
+        data ? { ...data, loaded: false } : data,
+      );
+      void queryClient.invalidateQueries({ queryKey: ['vouch', 'messages'] });
+    },
+  });
 }
 
 /** The people I blocked. */

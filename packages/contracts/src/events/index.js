@@ -1,4 +1,5 @@
 // @ts-check
+import { adminEvents } from './admin.js';
 import { chatEvents } from './chat.js';
 import { discoveryEvents } from './discovery.js';
 import { identityEvents } from './identity.js';
@@ -18,10 +19,12 @@ export const EVENTS = Object.freeze(
       ...matchingEvents,
       ...chatEvents,
       ...safetyEvents,
+      ...adminEvents,
     ].map((event) => [event.name, event]),
   ),
 );
 
+export * from './admin.js';
 export * from './chat.js';
 export * from './discovery.js';
 export * from './envelope.js';

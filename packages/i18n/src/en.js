@@ -36,6 +36,7 @@ export const en = Object.freeze({
   'auth.signup.underage': 'You must be 18 or older to use Vouch.',
   'auth.signup.consent': 'I agree to the privacy notice (version {version}).',
   'auth.signup.consent.required': 'Accept the privacy notice to continue.',
+  'auth.signup.readNotice': 'Read the privacy notice',
   'auth.signup.submit': 'Create my account',
   'auth.banned': 'This account has been suspended.',
   'auth.pendingReview': 'Your account is being reviewed. We will let you know soon.',
@@ -204,6 +205,10 @@ export const en = Object.freeze({
   'settings.saved': 'Saved.',
   'settings.pushDenied':
     'Notifications are off for Vouch in your device settings. Turn them on there to get pushes.',
+  'settings.privacy.chat.title': 'Chat privacy',
+  'settings.readReceipts': 'Share read receipts',
+  'settings.readReceipts.hint':
+    'Off by default. When on, people who also share theirs can see when you have read their messages, and you can see when they have read yours.',
   'settings.blocked.title': 'Blocked people',
   'settings.blocked.empty': 'You have not blocked anyone.',
   'settings.blocked.unknown': 'Someone (profile not visible)',
@@ -241,6 +246,10 @@ export const en = Object.freeze({
   'privacy.summary':
     'Vouch keeps only what it needs to run the app: your college email (stored as a one-way code), your profile, photos and messages. You can download your data or delete your account at any time from Settings.',
   'privacy.version': 'Notice version: {version}',
+  'privacy.notice.effective': 'effective {date}',
+  'privacy.notice.draft': 'draft, pending legal review',
+  'privacy.notice.unavailable':
+    'This version of the app cannot show the current privacy notice. Update the app to continue.',
   'privacy.grievance.title': 'Grievance officer',
   'privacy.grievance.body':
     'For privacy questions or complaints, write to the grievance officer at {email}. We reply within 30 days.',

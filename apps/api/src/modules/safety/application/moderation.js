@@ -1,4 +1,5 @@
 // @ts-check
+import { recordAudit } from '../../../platform/uow.js';
 import {
   reportCreated,
   ServiceError,
@@ -203,9 +204,10 @@ export function makeModeration(deps) {
   /**
    * Bans a user (emits `user.banned.v1`: identity revokes sessions, matching ends matches,
    * chat closes conversations, discovery hides them). CONFLICT when a ban is already active.
-   * @param {{ userId: string, reason: string, expiresAt: string | null, actorId: string }} input
+   * @param {{ userId: string, reason: string, expiresAt: string | null, actorId: string, trail?: import('../../../platform/uow.js').AuditTrail, targetId?: string }} input
+   *   `trail` (staff): the ban is audited in its transaction (ADR 0025); `targetId` is the public id.
    */
-  async function createBan({ userId, reason, expiresAt, actorId }) {
+  async function createBan({ userId, reason, expiresAt, actorId, trail, targetId }) {
     const now = clock.now();
     const expiry = expiresAt ? new Date(expiresAt) : null;
     if (expiry && expiry <= now) {
@@ -234,6 +236,12 @@ export function makeModeration(deps) {
         expiresAt: expiry?.toISOString() ?? null,
         bannedAt: now.toISOString(),
       });
+      await recordAudit(emit, trail, {
+        action: 'ban.create',
+        targetType: 'user',
+        targetId: targetId ?? userId,
+        details: { banId: id, expiresAt: expiry?.toISOString() ?? null },
+      });
       return { id, userId, reason, createdAt: now, expiresAt: expiry, liftedAt: null };
     });
     return banView(ban, await publicIdsOf([userId]));
@@ -242,12 +250,15 @@ export function makeModeration(deps) {
   /**
    * Lifts a ban (idempotent; emits `user.unbanned.v1` once). Matches stay ended.
    * @param {string} banId @param {string} actorId
+   * @param {import('../../../platform/uow.js').AuditTrail | null} [trail]
    */
-  async function liftBan(banId, actorId) {
+  async function liftBan(banId, actorId, trail = null) {
     const now = clock.now();
     const ban = await uow.run(async ({ stores, emit }) => {
       const found = await stores.bans.findForUpdate(banId);
       if (!found) throw new ServiceError('NOT_FOUND');
+      // A repeated lift changes nothing but is still the staff member's action: audited too.
+      await recordAudit(emit, trail, { action: 'ban.lift', targetType: 'ban', targetId: banId });
       if (found.liftedAt) return found;
       await stores.bans.lift(banId, actorId, now);
       await emit(userUnbanned, { userId: found.userId, banId, liftedAt: now.toISOString() });
@@ -283,13 +294,18 @@ export function makeModeration(deps) {
    * @param {string} id
    * @param {{ action: 'dismiss' | 'warn' | 'hide' | 'unhide' | 'ban', note: string, banExpiresAt?: string }} input
    * @param {string} actorId
+   * @param {import('../../../platform/uow.js').AuditTrail | null} [trail]  Each change (hide, ban, the resolution) is audited in the
+   *   transaction that makes it (ADR 0025).
    */
-  async function actOnReport(id, input, actorId) {
+  async function actOnReport(id, input, actorId, trail = null) {
     const row = await read((stores) => stores.reports.find(id));
     if (!row) throw new ServiceError('NOT_FOUND');
     if (row.status !== 'open') throw new ServiceError('CONFLICT');
-    if (input.action === 'hide') await profiles.hide(row.targetId);
-    if (input.action === 'unhide') await profiles.unhide(row.targetId);
+    const staff = trail
+      ? { trail, targetId: (await publicIdsOf([row.targetId]))(row.targetId) }
+      : {};
+    if (input.action === 'hide') await profiles.hide(row.targetId, staff);
+    if (input.action === 'unhide') await profiles.unhide(row.targetId, staff);
     if (input.action === 'ban') {
       const current = await read((stores) => stores.bans.activeFor(row.targetId));
       if (!current || !banActive(current, clock.now())) {
@@ -298,10 +314,11 @@ export function makeModeration(deps) {
           reason: input.note,
           expiresAt: input.banExpiresAt ?? null,
           actorId,
+          ...staff,
         });
       }
     }
-    await uow.run(async ({ stores }) => {
+    await uow.run(async ({ stores, emit }) => {
       const locked = await stores.reports.findForUpdate(id);
       if (locked?.status !== 'open') throw new ServiceError('CONFLICT');
       await stores.reports.resolve(id, {
@@ -310,6 +327,12 @@ export function makeModeration(deps) {
         by: actorId,
         note: input.note,
         at: clock.now(),
+      });
+      await recordAudit(emit, trail, {
+        action: `report.${input.action}`,
+        targetType: 'report',
+        targetId: id,
+        details: input.banExpiresAt ? { banExpiresAt: input.banExpiresAt } : {},
       });
     });
     return getReport(id);
@@ -459,8 +482,9 @@ export function makeModeration(deps) {
    * @param {string} id
    * @param {{ decision: 'approve' | 'reject', reason?: string }} input
    * @param {string} actorId
+   * @param {import('../../../platform/uow.js').AuditTrail | null} [trail]
    */
-  async function decideVerification(id, input, actorId) {
+  async function decideVerification(id, input, actorId, trail = null) {
     const now = clock.now();
     const row = await uow.run(async ({ stores, emit }) => {
       const found = await stores.verifications.findForUpdate(id);
@@ -478,6 +502,11 @@ export function makeModeration(deps) {
         reviewId: id,
         decision: status,
         decidedAt: now.toISOString(),
+      });
+      await recordAudit(emit, trail, {
+        action: `verification.${input.decision}`,
+        targetType: 'verification',
+        targetId: id,
       });
       return { ...found, status, decidedAt: now };
     });
@@ -512,9 +541,10 @@ export function makeModeration(deps) {
   /**
    * @param {string} photoId
    * @param {{ decision: 'approve' | 'reject' }} input
+   * @param {import('../../../platform/uow.js').AuditTrail | null} [trail]
    */
-  async function decidePhoto(photoId, input) {
-    const outcome = await media.resolveReview(photoId, input.decision);
+  async function decidePhoto(photoId, input, trail = null) {
+    const outcome = await media.resolveReview(photoId, input.decision, trail);
     if (outcome === 'released') throw new ServiceError('NOT_FOUND');
     if (outcome === 'finished') throw new ServiceError('CONFLICT');
     return {

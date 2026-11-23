@@ -14,6 +14,7 @@ import { createLogger } from '../../../src/platform/logger.js';
 import {
   eventually,
   HOOK_TIMEOUT_MS,
+  liveSessionId,
   makeKeys,
   startInfra,
   testEnv,
@@ -40,7 +41,7 @@ describe('matching (ROLE=all, the 2,000-user seed)', () => {
   /** @param {any} user */
   const auth = async (user) => ({
     ...H,
-    authorization: `Bearer ${await keys.sign({ sub: user.id, sid: randomUUID() })}`,
+    authorization: `Bearer ${await keys.sign({ sub: user.id, sid: await liveSessionId(infra.admin, user.id) })}`,
   });
   /** Mark `b` as served to `a` (what a deck page does). @param {any} a @param {any} b */
   const serve = (a, b) => redis.sadd(`discovery:served:${a.id}`, b.id);

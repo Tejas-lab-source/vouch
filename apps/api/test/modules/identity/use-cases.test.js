@@ -296,8 +296,13 @@ describe('sessions', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
     const deviceId = /** @type {string} */ (list.items[0]?.id);
     expect(await h.revokeDevice({ id: deviceId }, { actor })).toEqual({ revoked: true });
-    expect(await h.revokeDevice({ id: deviceId }, { actor })).toEqual({ revoked: true });
     expect([...state.sessions.values()].every((s) => s.revokedAt)).toBe(true);
+    // That was this device: its session is now signed out, so sensitive calls are refused
+    // even though the access token has not expired (Phase 14).
+    await expect(h.revokeDevice({ id: deviceId }, { actor })).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    await expect(h.listDevices({}, { actor })).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 
   it('registers a push token on the current device', async () => {

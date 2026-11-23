@@ -35,4 +35,6 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1
-CMD ["node", "src/main.js"]
+# 75% of the container for the JS heap (Phase 14: the default, about half, ran out under
+# overload); the rest is for sockets and native buffers.
+CMD ["node", "--max-old-space-size-percentage=75", "src/main.js"]

@@ -57,6 +57,17 @@ export function createIdentityStores(tx) {
         /** @type {any} */ (
           (await tx`SELECT * FROM identity.auth_sessions WHERE id = ${id} FOR UPDATE`)[0]
         ) ?? null,
+      // An access token's session is live when it is not revoked, or when it was only rotated
+      // (refresh) and its family still has a live session. Every revocation (logout, device
+      // sign-out, ban, deletion, reuse) revokes all live rows of the family, user or device.
+      isLive: async (id, userId) =>
+        (
+          await tx`SELECT 1 FROM identity.auth_sessions s
+            WHERE s.id = ${id} AND s.user_id = ${userId}
+              AND (s.revoked_at IS NULL OR (s.replaced_by IS NOT NULL AND EXISTS (
+                SELECT 1 FROM identity.auth_sessions f
+                WHERE f.family_id = s.family_id AND f.revoked_at IS NULL)))`
+        ).length === 1,
       markRotated: async (id, replacedBy, at) => {
         await tx`UPDATE identity.auth_sessions SET replaced_by = ${replacedBy}, revoked_at = ${at} WHERE id = ${id}`;
       },

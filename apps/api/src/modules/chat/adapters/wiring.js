@@ -41,6 +41,7 @@ export function buildChatDeps(ctx) {
       linksAfterMessages: config.CHAT_LINKS_AFTER_MESSAGES,
     },
     clock,
+    newId: ctx.newId,
     logger: logger.child({ module: 'chat' }),
   };
   if (!definedOn.has(pipelines)) {

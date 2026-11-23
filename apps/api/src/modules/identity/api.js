@@ -1,4 +1,5 @@
 // @ts-check
+import { makeSessionGuard } from './application/sessions.js';
 import { makeUserQueries } from './application/users.js';
 
 /**
@@ -10,11 +11,14 @@ import { makeUserQueries } from './application/users.js';
  *   (`ACCOUNT_PENDING_REVIEW` while an ID-card review is pending).
  * - `pushTokensOf(userId)`: push tokens of the user's signed-in devices (Phase 10).
  * - `removePushToken(token)`: forgets a token the push provider reported invalid.
+ * - `requireLiveSession(ctx)`: UNAUTHENTICATED unless the caller's session is still live, for
+ *   sensitive routes of other modules (Phase 14).
  * @param {Pick<import('./ports.js').IdentityDeps, 'read' | 'uow'>} deps
  */
 export function createIdentityApi(deps) {
   return {
     ...makeUserQueries(deps),
+    requireLiveSession: makeSessionGuard(deps).requireLiveSession,
     /** @param {string} userId */
     pushTokensOf: (userId) => deps.read((stores) => stores.devices.pushTokensOf(userId)),
     /** @param {string} token */

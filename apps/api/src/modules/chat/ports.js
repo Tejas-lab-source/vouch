@@ -32,6 +32,8 @@
  *   close(id: string, at: Date): Promise<boolean>,
  *   forUser(userId: string, after: { activityAt: Date, id: string } | null, limit: number): Promise<(ConversationRecord & { activityAt: Date })[]>,
  *   openForUser(userId: string): Promise<ConversationRecord[]>,
+ *   allForUser(userId: string): Promise<ConversationRecord[]>,
+ *   replaceMembers(id: string, userLow: string, userHigh: string): Promise<void>,
  * }} conversations
  * @property {{
  *   insert(m: MessageRecord): Promise<void>,
@@ -52,6 +54,11 @@
  *   get(conversationId: string, userId: string): Promise<{ readSeq: number, deliveredSeq: number }>,
  *   removeForUser(userId: string): Promise<number>,
  * }} cursors
+ * @property {{
+ *   sharing(userIds: readonly string[]): Promise<Set<string>>,
+ *   put(userId: string, shareReadReceipts: boolean, at: Date): Promise<void>,
+ *   remove(userId: string): Promise<number>,
+ * }} settings  Chat privacy settings (Phase 14); a missing row means the defaults (off).
  */
 
 /**
@@ -77,6 +84,7 @@
  * @property {{ getMatch: (id: string) => Promise<{ id: string, userLow: string, userHigh: string, unmatchedAt: Date | null, anonymisedAt: Date | null } | null> }} matching
  * @property {{ messagesPerMinute: number, maxLinksPerMessage: number, linksAfterMessages: number }} settings
  * @property {{ now: () => Date }} clock
+ * @property {() => string} newId  Tombstone ids for deleted members (Phase 14).
  * @property {import('pino').Logger} logger
  */
 

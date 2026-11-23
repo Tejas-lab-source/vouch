@@ -15,7 +15,7 @@ const signedOutFetch = /** @type {any} */ (
         { status: 401 },
       );
     }
-    return new Response(JSON.stringify({ flags: {}, privacyNoticeVersion: 'draft' }), {
+    return new Response(JSON.stringify({ flags: {}, privacyNoticeVersion: '2026-11-draft' }), {
       status: 200,
     });
   }

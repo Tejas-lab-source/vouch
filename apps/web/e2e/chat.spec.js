@@ -1,7 +1,7 @@
 // @ts-check
 import { expect, test } from '@playwright/test';
 import { io } from 'socket.io-client';
-import { seriousViolations } from './axe.js';
+import { seriousViolations, wcagViolations } from './axe.js';
 import { BASE, matchedPair, openChat, SHOTS } from './flows.js';
 import { codeAfter, codeCount } from './stack.js';
 
@@ -49,14 +49,29 @@ test('two users chat in real time; read states; messages sent while offline arri
   const arjunLog = await openChat(arjun.page, 'Mira');
   expect(await seriousViolations(mira.page)).toEqual([]);
 
-  // Mira writes; Arjun sees it live; Mira's message shows "Read" once Arjun has it on screen.
+  // Mira writes; Arjun sees it live.
   const composer = mira.page.getByRole('textbox', { name: 'Message' });
   await composer.fill('Hi Arjun!');
   await composer.press('Enter');
   await expect(arjunLog.getByText('Hi Arjun!')).toBeVisible();
-  await expect(miraLog.getByTestId('message').filter({ hasText: 'Hi Arjun!' })).toContainText(
-    'Read',
-  );
+  // Read receipts are off by default (Phase 14, ADR 0024): Mira sees "Delivered", never "Read".
+  const first = miraLog.getByTestId('message').filter({ hasText: 'Hi Arjun!' });
+  await expect(first).toContainText('Delivered');
+  await mira.page.waitForTimeout(500);
+  await expect(first).not.toContainText('Read');
+  // Both turn "Share read receipts" on (reciprocal); Mira's message now shows "Read".
+  for (const [who, other] of /** @type {const} */ ([
+    [arjun, 'Mira'],
+    [mira, 'Arjun'],
+  ])) {
+    await who.page.getByRole('link', { name: 'Settings', exact: true }).click();
+    const toggle = who.page.getByRole('checkbox', { name: 'Share read receipts' });
+    await expect(toggle).not.toBeChecked();
+    await toggle.check();
+    await expect(toggle).toBeChecked();
+    await openChat(who.page, other);
+  }
+  await expect(first).toContainText('Read');
 
   // Arjun answers with the button.
   await arjun.page.getByRole('textbox', { name: 'Message' }).fill('Hello Mira');
@@ -156,6 +171,8 @@ test('settings: notification preferences and quiet hours are saved; safety centr
   await page.getByRole('textbox', { name: 'Time zone' }).fill('Asia/Kolkata');
   await page.getByRole('button', { name: 'Save' }).first().click();
   await expect(page.getByText('Saved.')).toBeVisible();
+  // Phase 14 accessibility pass: Settings meets WCAG 2.2 AA at every impact level.
+  expect(await wcagViolations(page)).toEqual([]);
   await page.reload();
   await expect(page.getByRole('checkbox', { name: 'New messages' })).not.toBeChecked();
   await expect(page.getByLabel('From')).toHaveValue('22:30');
@@ -166,7 +183,7 @@ test('settings: notification preferences and quiet hours are saved; safety centr
   expect(await seriousViolations(page)).toEqual([]);
   await page.goto('/settings/privacy');
   await expect(page.getByRole('heading', { name: 'Grievance officer' })).toBeVisible();
-  expect(await seriousViolations(page)).toEqual([]);
+  expect(await wcagViolations(page)).toEqual([]);
   await tara.context.close();
 });
 

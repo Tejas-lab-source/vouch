@@ -6,7 +6,8 @@ import { createAdminStores } from './pg/stores.js';
 
 /**
  * Signs admin access tokens: audience `vouch:admin`, `amr` [pwd, otp, mfa], the role, and
- * `ADMIN_TOKEN_TTL_MINUTES` (60). There is no refresh token: staff sign in again.
+ * `ADMIN_TOKEN_TTL_MINUTES` (60), and `sid`, the admin session checked on every request (Phase
+ * 14). There is no refresh token: staff sign in again.
  * @param {{ keys: import('../../../platform/config.js').JwtKey[], activeKid: string, ttlMinutes: number, clock: { now: () => Date } }} options
  */
 export function createAdminTokenSigner({ keys, activeKid, ttlMinutes, clock }) {
@@ -14,13 +15,17 @@ export function createAdminTokenSigner({ keys, activeKid, ttlMinutes, clock }) {
   /** @type {Promise<any> | null} */
   let privateKey = null;
   return {
-    /** @param {import('../ports.js').StaffMember} staff */
-    async sign(staff) {
+    /** @param {import('../ports.js').StaffMember} staff @param {string} sessionId */
+    async sign(staff, sessionId) {
       if (!active?.privateJwk) throw new Error(`no private key for the active kid ${activeKid}`);
       privateKey ??= importJWK(/** @type {import('jose').JWK} */ (active.privateJwk), 'EdDSA');
       const now = clock.now();
       const expiresAt = new Date(now.getTime() + ttlMinutes * 60_000);
-      const token = await new SignJWT({ amr: ['pwd', 'otp', 'mfa'], role: staff.role })
+      const token = await new SignJWT({
+        amr: ['pwd', 'otp', 'mfa'],
+        role: staff.role,
+        sid: sessionId,
+      })
         .setProtectedHeader({ alg: 'EdDSA', kid: activeKid, typ: 'JWT' })
         .setIssuer('vouch')
         .setAudience('vouch:admin')

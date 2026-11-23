@@ -23,7 +23,7 @@ const base = {
 
 describe('endpoint definitions', () => {
   it('every path is under /v1 and every id and route is unique', () => {
-    expect(ENDPOINTS.length).toBe(50);
+    expect(ENDPOINTS.length).toBe(53);
     for (const endpoint of ENDPOINTS) expect(endpoint.path.startsWith('/v1/')).toBe(true);
     expect(new Set(ENDPOINTS.map((e) => e.id)).size).toBe(ENDPOINTS.length);
     expect(new Set(ENDPOINTS.map((e) => `${e.method} ${e.path}`)).size).toBe(ENDPOINTS.length);
@@ -74,9 +74,10 @@ describe('endpoint definitions', () => {
 });
 
 describe('events', () => {
-  it('defines the 15 v1 events, all named noun.verb.vN', () => {
+  it('defines the 16 v1 events, all named noun.verb.vN', () => {
     expect(Object.keys(EVENTS).sort()).toEqual(
       [
+        'audit.recorded.v1',
         'deck.served.v1',
         'match.created.v1',
         'match.unmatched.v1',

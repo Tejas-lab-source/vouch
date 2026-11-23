@@ -34,7 +34,11 @@ describe('invariant: simultaneous likes create exactly one match (1,000 fresh pa
     await seed(infra.admin);
     const config = loadConfig(
       testEnv({
-        ROLE: 'all',
+        // REST only (Phase 14): the burst's 1,000 match.created events are counted in the outbox,
+        // not consumed. Since Phase 13 three modules consume them; with workers in this process
+        // they compete with the burst and skew the lock-hold timing this test measures (the
+        // isolation Phase 8 chose for the same reason).
+        ROLE: 'api',
         DATABASE_URL: infra.appUrl,
         DATABASE_POOL_MAX: '20',
         REDIS_URL: infra.redisUrl,

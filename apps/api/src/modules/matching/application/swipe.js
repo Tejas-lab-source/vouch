@@ -35,10 +35,13 @@ export function makeSwipe(deps) {
         await lockPair(tx, me, targetId);
         lockedAt = performance.now();
         const [low, high] = canonicalPair(me, targetId);
-        const decision = decideMatch({
-          blocked: await safety.blockPolicy.isBlocked(me, targetId, { tx }),
-          ...(await stores.swipes.pairState(me, targetId, low, high)),
-        });
+        // Both checks run under the lock, concurrently (Redis and Postgres), so the lock is
+        // held for one round trip fewer (Phase 14).
+        const [blocked, state] = await Promise.all([
+          safety.blockPolicy.isBlocked(me, targetId, { tx }),
+          stores.swipes.pairState(me, targetId, low, high),
+        ]);
+        const decision = decideMatch({ blocked, ...state });
         if (decision === 'blocked') throw new BlockedPair();
         if (decision === 'none') return NO_MATCH;
         const { match, created } = await stores.matches.createOrGet({

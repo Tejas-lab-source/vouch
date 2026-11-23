@@ -3370,7 +3370,7 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991,
-            "description": "The other member’s read cursor (Phase 13)."
+            "description": "The other member’s read cursor (Phase 13). 0 unless both members share read receipts (Phase 14)."
           }
         },
         "required": [
@@ -3379,6 +3379,107 @@
           "prevBeforeSeq",
           "peerDeliveredSeq",
           "peerReadSeq"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "getChatSettings": {
+      "module": "chat",
+      "method": "GET",
+      "path": "/v1/me/chat-settings",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "shareReadReceipts": {
+            "type": "boolean",
+            "description": "Off by default. Reciprocal: read states are shown only when both people share."
+          }
+        },
+        "required": [
+          "shareReadReceipts"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "putChatSettings": {
+      "module": "chat",
+      "method": "PUT",
+      "path": "/v1/me/chat-settings",
+      "auth": "user",
+      "idempotency": "none",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "UNAUTHENTICATED",
+        "ACCOUNT_BANNED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            }
+          },
+          "required": [
+            "x-app-version"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "shareReadReceipts": {
+              "type": "boolean",
+              "description": "Off by default. Reciprocal: read states are shown only when both people share."
+            }
+          },
+          "required": [
+            "shareReadReceipts"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "shareReadReceipts": {
+            "type": "boolean",
+            "description": "Off by default. Reciprocal: read states are shown only when both people share."
+          }
+        },
+        "required": [
+          "shareReadReceipts"
         ],
         "additionalProperties": false
       }
@@ -4253,6 +4354,63 @@
           "accessToken",
           "expiresAt",
           "admin"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "adminLogout": {
+      "module": "admin",
+      "method": "POST",
+      "path": "/v1/admin/auth/logout",
+      "auth": "admin",
+      "idempotency": "header",
+      "status": 200,
+      "errors": [
+        "VALIDATION_FAILED",
+        "MFA_REQUIRED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "IP_NOT_ALLOWED",
+        "APP_VERSION_UNSUPPORTED",
+        "RATE_LIMITED",
+        "INTERNAL"
+      ],
+      "request": {
+        "headers": {
+          "type": "object",
+          "properties": {
+            "x-app-version": {
+              "type": "string",
+              "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,6}$",
+              "description": "Client app version, for example 1.4.0."
+            },
+            "idempotency-key": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$",
+              "description": "Client-generated key, typically a UUID; reused only for retries of one request."
+            }
+          },
+          "required": [
+            "x-app-version",
+            "idempotency-key"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "loggedOut": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "loggedOut"
         ],
         "additionalProperties": false
       }
@@ -8745,6 +8903,73 @@
           "reviewId",
           "decision",
           "decidedAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "audit.recorded.v1": {
+      "producer": "admin",
+      "payload": {
+        "type": "object",
+        "properties": {
+          "auditId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "description": "The staff member (admin.admin_users id)."
+          },
+          "action": {
+            "type": "string",
+            "pattern": "^[a-z][a-z_.]{2,79}$"
+          },
+          "targetType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "targetId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "details": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "requestId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "auditId",
+          "actorId",
+          "action",
+          "targetType",
+          "targetId",
+          "details",
+          "requestId",
+          "occurredAt"
         ],
         "additionalProperties": false
       }

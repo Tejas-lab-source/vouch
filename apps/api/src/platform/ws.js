@@ -16,6 +16,11 @@ const normaliseError = (error) => /** @type {AppError} */ (normalise(error));
 /** Socket.IO pings every 25 s (ARCHITECTURE.md 9.3); a client that misses 20 s more is gone. */
 const PING_INTERVAL_MS = 25_000;
 const PING_TIMEOUT_MS = 20_000;
+/**
+ * Largest accepted socket message (Phase 14 security review): a chat message is at most a few
+ * KB. A larger frame closes the connection instead of being buffered (the default is 1 MB).
+ */
+export const SOCKET_MAX_MESSAGE_BYTES = 16 * 1024;
 /** Disconnects on shutdown are spread over at most this long, inside the drain window. */
 const DRAIN_SPREAD_MS = 20_000;
 
@@ -135,15 +140,31 @@ function ackError(error, requestId) {
  *   redis: import('./redis.js').RedisClients,
  *   clock: { now: () => Date },
  *   modules: readonly { module: string, handlers: SocketHandlers }[],
+ *   pressure?: import('./pressure.js').PressureGauge,
+ *   metrics?: import('./metrics.js').Metrics,
  * }} options
  */
-export function createSocketGateway({ server, config, logger, verifier, redis, clock, modules }) {
+export function createSocketGateway({
+  server,
+  config,
+  logger,
+  verifier,
+  redis,
+  clock,
+  modules,
+  pressure,
+  metrics,
+}) {
   const trust = createProxyTrust(config.TRUSTED_PROXIES);
   const graceMs = config.SOCKET_REFRESH_GRACE_SECONDS * 1000;
   const io = new Server(server, {
     transports: ['websocket'],
     pingInterval: PING_INTERVAL_MS,
     pingTimeout: PING_TIMEOUT_MS,
+    maxHttpBufferSize: SOCKET_MAX_MESSAGE_BYTES,
+    // No per-message compression: zlib state costs hundreds of KB per socket, and chat frames
+    // are small (Phase 14 memory review; this is also the engine.io default, pinned here).
+    perMessageDeflate: false,
     serveClient: false,
     cors: { origin: config.CORS_ORIGINS, credentials: true },
     adapter: createAdapter(redis.publisher, redis.subscriber),
@@ -174,7 +195,10 @@ export function createSocketGateway({ server, config, logger, verifier, redis, c
   };
 
   io.use(async (socket, next) => {
-    if (draining)
+    // Under overload, new sockets are refused (clients retry with backoff); connected ones stay.
+    const pressed = pressure?.overloaded();
+    if (pressed) metrics?.countShed('socket', pressed);
+    if (draining || pressed)
       return next(
         Object.assign(new Error('TEMPORARILY_UNAVAILABLE'), {
           data: { code: 'TEMPORARILY_UNAVAILABLE' },

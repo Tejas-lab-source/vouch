@@ -7,3 +7,6 @@ coverage/
 packages/contracts/openapi.json
 packages/contracts/schemas.json
 packages/ui-web/styles.css
+
+# Load-test results (git-ignored)
+load/out/

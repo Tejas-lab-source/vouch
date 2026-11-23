@@ -36,7 +36,7 @@ export const EnvSchema = z
       .string()
       .regex(/^\d+\.\d+\.\d+$/)
       .default('0.0.0'),
-    PRIVACY_NOTICE_VERSION: z.string().min(1).max(40).default('draft'),
+    PRIVACY_NOTICE_VERSION: z.string().min(1).max(40).default('2026-11-draft'),
     METRICS_PORT: z.coerce
       .number()
       .int()
@@ -128,6 +128,28 @@ export const EnvSchema = z
       .default(1000)
       .describe('Global limit per client IP for unauthenticated or rejected requests, per minute.'),
     ADMIN_IP_ALLOWLIST: csv.optional(),
+    // Overload protection (Phase 14): shed new requests and sockets under pressure.
+    PRESSURE_MAX_EVENT_LOOP_DELAY_MS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .default(250)
+      .describe('Mean event-loop delay over 1 s above which new requests get 503.'),
+    PRESSURE_MAX_HEAP_RATIO: z.coerce
+      .number()
+      .min(0.1)
+      .max(1)
+      .default(0.85)
+      .describe('Share of the V8 heap limit in use above which new requests get 503.'),
+    PRESSURE_MAX_IN_FLIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(128)
+      .describe(
+        'HTTP requests in progress above which new ones get 503: past it, requests only queue ' +
+          'for database connections and time out (Phase 14 load test).',
+      ),
 
     // Admin accounts (Phase 10, ADR 0018)
     ADMIN_TOTP_KEY: z

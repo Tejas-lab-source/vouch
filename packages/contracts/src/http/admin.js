@@ -337,6 +337,20 @@ export const adminLogin = defineEndpoint({
   errors: ['UNAUTHENTICATED', 'IP_NOT_ALLOWED'],
 });
 
+export const adminLogout = defineEndpoint({
+  id: 'adminLogout',
+  module: 'admin',
+  method: 'POST',
+  path: '/v1/admin/auth/logout',
+  auth: 'admin',
+  summary: 'Sign out: revokes this admin session at once (Phase 14).',
+  description:
+    'Every admin request checks its session, so the token stops working immediately. ' +
+    'Idempotent: signing out a revoked session returns the same result.',
+  body: EmptyBody,
+  response: { status: 200, schema: z.strictObject({ loggedOut: z.literal(true) }) },
+});
+
 /** A field shown in a panel list or detail view. */
 const PanelField = z.strictObject({
   field: z.string().regex(/^[a-zA-Z][a-zA-Z0-9.]{0,79}$/),
@@ -418,6 +432,7 @@ export const unblockUsers = defineEndpoint({
 
 export const adminEndpoints = [
   adminLogin,
+  adminLogout,
   listPanels,
   listOverdueDeletions,
   unblockUsers,

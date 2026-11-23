@@ -202,6 +202,32 @@ export const eventFixtures = {
       }),
     ],
   },
+  'event.audit.recorded.v1': {
+    valid: [
+      envelope('audit.recorded.v1', 1, {
+        auditId: s.ID,
+        actorId: s.ID2,
+        action: 'report.ban',
+        targetType: 'report',
+        targetId: s.ID,
+        details: {},
+        requestId: null,
+        occurredAt: s.TS,
+      }),
+    ],
+    invalid: [
+      envelope('audit.recorded.v1', 1, {
+        auditId: s.ID,
+        actorId: s.ID2,
+        action: 'Report Ban',
+        targetType: 'report',
+        targetId: s.ID,
+        details: {},
+        requestId: null,
+        occurredAt: s.TS,
+      }),
+    ],
+  },
   'event.match.unmatched.v1': {
     valid: [
       envelope('match.unmatched.v1', 1, {

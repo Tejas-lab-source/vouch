@@ -1,4 +1,5 @@
 // @ts-check
+import { recordAudit } from '../../../platform/uow.js';
 import { ServiceError, userBlocked } from '@vouch/contracts';
 import { canBlock } from '../domain/block.js';
 
@@ -93,11 +94,25 @@ export function makeBlocks(deps) {
 
   const unblock = useCase(
     'safety.unblock',
-    /** @param {{ blockerId: string, blockedId: string }} input */
-    async (input) => {
-      const removed = await uow.run(({ stores }) =>
-        stores.blocks.remove(input.blockerId, input.blockedId),
-      );
+    /**
+     * The staff trail comes in `ctx.audit` (ADR 0025): the removal and its audit entry commit
+     * together.
+     * @param {{ blockerId: string, blockedId: string, auditTarget?: { userId: string, otherUserId: string } }} input
+     */
+    async (input, ctx) => {
+      const removed = await uow.run(async ({ stores, emit }) => {
+        const gone = await stores.blocks.remove(input.blockerId, input.blockedId);
+        await recordAudit(emit, ctx.audit, {
+          action: 'block.remove',
+          targetType: 'user',
+          targetId: input.auditTarget?.userId ?? input.blockerId,
+          details: {
+            otherUserId: input.auditTarget?.otherUserId ?? input.blockedId,
+            removed: gone,
+          },
+        });
+        return gone;
+      });
       await blockCache.forget(input.blockerId, input.blockedId);
       return { unblocked: removed };
     },
@@ -113,6 +128,8 @@ export function makeBlocks(deps) {
     'safety.unblockMine',
     /** @param {{ userId: string }} input */
     async (input, ctx) => {
+      // Sensitive: removing a safety protection needs a live session (Phase 14).
+      await identity.requireLiveSession(ctx);
       const blockerId = /** @type {string} */ (ctx.actor?.userId);
       const [target] = await identity.getUsersByPublicIds([input.userId]);
       if (!target) return { unblocked: false };

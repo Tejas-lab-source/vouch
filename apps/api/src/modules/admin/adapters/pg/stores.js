@@ -36,11 +36,35 @@ export function createAdminStores(tx) {
               ),
             ),
     },
+    sessions: {
+      insert: async (s) => {
+        await tx`INSERT INTO admin.sessions (id, admin_id, created_at, expires_at)
+          VALUES (${s.id}, ${s.adminId}, ${s.createdAt}, ${s.expiresAt})`;
+      },
+      isLive: async (id, adminId, now) =>
+        (
+          await tx`SELECT 1 FROM admin.sessions WHERE id = ${id} AND admin_id = ${adminId}
+            AND revoked_at IS NULL AND expires_at > ${now}`
+        ).length === 1,
+      revoke: async (id, adminId, at) =>
+        (
+          await tx`UPDATE admin.sessions SET revoked_at = ${at}
+            WHERE id = ${id} AND admin_id = ${adminId} AND revoked_at IS NULL`
+        ).count === 1,
+      revokeAllFor: async (adminId, at) =>
+        (
+          await tx`UPDATE admin.sessions SET revoked_at = ${at}
+            WHERE admin_id = ${adminId} AND revoked_at IS NULL`
+        ).count,
+      purge: async (before) =>
+        (await tx`DELETE FROM admin.sessions WHERE expires_at < ${before}`).count,
+    },
     audit: {
       insert: async (e) => {
         await tx`INSERT INTO admin.audit_log (id, actor_id, action, target_type, target_id, details, request_id, created_at)
           VALUES (${e.id}, ${e.actorId}, ${e.action}, ${e.targetType}, ${e.targetId},
-            ${tx.json(e.details)}, ${e.requestId}, ${e.createdAt})`;
+            ${tx.json(e.details)}, ${e.requestId}, ${e.createdAt})
+          ON CONFLICT (id) DO NOTHING`;
       },
       list: async ({ before, limit, targetType, targetId }) =>
         /** @type {any} */ (

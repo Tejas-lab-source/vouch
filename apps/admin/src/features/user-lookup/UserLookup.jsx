@@ -1,8 +1,9 @@
 // @ts-check
-import { adminCreateBan, adminGetUser, adminListAuditLog, ApiError } from '@vouch/api-client';
+import { adminCreateBan, adminGetUser, ApiError } from '@vouch/api-client';
 import { t } from '@vouch/i18n';
 import { Button, Card, Input } from '@vouch/ui-web';
 import { useState } from 'react';
+import { awaitAuditEntry, newestAuditEntry } from '../../entities/audit-entry/await.js';
 import { describeAudit } from '../../entities/audit-entry/describe.js';
 
 /**
@@ -38,6 +39,7 @@ export function UserLookup({ client, role }) {
   async function ban() {
     setBusy(true);
     try {
+      const before = await newestAuditEntry(client, user.userId);
       await adminCreateBan(client, {
         body: {
           userId: user.userId,
@@ -45,8 +47,11 @@ export function UserLookup({ client, role }) {
           ...(ends ? { expiresAt: new Date(ends).toISOString() } : {}),
         },
       });
-      const log = await adminListAuditLog(client, { query: { limit: 1, targetId: user.userId } });
-      setAudit(log.items.at(0) ? describeAudit(/** @type {any} */ (log.items.at(0))) : null);
+      const entry = await awaitAuditEntry(client, {
+        targetId: user.userId,
+        beforeId: before?.id ?? null,
+      });
+      setAudit(entry ? describeAudit(/** @type {any} */ (entry)) : null);
       setConfirming(false);
       await find();
     } catch (failure) {

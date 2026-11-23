@@ -44,7 +44,7 @@
  * @property {<T>(fn: (stores: SafetyStores) => Promise<T>) => Promise<T>} read
  * @property {(tx: import('postgres').TransactionSql) => SafetyStores} storesFor  Stores on a caller's transaction.
  * @property {BlockCache} blockCache
- * @property {{ getUsersByPublicIds: (ids: readonly string[]) => Promise<{ id: string, publicId: string, status: string }[]>, getUsersByIds: (ids: readonly string[]) => Promise<{ id: string, publicId: string }[]> }} identity
+ * @property {{ getUsersByPublicIds: (ids: readonly string[]) => Promise<{ id: string, publicId: string, status: string }[]>, getUsersByIds: (ids: readonly string[]) => Promise<{ id: string, publicId: string }[]>, requireLiveSession: (ctx: any) => Promise<void> }} identity
  * @property {any} [profiles]  profiles' public API (Phase 10)
  * @property {any} [media]  media's public API (Phase 10)
  * @property {any} [pipelines]

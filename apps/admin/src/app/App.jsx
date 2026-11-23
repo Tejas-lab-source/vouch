@@ -19,8 +19,7 @@ export function App({ baseUrl = globalThis.location.origin, fetch }) {
           client={session.client}
           staff={staff}
           onSignOut={() => {
-            session.signOut();
-            queryClient.clear();
+            void session.signOut().then(() => queryClient.clear());
           }}
         />
       ) : (

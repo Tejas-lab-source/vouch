@@ -31,6 +31,13 @@ export function createMetrics() {
     registers: [registry],
   });
 
+  const shed = new Counter({
+    name: 'vouch_shed_total',
+    help: 'Requests and socket connections refused under overload (Phase 14).',
+    labelNames: ['kind', 'reason'],
+    registers: [registry],
+  });
+
   /** @type {Map<string, Gauge>} */
   const gauges = new Map();
 
@@ -52,6 +59,10 @@ export function createMetrics() {
         gauges.set(name, gauge);
       }
       gauge.set(labels, value);
+    },
+    /** @param {'http' | 'socket'} kind @param {string} reason */
+    countShed(kind, reason) {
+      shed.inc({ kind, reason });
     },
     /**
      * @param {{ method: string, route: string, statusCode: number, seconds: number }} sample

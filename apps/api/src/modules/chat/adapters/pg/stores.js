@@ -47,6 +47,15 @@ export function createChatStores(tx) {
             ORDER BY x.activity_at DESC, x.id DESC
             LIMIT ${limit}`
         ),
+      allForUser: async (userId) =>
+        /** @type {any} */ (
+          await tx`SELECT ${CONVERSATION} FROM chat.conversations
+            WHERE user_low = ${userId} OR user_high = ${userId}`
+        ),
+      replaceMembers: async (id, userLow, userHigh) => {
+        await tx`UPDATE chat.conversations SET user_low = ${userLow}, user_high = ${userHigh}
+          WHERE id = ${id}`;
+      },
       openForUser: async (userId) =>
         /** @type {any} */ (
           await tx`SELECT ${CONVERSATION} FROM chat.conversations
@@ -139,6 +148,24 @@ export function createChatStores(tx) {
       },
       removeForUser: async (userId) =>
         (await tx`DELETE FROM chat.read_cursors WHERE user_id = ${userId}`).count,
+    },
+    settings: {
+      sharing: async (userIds) => {
+        const rows =
+          userIds.length === 0
+            ? []
+            : await tx`SELECT user_id FROM chat.member_settings
+                WHERE user_id = ANY(${userIds}) AND share_read_receipts`;
+        return new Set(rows.map((r) => /** @type {string} */ (r.userId)));
+      },
+      put: async (userId, shareReadReceipts, at) => {
+        await tx`INSERT INTO chat.member_settings (user_id, share_read_receipts, updated_at)
+          VALUES (${userId}, ${shareReadReceipts}, ${at})
+          ON CONFLICT (user_id) DO UPDATE
+            SET share_read_receipts = EXCLUDED.share_read_receipts, updated_at = EXCLUDED.updated_at`;
+      },
+      remove: async (userId) =>
+        (await tx`DELETE FROM chat.member_settings WHERE user_id = ${userId}`).count,
     },
   };
 }

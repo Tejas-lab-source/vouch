@@ -27,7 +27,8 @@
     "contracts:diff": "node scripts/contracts-diff.js",
     "dev:keys": "node scripts/dev-keys.js",
     "new-module": "node scripts/new-module.js",
-    "check:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs"
+    "check:boundaries": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "check:secrets": "node scripts/secrets-scan.js"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

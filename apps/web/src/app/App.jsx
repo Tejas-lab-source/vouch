@@ -113,6 +113,8 @@ export function createRouter(services) {
       errorElement: <NotFoundPage />,
       children: [
         { path: '/sign-in', element: <SignInRoute /> },
+        // The privacy notice is public: it is read before an account exists (Phase 14).
+        { path: '/privacy', element: <PrivacyPage backTo="/sign-in" /> },
         {
           path: '/ui-kit',
           element: (

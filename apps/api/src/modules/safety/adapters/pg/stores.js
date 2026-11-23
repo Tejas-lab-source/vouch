@@ -86,6 +86,11 @@ export function createSafetyStores(tx) {
       },
       find: async (id) =>
         /** @type {any} */ ((await tx`SELECT * FROM safety.reports WHERE id = ${id}`)[0]) ?? null,
+      filedBy: async (reporterId) =>
+        /** @type {any} */ (
+          await tx`SELECT target_id, context, reason, status, created_at, closed_at
+            FROM safety.reports WHERE reporter_id = ${reporterId} ORDER BY created_at`
+        ),
       findForUpdate: async (id) =>
         /** @type {any} */ (
           (await tx`SELECT * FROM safety.reports WHERE id = ${id} FOR UPDATE`)[0]
@@ -126,6 +131,11 @@ export function createSafetyStores(tx) {
         (await tx`DELETE FROM safety.reports WHERE closed_at < ${olderThan}`).count,
     },
     verifications: {
+      forUser: async (userId) =>
+        /** @type {any} */ (
+          await tx`SELECT status, submitted_at, decided_at FROM safety.verification_reviews
+            WHERE user_id = ${userId} ORDER BY submitted_at`
+        ),
       insert: async (v) =>
         (
           await tx`INSERT INTO safety.verification_reviews (id, user_id, id_image_key, selfie_image_key, submitted_at)

@@ -294,6 +294,18 @@ export const httpFixtures = {
   // safety
   'blockUser.body': { valid: [{ targetId: s.PUBLIC_ID }], invalid: [{ targetId: s.ID }] },
   'blockUser.response': { valid: [{ blocked: true }], invalid: [{ blocked: 'yes' }] },
+  'getChatSettings.response': {
+    valid: [{ shareReadReceipts: false }],
+    invalid: [{}, { shareReadReceipts: 'no' }],
+  },
+  'putChatSettings.body': {
+    valid: [{ shareReadReceipts: true }],
+    invalid: [{}, { shareReadReceipts: true, extra: 1 }],
+  },
+  'putChatSettings.response': {
+    valid: [{ shareReadReceipts: true }],
+    invalid: [{ shareReadReceipts: null }],
+  },
   'listMyBlocks.response': {
     valid: [
       { items: [] },
@@ -529,6 +541,8 @@ export const httpFixtures = {
     invalid: [{ userId: s.PUBLIC_ID }],
   },
   'adminCreateBan.response': { valid: [s.ban], invalid: [{ ...s.ban, banId: 'x' }] },
+  'adminLogout.body': { valid: [{}], invalid: [{ everywhere: true }] },
+  'adminLogout.response': { valid: [{ loggedOut: true }], invalid: [{ loggedOut: false }] },
   'adminLogin.body': {
     valid: [{ email: 'mod@example.com', password: 'correct horse', totp: '123456' }],
     invalid: [

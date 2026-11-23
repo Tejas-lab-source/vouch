@@ -150,6 +150,15 @@ export const adminLogin = (client, input) =>
   client.call(ENDPOINTS.adminLogin, /** @type {CallInput} */ (input));
 
 /**
+ * POST /v1/admin/auth/logout — Sign out: revokes this admin session at once (Phase 14).
+ * @param {ApiClient} client
+ * @param {{ body: import('zod').input<typeof import('@vouch/contracts').adminLogout.body>, signal?: AbortSignal }} input
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').adminLogout.response.schema>>}
+ */
+export const adminLogout = (client, input) =>
+  client.call(ENDPOINTS.adminLogout, /** @type {CallInput} */ (input));
+
+/**
  * PUT /v1/admin/flags/{key} — Create or replace a flag. Connected clients receive `config.changed`.
  * @param {ApiClient} client
  * @param {{ params: import('zod').input<typeof import('@vouch/contracts').putFlag.params>, body: import('zod').input<typeof import('@vouch/contracts').putFlag.body>, signal?: AbortSignal }} input
@@ -229,6 +238,15 @@ export const deleteMyPhoto = (client, input) =>
  */
 export const exportData = (client, input = {}) =>
   client.call(ENDPOINTS.exportData, /** @type {CallInput} */ (input));
+
+/**
+ * GET /v1/me/chat-settings — Your chat privacy settings (defaults until first saved).
+ * @param {ApiClient} client
+ * @param {{ signal?: AbortSignal }} [input]
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').getChatSettings.response.schema>>}
+ */
+export const getChatSettings = (client, input = {}) =>
+  client.call(ENDPOINTS.getChatSettings, /** @type {CallInput} */ (input));
 
 /**
  * GET /v1/config — Evaluated flags, minimum app version, limits and campus info.
@@ -328,6 +346,15 @@ export const listMyBlocks = (client, input = {}) =>
  */
 export const logout = (client, input) =>
   client.call(ENDPOINTS.logout, /** @type {CallInput} */ (input));
+
+/**
+ * PUT /v1/me/chat-settings — Replace your chat privacy settings.
+ * @param {ApiClient} client
+ * @param {{ body: import('zod').input<typeof import('@vouch/contracts').putChatSettings.body>, signal?: AbortSignal }} input
+ * @returns {Promise<import('zod').output<typeof import('@vouch/contracts').putChatSettings.response.schema>>}
+ */
+export const putChatSettings = (client, input) =>
+  client.call(ENDPOINTS.putChatSettings, /** @type {CallInput} */ (input));
 
 /**
  * PUT /v1/me/notification-prefs — Replace push preferences and quiet hours.
@@ -569,6 +596,13 @@ export const ENDPOINTS = Object.freeze({
     auth: 'public',
     idempotency: 'header',
   },
+  adminLogout: {
+    id: 'adminLogout',
+    method: 'POST',
+    path: '/v1/admin/auth/logout',
+    auth: 'admin',
+    idempotency: 'header',
+  },
   adminPutFlag: {
     id: 'adminPutFlag',
     method: 'PUT',
@@ -629,6 +663,13 @@ export const ENDPOINTS = Object.freeze({
     id: 'exportData',
     method: 'GET',
     path: '/v1/me/export',
+    auth: 'user',
+    idempotency: 'none',
+  },
+  getChatSettings: {
+    id: 'getChatSettings',
+    method: 'GET',
+    path: '/v1/me/chat-settings',
     auth: 'user',
     idempotency: 'none',
   },
@@ -702,6 +743,13 @@ export const ENDPOINTS = Object.freeze({
     path: '/v1/auth/logout',
     auth: 'user',
     idempotency: 'header',
+  },
+  putChatSettings: {
+    id: 'putChatSettings',
+    method: 'PUT',
+    path: '/v1/me/chat-settings',
+    auth: 'user',
+    idempotency: 'none',
   },
   putNotificationPrefs: {
     id: 'putNotificationPrefs',

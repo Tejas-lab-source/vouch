@@ -521,3 +521,74 @@ All notable changes are recorded here, grouped by roadmap phase.
 - A burst of messages no longer refetches the conversation list per message.
 - Two flaky tests: the photo-reorder test no longer assumes upload order, and the
   invalid-push-token test waits for the delivery's final status.
+
+## Phase 14 — End-to-end testing, security, privacy and performance
+
+### Added
+
+- **Share read receipts** (owner, ADR 0024): `GET`/`PUT /v1/me/chat-settings`, off by default
+  and reciprocal. The server stops read receipts and the peer read cursor unless both people
+  share. It is a settings row on web and mobile, included in the export and erased with the
+  account.
+- **Audit integrity** (owner, ADR 0025): every staff change and its audit entry commit in the
+  same transaction. The owning module emits `audit.recorded.v1` (additive) through its outbox,
+  and admin stores it idempotently. Flags and sign-in write the row in their own transaction.
+  A failure-injection test proves an action never happens without its entry.
+- **Admin sessions** (owner, ADR 0026): `POST /v1/admin/auth/logout`; every admin token carries
+  a session id, checked on every admin request, so logout and revocation take effect at once.
+- **Sensitive user routes** (ADR 0026): device management, deletion, export and self-unblock
+  check that the session is still live, so a signed-out session's access token cannot use them.
+- **Security review** (`docs/security/threat-model.md`):
+  - an authorisation matrix over every route (no token, the wrong kind of token, a forged
+    token) and a wrong-user ids test
+  - header, CORS and injection tests
+  - a 64 KB HTTP body limit and a 16 KB socket message limit
+  - `pnpm audit --prod` clean, using overrides for `glob` and `minimatch`
+  - a secrets scan (`pnpm check:secrets --history`); the audit and the scan now run in CI
+- **Deletion erases everywhere:** chat replaces a deleted member's id in their conversations
+  with a tombstone. The nightly consistency check now covers every table that holds a user id
+  (`chat.member_settings`, `chat.conversations`, `profiles.profile_sections`,
+  `safety.photo_rejections` added). `test/db/user-data.test.js` keeps that list complete.
+- **Coverage:** thresholds of 85% (lines) on modules and 90% on the platform. Measured:
+  modules 94.8%, platform 97.4%.
+- **New invariants:**
+  - a worker killed mid-burst: no event lost, each processed once per consumer
+  - a block hides both users everywhere within one consumer cycle
+  - deletion erases everywhere
+  - gateway memory per idle socket
+- **Privacy (DPDP):**
+  - a versioned privacy notice (`@vouch/i18n/privacy-notice`, version `2026-11-draft`) shown
+    in full at sign-up (a "Read the privacy notice" dialog), on `/privacy` (public) and in
+    Settings, on web and mobile
+  - consent is only asked for a version the app can show
+  - the export now includes safety: your own blocks, reports filed and verification status,
+    never reports about you
+  - runbooks `docs/runbooks/{breach,incident,restore}.md`, with the 72-hour clock in breach
+- **Mobile swipe on the UI thread** (ADR 0027): the deck uses Gesture Handler 3.3 and
+  Reanimated 4.7 (Expo SDK 58's versions). The drag, fling and spring back are worklets, so a
+  busy JS thread cannot drop frames.
+- **Overload protection** (found by the 10x load test, where the API ran out of heap and
+  crashed):
+  - Under pressure, new requests get 503 `TEMPORARILY_UNAVAILABLE` with `Retry-After`, and
+    new sockets are refused. Work already accepted finishes, and health checks are never shed.
+  - Pressure means a mean event-loop delay above `PRESSURE_MAX_EVENT_LOOP_DELAY_MS` (250), or
+    a heap above `PRESSURE_MAX_HEAP_RATIO` (0.85) of V8's limit.
+  - At most `PRESSURE_MAX_IN_FLIGHT` (128) requests are in progress. When the database is the
+    bottleneck the process looks healthy while requests queue for connections, and a quick
+    503 beats a 60 s timeout.
+  - Refusals are counted in `vouch_shed_total`.
+  - The image gives V8 75% of the container (`--max-old-space-size-percentage=75`).
+- **Latency under contention** (found by the 20-run invariant loop):
+  - the swipe's block and pair checks run concurrently under the pair lock
+  - a chat send's independent lookups run concurrently
+  - the simultaneous-likes invariant runs the REST role only, so the consumers added since
+    Phase 13 do not skew its lock timing
+- **Performance:** synchronous pipeline steps run without a timer. The deck worker had
+  allocated a timer and a promise race per scorer per candidate, and the same load now uses
+  about a third less API CPU.
+- **Accessibility pass:**
+  - web: a strict WCAG 2.2 AA check (every impact level) on `/privacy` in both themes, on
+    Settings, and on keyboard-only sign-up with the notice dialog (Escape closes it, focus
+    returns)
+  - mobile: a static check that every `Pressable`, `Switch`, `TextInput` and `Image` has an
+    accessible name. This found `ListItem` without a label, now fixed.

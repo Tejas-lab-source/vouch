@@ -23,7 +23,7 @@ const H = { 'x-app-version': '1.0.0' };
 export const SIGNUP = {
   birthDate: '2005-01-31',
   gradYear: 2028,
-  consent: { noticeVersion: 'draft', purposes: ['matching'] },
+  consent: { noticeVersion: '2026-11-draft', purposes: ['matching'] },
 };
 
 /**
@@ -345,6 +345,19 @@ export async function startBackend(env = {}) {
   /** Audit entries, oldest first. */
   const auditRows = () =>
     infra.admin`SELECT action, target_type, target_id, details FROM admin.audit_log ORDER BY created_at, id`;
+  /**
+   * Audit entries once at least `count` are stored: they arrive through the outbox, a moment
+   * after the action commits (ADR 0025).
+   * @param {number} count
+   */
+  const auditRowsAtLeast = async (count) => {
+    const deadline = Date.now() + WAIT_MS;
+    for (;;) {
+      const rows = await auditRows();
+      if (rows.length >= count || Date.now() > deadline) return rows;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  };
 
   return {
     infra,
@@ -369,6 +382,7 @@ export async function startBackend(env = {}) {
     match,
     createStaff,
     auditRows,
+    auditRowsAtLeast,
     stop: async () => {
       await app?.stop(10_000).catch(() => {});
       await Promise.all([infra.stop(), s3.stop()]);

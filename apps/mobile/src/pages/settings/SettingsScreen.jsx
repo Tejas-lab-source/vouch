@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, Text } from 'react-native';
 import { AccountActions } from '../../features/account/AccountActions.jsx';
 import { BlockedUsers } from '../../features/blocked-users/BlockedUsers.jsx';
+import { ReadReceiptsSetting } from '../../features/chat-privacy/ReadReceiptsSetting.jsx';
 import { NotificationSettings } from '../../features/notification-settings/NotificationSettings.jsx';
 
 /** @param {{ text: string }} props */
@@ -33,6 +34,10 @@ export function SettingsScreen() {
       <Card>
         <Heading text={t('settings.notifications.title')} />
         <NotificationSettings />
+      </Card>
+      <Card>
+        <Heading text={t('settings.privacy.chat.title')} />
+        <ReadReceiptsSetting />
       </Card>
       <Card>
         <Heading text={t('settings.blocked.title')} />

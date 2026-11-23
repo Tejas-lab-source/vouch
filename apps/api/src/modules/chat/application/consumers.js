@@ -9,7 +9,7 @@ import { createPublicIds } from './views.js';
  * }} deps
  */
 export function makeChatConsumers(deps) {
-  const { identity, profiles, sockets, openConversation, closeConversation } = deps;
+  const { identity, profiles, sockets, openConversation, closeConversation, newId } = deps;
   const publicIdsOf = createPublicIds(identity);
 
   /** @typedef {{ stores: import('../ports.js').ChatStores, afterCommit: (fn: () => unknown) => void }} Scope */
@@ -65,7 +65,7 @@ export function makeChatConsumers(deps) {
 
     /**
      * `user.deleted.v1`: close every conversation of the user (the other person is told
-     * `deleted`), then erase the user's messages and read cursors.
+     * `deleted`), then erase the user's messages, read cursors and chat settings.
      * @param {{ userId: string }} payload
      * @param {Scope} scope
      */
@@ -75,6 +75,15 @@ export function makeChatConsumers(deps) {
       }
       await scope.stores.messages.removeBySender(userId);
       await scope.stores.cursors.removeForUser(userId);
+      await scope.stores.settings.remove(userId);
+      // The deleted member's id becomes a random tombstone, as matching does for the match
+      // (Phase 14): the other person keeps the closed conversation and their own messages,
+      // with nothing left that points at the deleted account.
+      for (const c of await scope.stores.conversations.allForUser(userId)) {
+        const other = c.userLow === userId ? c.userHigh : c.userLow;
+        const [low, high] = [other, newId()].sort();
+        await scope.stores.conversations.replaceMembers(c.id, low, high);
+      }
     },
   };
 }

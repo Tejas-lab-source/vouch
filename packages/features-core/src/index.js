@@ -53,9 +53,11 @@ export {
   timeToMinutes,
   useAccountActions,
   useBlockedUsers,
+  useChatSettings,
   useExportData,
   useNotificationPrefs,
   useUnblock,
+  useUpdateChatSettings,
   useUpdateNotificationPrefs,
 } from './settings/index.js';
 export { notificationTarget, usePushRegistration } from './push/index.js';

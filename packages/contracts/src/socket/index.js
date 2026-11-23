@@ -88,7 +88,9 @@ export const SERVER_EVENTS = Object.freeze({
   'receipt.updated': {
     description:
       'The other member’s delivered or read cursor moved (Phase 13): your messages up to ' +
-      '`deliveredSeq` reached their device, and up to `readSeq` were read. Cursors only.',
+      '`deliveredSeq` reached their device, and up to `readSeq` were read. Cursors only. ' +
+      '`readSeq` is 0, and read moves send nothing, unless both members share read receipts ' +
+      '(Phase 14).',
     payload: z.strictObject({
       conversationId: ConversationId,
       deliveredSeq: z.int().min(0),

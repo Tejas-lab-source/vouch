@@ -333,3 +333,11 @@
   resize: none;
   min-height: var(--touch-target);
 }
+
+/* The privacy notice (Phase 14): long text, readable line length. */
+.w-notice {
+  max-width: 68ch;
+}
+.w-notice p {
+  line-height: 1.55;
+}

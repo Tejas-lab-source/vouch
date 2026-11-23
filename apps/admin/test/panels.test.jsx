@@ -38,6 +38,7 @@ const panel = /** @type {any} */ ({
 function setup() {
   /** @type {{ method: string, path: string, body: any }[]} */
   const calls = [];
+  let acted = false;
   const fetch = /** @type {any} */ (
     async (/** @type {string} */ url, /** @type {any} */ init) => {
       const u = new URL(url);
@@ -62,22 +63,28 @@ function setup() {
         ];
       if (u.pathname === `/v1/admin/reports/${REPORT}`)
         reply = [200, { evidence: { note: 'rude' } }];
-      if (u.pathname === `/v1/admin/reports/${REPORT}/actions`) reply = [200, {}];
+      if (u.pathname === `/v1/admin/reports/${REPORT}/actions`) {
+        reply = [200, {}];
+        acted = true;
+      }
+      // The entry is stored from the outbox after the action (ADR 0025): none before it.
       if (u.pathname === '/v1/admin/audit-log')
         reply = [
           200,
           {
-            items: [
-              {
-                id: 'a1',
-                actorName: 'Asha Admin',
-                action: 'report.ban',
-                targetType: 'report',
-                targetId: REPORT,
-                details: {},
-                createdAt: '2026-11-22T10:00:00.000Z',
-              },
-            ],
+            items: !acted
+              ? []
+              : [
+                  {
+                    id: 'a1',
+                    actorName: 'Asha Admin',
+                    action: 'report.ban',
+                    targetType: 'report',
+                    targetId: REPORT,
+                    details: {},
+                    createdAt: '2026-11-22T10:00:00.000Z',
+                  },
+                ],
             nextCursor: null,
           },
         ];

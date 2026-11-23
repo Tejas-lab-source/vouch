@@ -2,8 +2,10 @@
 import { isAdult, isEmail, isIsoDate, isOtp } from '@vouch/domain';
 import { errorKey, useConfig, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Input, OtpInput } from '@vouch/ui-web';
+import { privacyNotice } from '@vouch/i18n/privacy-notice';
+import { Button, Input, Modal, OtpInput } from '@vouch/ui-web';
 import { useState } from 'react';
+import { PrivacyNoticeText } from '../../entities/privacy-notice/PrivacyNoticeText.jsx';
 
 /**
  * Sign-in: college email → six-digit code → (first time) birth date and consent → signed in.
@@ -20,7 +22,10 @@ export function SignInForm() {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
-  const noticeVersion = config.data?.privacyNoticeVersion ?? 'draft';
+  const noticeVersion = config.data?.privacyNoticeVersion ?? null;
+  // Consent is only asked for a notice this build can show (Phase 14).
+  const noticeShown = privacyNotice(noticeVersion) !== null;
+  const [readingNotice, setReadingNotice] = useState(false);
 
   /** @param {() => Promise<any>} action */
   const run = async (action) => {
@@ -103,6 +108,7 @@ export function SignInForm() {
           if (!isIsoDate(birthDate) || !isAdult(birthDate, new Date())) {
             return setError(t('auth.signup.underage'));
           }
+          if (!noticeShown || !noticeVersion) return setError(t('privacy.notice.unavailable'));
           if (!consent) return setError(t('auth.signup.consent.required'));
           void run(() =>
             auth.verify({
@@ -128,8 +134,18 @@ export function SignInForm() {
             checked={consent}
             onChange={(event) => setConsent(event.target.checked)}
           />
-          <span>{t('auth.signup.consent', { version: noticeVersion })}</span>
+          <span>{t('auth.signup.consent', { version: noticeVersion ?? '—' })}</span>
         </label>
+        <Button type="button" variant="ghost" onClick={() => setReadingNotice(true)}>
+          {t('auth.signup.readNotice')}
+        </Button>
+        <Modal
+          open={readingNotice}
+          onClose={() => setReadingNotice(false)}
+          title={t('settings.privacy.title')}
+        >
+          <PrivacyNoticeText version={noticeVersion} headingLevel={3} />
+        </Modal>
         {error ? (
           <p className="v-field__error" role="alert">
             {error}

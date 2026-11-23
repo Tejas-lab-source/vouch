@@ -24,6 +24,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the secrets scan reads every commit
 
       - uses: pnpm/action-setup@v6
 
@@ -49,6 +51,12 @@ jobs:
 
       - name: Boundary check
         run: pnpm check:boundaries
+
+      - name: Secrets scan (tracked files and every commit)
+        run: pnpm check:secrets --history
+
+      - name: Dependency audit (production dependencies)
+        run: pnpm audit --prod
 
       - name: Generated contracts are up to date
         run: pnpm contracts:check

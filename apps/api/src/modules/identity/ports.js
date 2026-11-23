@@ -57,6 +57,7 @@
  *   findByTokenHashForUpdate(tokenHash: Buffer): Promise<SessionRecord | null>,
  *   findById(id: string): Promise<SessionRecord | null>,
  *   findByIdForUpdate(id: string): Promise<SessionRecord | null>,
+ *   isLive(id: string, userId: string): Promise<boolean>,
  *   markRotated(id: string, replacedBy: string, at: Date): Promise<void>,
  *   revokeFamily(familyId: string, at: Date): Promise<number>,
  *   revokeAllForUser(userId: string, at: Date): Promise<number>,

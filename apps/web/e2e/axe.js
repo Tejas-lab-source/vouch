@@ -11,3 +11,17 @@ export async function seriousViolations(page) {
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
 }
+
+/**
+ * Every WCAG 2.2 A/AA violation, whatever its impact (the Phase 14 accessibility pass is
+ * stricter than the per-flow checks).
+ * @param {import('@playwright/test').Page} page
+ */
+export async function wcagViolations(page) {
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  return violations.map(
+    (v) => `${v.impact} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`,
+  );
+}

@@ -12,6 +12,12 @@ async function handlersOf(ctx) {
   return byContext.get(ctx);
 }
 
+/** @param {any} ctx @param {string} event */
+async function handlerFor(ctx, event) {
+  const { adminEventHandlers } = await import('./adapters/events/consumers.js');
+  return adminEventHandlers(await handlersOf(ctx)).get(event);
+}
+
 export default defineModule({
   name: 'admin',
   version: 1,
@@ -21,6 +27,10 @@ export default defineModule({
       const { adminRoutes } = await import('./adapters/http/routes.js');
       return adminRoutes(await handlersOf(ctx));
     },
+  },
+  // ADR 0025: every staff change is audited through the outbox of its own transaction.
+  subscribe: {
+    'audit.recorded.v1': (/** @type {any} */ ctx) => handlerFor(ctx, 'audit.recorded.v1'),
   },
   jobs: {
     queue: 'bulk',

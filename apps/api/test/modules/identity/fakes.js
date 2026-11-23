@@ -61,6 +61,15 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
         [...state.sessions.values()].find((s) => s.tokenHash.equals(h)) ?? null,
       findById: async (id) => state.sessions.get(id) ?? null,
       findByIdForUpdate: async (id) => state.sessions.get(id) ?? null,
+      isLive: async (id, userId) => {
+        const s = state.sessions.get(id);
+        if (!s || s.userId !== userId) return false;
+        if (!s.revokedAt) return true;
+        return (
+          s.replacedBy !== null &&
+          [...state.sessions.values()].some((f) => f.familyId === s.familyId && !f.revokedAt)
+        );
+      },
       markRotated: async (id, replacedBy, at) =>
         void Object.assign(state.sessions.get(id), { replacedBy, revokedAt: at }),
       revokeFamily: async (familyId, at) => revokeWhere((s) => s.familyId === familyId, at),
