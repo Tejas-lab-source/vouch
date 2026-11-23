@@ -11,7 +11,8 @@
   "files": [
     "src",
     "migrations",
-    "scripts/admin-create.js"
+    "scripts/admin-create.js",
+    "scripts/backup.js"
   ],
   "scripts": {
     "dev": "node --watch src/main.js",

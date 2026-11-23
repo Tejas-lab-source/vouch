@@ -1,0 +1,204 @@
+# Render Blueprint (Phase 15, ADR 0028). Staging and production, one Blueprint.
+#
+# Secrets are `sync: false`: Render asks for them when the Blueprint is created, and they are
+# typed into the dashboard (never committed). docs/infrastructure.md lists each one, where it
+# comes from, and which owner checklist item provides it.
+#
+# Deploys are not automatic: the Deploy workflow (.github/workflows/deploy.yml) deploys the
+# tested commit to staging, then (after approval) the same commit to production, through
+# Render's API. Migrations run as the pre-deploy command (expand-only, ADR 0006).
+
+previews:
+  generation: off
+
+services:
+  # ---------------------------------------------------------------- production
+  - type: web
+    name: vouch-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: standard # 1 CPU, 2 GB (ADR 0028)
+    numInstances: 1
+    autoDeploy: false
+    healthCheckPath: /ready
+    preDeployCommand: node migrations/run.js up
+    maxShutdownDelaySeconds: 30 # the app drains for SHUTDOWN_DRAIN_MS (25 s)
+    domains:
+      - api.example.app # placeholder until the owner's domain (checklist A1)
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: DEPLOY_ENV, value: production }
+      - { key: ROLE, value: all }
+      - { key: LOG_LEVEL, value: info }
+      - key: DATABASE_URL
+        fromDatabase: { name: vouch-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: vouch-kv, property: connectionString }
+      # Generated with `node scripts/gen-secrets.js production` (secrets).
+      - { key: JWT_SIGNING_KEYS, sync: false }
+      - { key: JWT_ACTIVE_KID, sync: false }
+      - { key: EMAIL_HMAC_SECRET, sync: false }
+      - { key: COOKIE_SECRET, sync: false }
+      - { key: ADMIN_TOTP_KEY, sync: false }
+      - { key: METRICS_SCRAPE_TOKEN, sync: false }
+      # Domains and origins (not secret; set after checklist A1).
+      - { key: CORS_ORIGINS, sync: false }
+      - { key: CDN_BASE_URL, sync: false }
+      - { key: TRUSTED_PROXIES, sync: false }
+      - { key: ADMIN_IP_ALLOWLIST, sync: false }
+      - { key: PRIVACY_NOTICE_VERSION, value: 2026-11-draft }
+      # Storage: Cloudflare R2 (checklist B4).
+      - { key: R2_ACCOUNT_ID, sync: false }
+      - { key: R2_BUCKET, sync: false }
+      - { key: R2_ACCESS_KEY_ID, sync: false }
+      - { key: R2_SECRET_ACCESS_KEY, sync: false }
+      # Email: Resend (B7).
+      - { key: EMAIL_PROVIDER, value: resend }
+      - { key: EMAIL_FROM, sync: false }
+      - { key: RESEND_API_KEY, sync: false }
+      - { key: ADMIN_ALERT_EMAIL, sync: false }
+      # Captcha: Turnstile (B6).
+      - { key: CAPTCHA_PROVIDER, value: turnstile }
+      - { key: TURNSTILE_SECRET_KEY, sync: false }
+      # Push: Expo (B11).
+      - { key: PUSH_PROVIDER, value: expo }
+      - { key: EXPO_ACCESS_TOKEN, sync: false }
+      # Photo moderation: AWS Rekognition in Mumbai (B8).
+      - { key: MODERATION_PROVIDER, value: rekognition }
+      - { key: MODERATION_AWS_REGION, value: ap-south-1 }
+      - { key: MODERATION_AWS_ACCESS_KEY_ID, sync: false }
+      - { key: MODERATION_API_KEY, sync: false } # the AWS secret access key
+      # Observability: Sentry (B9), Grafana Cloud OTLP (B10).
+      - { key: SENTRY_DSN, sync: false }
+      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
+      - { key: OTEL_EXPORTER_OTLP_HEADERS, sync: false }
+      - { key: OTEL_RESOURCE_ATTRIBUTES, value: deployment.environment=production }
+
+  - type: cron
+    name: vouch-backup
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node scripts/backup.js
+    region: singapore
+    plan: starter
+    schedule: '17 21 * * *' # 02:47 IST, nightly
+    autoDeploy: false
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: DEPLOY_ENV, value: production }
+      - key: DATABASE_URL
+        fromDatabase: { name: vouch-db, property: connectionString }
+      - { key: R2_ACCOUNT_ID, sync: false }
+      - { key: R2_BUCKET, sync: false }
+      - { key: R2_ACCESS_KEY_ID, sync: false }
+      - { key: R2_SECRET_ACCESS_KEY, sync: false }
+      - { key: BACKUP_RETENTION_DAYS, value: '14' }
+
+  - type: keyvalue
+    name: vouch-kv
+    region: singapore
+    plan: starter
+    maxmemoryPolicy: noeviction # BullMQ needs every key kept
+    ipAllowList: [] # internal network only
+
+  # ---------------------------------------------------------------- staging
+  - type: web
+    name: vouch-api-staging
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: starter # staging: smallest plan, synthetic data only
+    numInstances: 1
+    autoDeploy: false
+    healthCheckPath: /ready
+    preDeployCommand: node migrations/run.js up
+    maxShutdownDelaySeconds: 30
+    domains:
+      - api.staging.example.app # placeholder until checklist A1
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: DEPLOY_ENV, value: staging }
+      - { key: ROLE, value: all }
+      - { key: LOG_LEVEL, value: info }
+      - key: DATABASE_URL
+        fromDatabase: { name: vouch-db-staging, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: vouch-kv-staging, property: connectionString }
+      - { key: JWT_SIGNING_KEYS, sync: false }
+      - { key: JWT_ACTIVE_KID, sync: false }
+      - { key: EMAIL_HMAC_SECRET, sync: false }
+      - { key: COOKIE_SECRET, sync: false }
+      - { key: ADMIN_TOTP_KEY, sync: false }
+      - { key: METRICS_SCRAPE_TOKEN, sync: false }
+      - { key: CORS_ORIGINS, sync: false }
+      - { key: CDN_BASE_URL, sync: false }
+      - { key: TRUSTED_PROXIES, sync: false }
+      - { key: ADMIN_IP_ALLOWLIST, sync: false }
+      - { key: PRIVACY_NOTICE_VERSION, value: 2026-11-draft }
+      - { key: R2_ACCOUNT_ID, sync: false }
+      - { key: R2_BUCKET, sync: false }
+      - { key: R2_ACCESS_KEY_ID, sync: false }
+      - { key: R2_SECRET_ACCESS_KEY, sync: false }
+      - { key: EMAIL_PROVIDER, value: resend }
+      - { key: EMAIL_FROM, sync: false }
+      - { key: RESEND_API_KEY, sync: false }
+      - { key: ADMIN_ALERT_EMAIL, sync: false }
+      - { key: CAPTCHA_PROVIDER, value: turnstile }
+      - { key: TURNSTILE_SECRET_KEY, sync: false }
+      - { key: PUSH_PROVIDER, value: expo }
+      - { key: EXPO_ACCESS_TOKEN, sync: false }
+      - { key: MODERATION_PROVIDER, value: rekognition }
+      - { key: MODERATION_AWS_REGION, value: ap-south-1 }
+      - { key: MODERATION_AWS_ACCESS_KEY_ID, sync: false }
+      - { key: MODERATION_API_KEY, sync: false }
+      - { key: SENTRY_DSN, sync: false }
+      - { key: OTEL_EXPORTER_OTLP_ENDPOINT, sync: false }
+      - { key: OTEL_EXPORTER_OTLP_HEADERS, sync: false }
+      - { key: OTEL_RESOURCE_ATTRIBUTES, value: deployment.environment=staging }
+
+  - type: cron
+    name: vouch-backup-staging
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node scripts/backup.js
+    region: singapore
+    plan: starter
+    schedule: '47 21 * * *'
+    autoDeploy: false
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: DEPLOY_ENV, value: staging }
+      - key: DATABASE_URL
+        fromDatabase: { name: vouch-db-staging, property: connectionString }
+      - { key: R2_ACCOUNT_ID, sync: false }
+      - { key: R2_BUCKET, sync: false }
+      - { key: R2_ACCESS_KEY_ID, sync: false }
+      - { key: R2_SECRET_ACCESS_KEY, sync: false }
+      - { key: BACKUP_RETENTION_DAYS, value: '7' }
+
+  - type: keyvalue
+    name: vouch-kv-staging
+    region: singapore
+    plan: free # staging only; persistence off either way
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+databases:
+  - name: vouch-db
+    databaseName: vouch
+    region: singapore
+    plan: basic-1gb # 0.5 CPU, 1 GB (ADR 0028)
+    postgresMajorVersion: '17'
+    ipAllowList: [] # no access from outside Render
+
+  - name: vouch-db-staging
+    databaseName: vouch
+    region: singapore
+    plan: basic-256mb
+    postgresMajorVersion: '17'
+    ipAllowList: []

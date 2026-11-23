@@ -2,14 +2,17 @@
 
 /**
  * Starts OpenTelemetry tracing when an OTLP endpoint is configured; otherwise a no-op (spans
- * from the use-case pipeline then go to the no-op tracer). For full auto-instrumentation of ESM
- * libraries, start Node with `--import @opentelemetry/auto-instrumentations-node/register`
- * (Phase 15 deploy config); this also instruments CommonJS dependencies such as `pg`.
+ * from the use-case pipeline then go to the no-op tracer). The deployed image starts Node with
+ * `--import ./src/otel-preload.js`, which starts the SDK before any library is imported (so
+ * ESM libraries are instrumented); this function then does nothing.
  * @param {{ endpoint?: string, serviceName: string }} options
  * @returns {Promise<() => Promise<void>>} Shutdown function.
  */
 export async function startTracing({ endpoint, serviceName }) {
   if (!endpoint) return async () => {};
+  // Started by src/otel-preload.js before any import (the deployed image): one SDK only. It
+  // flushes on its own at shutdown.
+  if (/** @type {any} */ (globalThis).__vouchOtelPreloaded) return async () => {};
   const [{ NodeSDK }, { getNodeAutoInstrumentations }, { OTLPTraceExporter }] = await Promise.all([
     import('@opentelemetry/sdk-node'),
     import('@opentelemetry/auto-instrumentations-node'),
