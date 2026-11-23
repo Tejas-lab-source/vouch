@@ -150,6 +150,9 @@ export function createSocketGateway({ server, config, logger, verifier, redis, c
     pingInterval: PING_INTERVAL_MS,
     pingTimeout: PING_TIMEOUT_MS,
     maxHttpBufferSize: SOCKET_MAX_MESSAGE_BYTES,
+    // No per-message compression: zlib state costs hundreds of KB per socket, and chat frames
+    // are small (Phase 14 memory review; this is also the engine.io default, pinned here).
+    perMessageDeflate: false,
     serveClient: false,
     cors: { origin: config.CORS_ORIGINS, credentials: true },
     adapter: createAdapter(redis.publisher, redis.subscriber),
