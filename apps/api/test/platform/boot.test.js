@@ -89,6 +89,69 @@ describe('boot', () => {
     }, 30_000);
   });
 
+  it('serves /internal/metrics on the public port only for the scrape token, with the ops gauges (Phase 15)', async () => {
+    const token = 's'.repeat(40);
+    // ROLE=api: no relay or workers, so the seeded rows and jobs stay put.
+    const runtime = await start({ ROLE: 'api', METRICS_SCRAPE_TOKEN: token });
+    try {
+      // An unpublished event 2 minutes old, a dead-lettered job, a waiting job and a backup.
+      await infra.admin`INSERT INTO platform.outbox (name, version, payload, created_at)
+        VALUES ('thing.happened.v1', 1, '{}', now() - interval '2 minutes')`;
+      await infra.admin`INSERT INTO platform.backup_runs (environment, object_key, bytes, taken_at)
+        VALUES ('staging', 'backups/staging/x.dump', 10, now() - interval '3 hours')`;
+      await runtime.platform.jobs.deadLetterQueue('fast').add('x', {});
+      await runtime.platform.jobs.queue('external').pause();
+      await runtime.platform.jobs
+        .queue('external')
+        .add('y', {}, { timestamp: Date.now() - 90_000 });
+
+      for (const headers of [{}, { authorization: 'Bearer wrong' }, { authorization: token }]) {
+        const refused = await runtime.http.inject({ url: '/internal/metrics', headers });
+        expect(refused.statusCode).toBe(404);
+        expect(refused.body).not.toContain('vouch_');
+      }
+      const scrape = await runtime.http.inject({
+        url: '/internal/metrics',
+        headers: { authorization: `Bearer ${token}` },
+      });
+      expect(scrape.statusCode).toBe(200);
+      expect(scrape.headers['cache-control']).toBe('no-store');
+      const value = (/** @type {string} */ line) => {
+        const found = scrape.body.split('\n').find((l) => l.startsWith(`${line} `));
+        return found ? Number(found.slice(line.length + 1)) : Number.NaN;
+      };
+      expect(value('vouch_outbox_lag_seconds')).toBeGreaterThanOrEqual(115);
+      expect(value('vouch_outbox_unpublished')).toBeGreaterThanOrEqual(1);
+      expect(value('vouch_backup_age_seconds')).toBeGreaterThanOrEqual(3 * 3600 - 5);
+      expect(value('vouch_dead_letter_jobs{queue="fast"}')).toBe(1);
+      expect(value('vouch_dead_letter_jobs{queue="bulk"}')).toBe(0);
+      expect(value('vouch_queue_oldest_waiting_seconds{queue="external"}')).toBeGreaterThanOrEqual(
+        85,
+      );
+      expect(value('vouch_queue_oldest_waiting_seconds{queue="fast"}')).toBe(0);
+      expect(scrape.body).toContain('process_cpu_user_seconds_total');
+      // The internal port serves the same gauges.
+      const internal = await runtime.metricsServer.inject({ url: '/metrics' });
+      expect(internal.body).toContain('vouch_outbox_lag_seconds');
+    } finally {
+      await runtime.platform.jobs.queue('external').obliterate({ force: true });
+      await runtime.platform.jobs.deadLetterQueue('fast').obliterate({ force: true });
+      await infra.admin`UPDATE platform.outbox SET published_at = now() WHERE published_at IS NULL`;
+      await infra.admin`DELETE FROM platform.backup_runs`;
+      await runtime.stop(5_000);
+    }
+  }, 30_000);
+
+  it('/internal/metrics does not exist without a scrape token', async () => {
+    const runtime = await start({ ROLE: 'api' });
+    const response = await runtime.http.inject({
+      url: '/internal/metrics',
+      headers: { authorization: 'Bearer anything' },
+    });
+    expect(response.statusCode).toBe(404);
+    await runtime.stop(5_000);
+  });
+
   it('/ready reflects a stopped Redis, logs only the change, and recovers', async () => {
     const { lines, logger } = capturingLogger();
     const runtime = await start({ ROLE: 'api' }, logger);

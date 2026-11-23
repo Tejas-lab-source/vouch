@@ -12,7 +12,7 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { authHooks } from './auth.js';
 import { clientIpOf, createProxyTrust, resolveClientIp } from './client-ip.js';
 import { enterContext } from './context.js';
@@ -46,12 +46,47 @@ export const rateLimitKey = (request) =>
  * @property {import('ioredis').Redis} redis  Backs the rate limiter.
  * @property {ReturnType<import('./health.js').createReadiness>} readiness
  * @property {import('./metrics.js').Metrics} metrics
+ * @property {{ collect: () => Promise<void> }} [ops]  Refreshes the operational gauges before a scrape.
  * @property {(error: unknown) => void} [reportError]
  * @property {boolean} [apiRoutes]  false for the ws and worker roles (health only).
  * @property {{ module: string, plugin: any }[]} [routes]  Module route plugins.
  * @property {import('./pressure.js').PressureGauge} [pressure]  Sheds new requests under
  *   overload (503, Retry-After); health checks are never shed.
  */
+
+/** Health checks and the metrics scrape: never shed or rate-limited. @param {string} url */
+const isOperational = (url) =>
+  url === '/health' || url === '/ready' || url === SCRAPE_PATH || url.startsWith(`${SCRAPE_PATH}?`);
+
+/** Grafana Cloud scrapes the public port here (Phase 15); the internal port keeps /metrics. */
+export const SCRAPE_PATH = '/internal/metrics';
+
+/** @param {string} value */
+const digest = (value) => createHash('sha256').update(value).digest();
+
+/**
+ * `GET /internal/metrics`: the Prometheus text, for a bearer token compared in constant time.
+ * Any other request gets the same 404 as an unknown route, so the path reveals nothing.
+ * @param {import('fastify').FastifyInstance} app
+ * @param {{ metrics: import('./metrics.js').Metrics, ops?: { collect: () => Promise<void> }, token: string }} deps
+ */
+function registerScrapeRoute(app, { metrics, ops, token }) {
+  const expected = digest(`Bearer ${token}`);
+  app.get(
+    SCRAPE_PATH,
+    { logLevel: 'silent', config: { auth: 'public' } },
+    async (request, reply) => {
+      const given = request.headers.authorization;
+      if (typeof given !== 'string' || !timingSafeEqual(digest(given), expected)) {
+        notFoundHandler(request, reply);
+        return reply;
+      }
+      await ops?.collect();
+      reply.header('cache-control', 'no-store').type(metrics.registry.contentType);
+      return metrics.registry.metrics();
+    },
+  );
+}
 
 /**
  * Builds the public HTTP server: security headers, CORS allowlist, cookies, Redis-backed rate
@@ -67,6 +102,7 @@ export async function buildHttpServer({
   redis,
   readiness,
   metrics,
+  ops,
   reportError,
   apiRoutes = true,
   routes = [],
@@ -112,7 +148,7 @@ export async function buildHttpServer({
   // connections, and an immediate 503 beats a 60 s timeout.
   let inFlight = 0;
   app.addHook('onRequest', async (request, reply) => {
-    if (request.url === '/health' || request.url === '/ready') return;
+    if (isOperational(request.url)) return;
     const reason =
       pressure?.overloaded() ?? (inFlight >= config.PRESSURE_MAX_IN_FLIGHT ? 'in_flight' : null);
     if (reason) {
@@ -145,10 +181,13 @@ export async function buildHttpServer({
     redis,
     nameSpace: 'platform:rl:',
     skipOnError: true,
-    allowList: (request) => request.url === '/health' || request.url === '/ready',
+    allowList: (request) => isOperational(request.url),
   });
 
   registerHealthRoutes(app, { readiness });
+  if (config.METRICS_SCRAPE_TOKEN) {
+    registerScrapeRoute(app, { metrics, ops, token: config.METRICS_SCRAPE_TOKEN });
+  }
   if (!apiRoutes) return app;
 
   if (config.NODE_ENV !== 'production') {

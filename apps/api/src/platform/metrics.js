@@ -86,15 +86,121 @@ export function createMetrics() {
 
 /**
  * Serves `/metrics` on its own port (never the public API port).
- * @param {{ metrics: Metrics, port: number, host: string }} options
+ * @param {{ metrics: Metrics, port: number, host: string, ops?: { collect: () => Promise<void> } }} options
  * @returns {Promise<import('fastify').FastifyInstance>}
  */
-export async function startMetricsServer({ metrics, port, host }) {
+export async function startMetricsServer({ metrics, port, host, ops }) {
   const server = Fastify({ logger: false });
   server.get('/metrics', async (_request, reply) => {
+    await ops?.collect();
     reply.type(metrics.registry.contentType);
     return metrics.registry.metrics();
   });
   await server.listen({ port, host });
   return server;
 }
+
+/** Scrapes faster than this reuse the last collection (one Grafana scrape a minute is normal). */
+const OPS_COLLECT_MIN_INTERVAL_MS = 10_000;
+
+/**
+ * Operational gauges for the launch alerts (Phase 15), read from Postgres and Redis when
+ * metrics are scraped rather than on a timer, so an idle process does no work for them:
+ * - `vouch_outbox_lag_seconds`: age of the oldest unpublished outbox event (0 when none).
+ * - `vouch_outbox_unpublished`: unpublished outbox events.
+ * - `vouch_dead_letter_jobs{queue}`: jobs waiting in `dlq.<queue>` for inspection.
+ * - `vouch_queue_oldest_waiting_seconds{queue}`: age of the oldest job waiting to start.
+ * - `vouch_backup_age_seconds`: age of the newest recorded backup (absent until the first).
+ * A failed read is logged and leaves the previous values; it never fails the scrape.
+ * @param {{
+ *   metrics: Metrics,
+ *   db: import('./db.js').Database,
+ *   jobs: import('./jobs.js').JobRunner,
+ *   queueNames: readonly string[],
+ *   logger: import('pino').Logger,
+ *   now?: () => number,
+ * }} deps
+ */
+export function createOpsGauges({ metrics, db, jobs, queueNames, logger, now = Date.now }) {
+  let lastAt = -Infinity;
+  /** @type {Promise<void> | null} */
+  let inFlight = null;
+
+  const collectDatabase = async () => {
+    const [outbox, backup] = await db.read('platform', (tx) =>
+      Promise.all([
+        tx`SELECT count(*)::int AS unpublished,
+              coalesce(extract(epoch FROM now() - min(created_at)), 0)::float8 AS lag
+            FROM platform.outbox WHERE published_at IS NULL`,
+        tx`SELECT extract(epoch FROM now() - max(taken_at))::float8 AS age
+            FROM platform.backup_runs`,
+      ]),
+    );
+    metrics.setGauge(
+      'vouch_outbox_lag_seconds',
+      'Age of the oldest unpublished outbox event, in seconds (0 when none).',
+      {},
+      outbox[0]?.lag ?? 0,
+    );
+    metrics.setGauge(
+      'vouch_outbox_unpublished',
+      'Outbox events not yet published by the relay.',
+      {},
+      outbox[0]?.unpublished ?? 0,
+    );
+    const age = backup[0]?.age;
+    if (typeof age === 'number') {
+      metrics.setGauge(
+        'vouch_backup_age_seconds',
+        'Age of the newest recorded database backup, in seconds.',
+        {},
+        age,
+      );
+    }
+  };
+
+  /** @param {string} queue */
+  const collectQueue = async (queue) => {
+    const dlq = await jobs.deadLetterQueue(queue).getJobCounts('waiting', 'delayed', 'prioritized');
+    metrics.setGauge(
+      'vouch_dead_letter_jobs',
+      'Jobs in the dead-letter queue dlq.<queue>, waiting for inspection or replay.',
+      { queue },
+      Object.values(dlq).reduce((a, b) => a + b, 0),
+    );
+    const [oldest] = await jobs.queue(queue).getJobs(['waiting'], 0, 0, true);
+    metrics.setGauge(
+      'vouch_queue_oldest_waiting_seconds',
+      'Age of the oldest job waiting to start in a queue, in seconds (0 when none).',
+      { queue },
+      oldest ? Math.max(0, (now() - oldest.timestamp) / 1000) : 0,
+    );
+  };
+
+  const collectOnce = async () => {
+    const results = await Promise.allSettled([
+      collectDatabase(),
+      ...queueNames.map((queue) => collectQueue(queue)),
+    ]);
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        logger.warn({ err: result.reason }, 'ops metrics collection failed');
+      }
+    }
+  };
+
+  return {
+    /** Refreshes the gauges, at most once per 10 s; concurrent callers share one run. */
+    async collect() {
+      if (inFlight) return inFlight;
+      if (now() - lastAt < OPS_COLLECT_MIN_INTERVAL_MS) return;
+      lastAt = now();
+      inFlight = collectOnce().finally(() => {
+        inFlight = null;
+      });
+      return inFlight;
+    },
+  };
+}
+
+/** @typedef {ReturnType<typeof createOpsGauges>} OpsGauges */

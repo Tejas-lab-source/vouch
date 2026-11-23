@@ -28,6 +28,7 @@ const EXPECTED_MIGRATIONS = [
   '20261123100100_admin_sessions',
   '20261123100200_platform_user_data_grants',
   '20261123100300_platform_backup_runs',
+  '20261123100400_platform_outbox_notify',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */

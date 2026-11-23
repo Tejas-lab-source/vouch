@@ -289,6 +289,30 @@ describe('event bus: outbox → relay → per-consumer queues → inbox', () => 
     await relay.stop();
   });
 
+  it('an idle relay wakes on NOTIFY: a new event is published well inside the 2 s poll (Phase 15)', async () => {
+    const runner = newJobs();
+    const relay = createRelay({ db, jobs: runner, subscriptions: new Map(), logger });
+    relay.start();
+    // Let the first (empty) batch run, so the loop is waiting on its idle timer.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const latencies = [];
+    for (let n = 0; n < 5; n += 1) {
+      const started = performance.now();
+      const id = await emit(100 + n);
+      await eventually(
+        async () =>
+          (await infra.admin`SELECT published_at FROM platform.outbox WHERE id = ${id}`)[0]
+            ?.published_at,
+        5_000,
+      );
+      latencies.push(performance.now() - started);
+      // Back to idle before the next event.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    await relay.stop();
+    expect(Math.max(...latencies)).toBeLessThan(500);
+  }, 30_000);
+
   it('purges published outbox rows and old inbox rows past retention', async () => {
     const id = await emit(11);
     await infra.admin`UPDATE platform.outbox SET published_at = now() - interval '8 days' WHERE id = ${id}`;

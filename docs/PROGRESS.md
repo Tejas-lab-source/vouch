@@ -3,23 +3,49 @@
 Status values: `Not started`, `Plan sent`, `In progress`, `Report sent`, `Approved`.
 See `docs/ROADMAP.md` Part A for the approval protocol.
 
-| #   | Phase                                                                   | Status    | Start approved           | Completed approved | Report             |
-| --- | ----------------------------------------------------------------------- | --------- | ------------------------ | ------------------ | ------------------ |
-| 1   | Repository foundation and tooling                                       | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-01.md |
-| 2   | Database architecture and migrations                                    | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-02.md |
-| 3   | API, event and socket contracts                                         | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-03.md |
-| 4   | Backend platform kernel                                                 | Approved  | 2026-11-21               | 2026-11-21         | phases/PHASE-04.md |
-| 5   | Identity and authentication                                             | Approved  | 2026-11-21               | 2026-11-22         | phases/PHASE-05.md |
-| 6   | Profiles, media and photo pipeline                                      | Approved  | 2026-11-22               | 2026-11-22         | phases/PHASE-06.md |
-| 7   | Safety core and discovery engine                                        | Approved  | 2026-11-22               | 2026-11-22         | phases/PHASE-07.md |
-| 8   | Matching                                                                | Approved  | 2026-11-22               | 2026-11-22         | phases/PHASE-08.md |
-| 9   | Realtime chat                                                           | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-09.md |
-| 10  | Notifications, moderation and admin backend                             | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-10.md |
-| 11  | Frontend foundation                                                     | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-11.md |
-| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-12.md |
-| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Approved  | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-13.md |
-| 14  | End-to-end testing, security, privacy and performance                   | Approved  | 2026-11-23 (batch rules) | 2026-11-23         | phases/PHASE-14.md |
-| 15  | Deployment, observability and closed beta launch                        | Plan sent | —                        | —                  | phases/PHASE-15.md |
+| #   | Phase                                                                   | Status      | Start approved           | Completed approved | Report             |
+| --- | ----------------------------------------------------------------------- | ----------- | ------------------------ | ------------------ | ------------------ |
+| 1   | Repository foundation and tooling                                       | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-01.md |
+| 2   | Database architecture and migrations                                    | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-02.md |
+| 3   | API, event and socket contracts                                         | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-03.md |
+| 4   | Backend platform kernel                                                 | Approved    | 2026-11-21               | 2026-11-21         | phases/PHASE-04.md |
+| 5   | Identity and authentication                                             | Approved    | 2026-11-21               | 2026-11-22         | phases/PHASE-05.md |
+| 6   | Profiles, media and photo pipeline                                      | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-06.md |
+| 7   | Safety core and discovery engine                                        | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-07.md |
+| 8   | Matching                                                                | Approved    | 2026-11-22               | 2026-11-22         | phases/PHASE-08.md |
+| 9   | Realtime chat                                                           | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-09.md |
+| 10  | Notifications, moderation and admin backend                             | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-10.md |
+| 11  | Frontend foundation                                                     | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-11.md |
+| 12  | Frontend features I (onboarding, profile, discovery, matching)          | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-12.md |
+| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-13.md |
+| 14  | End-to-end testing, security, privacy and performance                   | Approved    | 2026-11-23 (batch rules) | 2026-11-23         | phases/PHASE-14.md |
+| 15  | Deployment, observability and closed beta launch                        | In progress | 2026-11-23               | —                  | phases/PHASE-15.md |
+
+## Phase 15 run (owner, 2026-11-23)
+
+**Approval:** "Approved: start Phase 15". Normal per-phase rules apply. When the phase is
+complete (the launch checklist fully ticked), send the Completion Report and stop.
+
+**Dependencies approved** (exact versions, at least two weeks old): `wrangler`, `eas-cli`,
+`@sentry/react`, `@sentry/react-native`, `@sentry/vite-plugin`.
+
+**Owner decisions:**
+
+1. **Domain:** bought on Cloudflare Registrar; the name is not sent yet. Build with a
+   placeholder (`example.app`) and wait for the real name only at the deploy step.
+2. **Staging:** the smallest plans (about $13 a month), synthetic data only.
+3. **Email:** Resend.
+4. **Monitoring:** Sentry and Grafana Cloud free tiers.
+5. **First campus:** JIIT Noida, invite-only with invite codes. The exact student email
+   domain is not sent yet (a placeholder until then).
+
+**Rules for this run:**
+
+- Build everything that does not need owner items first.
+- When blocked, name the exact checklist item and stop.
+- **Never ask for a secret in chat:** the owner enters secrets into Render or GitHub.
+
+The owner is working through items A1–A3 now.
 
 ## Phase 14 approval and the beta plan (owner, 2026-11-23)
 

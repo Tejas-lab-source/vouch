@@ -153,7 +153,13 @@ describe('safety and discovery (ROLE=all, the 2,000-user seed)', () => {
     const policy = app.boot.apis.get('safety').blockPolicy;
     expect(await policy.isBlocked(v.id, target)).toBe(true);
     expect(await policy.isBlocked(target, v.id)).toBe(true);
-    // Stale decks: put each at the head of the other's deck before any consumer can run.
+    // The user.blocked.v1 consumer removes the pair from the decks (the target was at the head
+    // of the viewer's). The relay wakes on NOTIFY (Phase 15), so this is usually immediate.
+    await eventually(
+      async () => !(await redis.lrange(`discovery:deck:${v.id}`, 0, -1)).includes(target),
+      WAIT_MS,
+    );
+    // Stale decks after the consumer has run: the read-time filter still drops the pair.
     await redis.lpush(`discovery:deck:${v.id}`, target);
     await redis.lpush(`discovery:deck:${target}`, v.id);
     await redis.expire(`discovery:deck:${target}`, 3600);
@@ -166,7 +172,7 @@ describe('safety and discovery (ROLE=all, the 2,000-user seed)', () => {
     await redis.del(`safety:blocked:${v.id}`, `safety:blocked:${target}`);
     expect(await policy.isBlocked(target, v.id)).toBe(true);
     expect(await redis.sismember(`safety:blocked:${target}`, v.id)).toBe(1);
-    // Blocking twice is a no-op with one event; the consumer removes the pair from both decks.
+    // Blocking twice is a no-op with one event.
     await app.http.inject({
       method: 'POST',
       url: '/v1/blocks',
@@ -176,11 +182,6 @@ describe('safety and discovery (ROLE=all, the 2,000-user seed)', () => {
     const events = await infra.admin`SELECT 1 FROM platform.outbox
       WHERE name = 'user.blocked.v1' AND payload->>'blockerId' = ${v.id}`;
     expect(events).toHaveLength(1);
-    await redis.lpush(`discovery:deck:${v.id}`, target);
-    await eventually(
-      async () => !(await redis.lrange(`discovery:deck:${v.id}`, 0, -1)).includes(target),
-      WAIT_MS,
-    );
     // Rebuilt decks exclude the pair too (SQL and filter).
     await redis.del(`discovery:deck:${v.id}`);
     await deckReady(v.id);
