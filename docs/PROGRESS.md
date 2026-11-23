@@ -17,7 +17,7 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 10  | Notifications, moderation and admin backend                             | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-10.md |
 | 11  | Frontend foundation                                                     | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-11.md |
 | 12  | Frontend features I (onboarding, profile, discovery, matching)          | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-12.md |
-| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | In progress                     | 2026-11-22 (batch) | —                  | —                  |
+| 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Complete — pending owner review | 2026-11-22 (batch) | —                  | phases/PHASE-13.md |
 | 14  | End-to-end testing, security, privacy and performance                   | Not started                     | —                  | —                  | —                  |
 | 15  | Deployment, observability and closed beta launch                        | Not started                     | —                  | —                  | —                  |
 
@@ -104,13 +104,13 @@ gzipped.
 
 **Running log** (updated as the batch goes; resume from the last row after an interruption):
 
-| Phase | Status                          | Last commit | CI run                                                                          | Next step                     |
-| ----- | ------------------------------- | ----------- | ------------------------------------------------------------------------------- | ----------------------------- |
-| 9     | Complete — pending owner review | `f8519dd`   | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan           |
-| 10    | Complete — pending owner review | `62e108d`   | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                             |
-| 11    | Complete — pending owner review | `d0c3b16`   | [run 74](https://github.com/Tejas-lab-source/vouch/actions/runs/45055946738) ✅ | —                             |
-| 12    | Complete — pending owner review | `9875936`   | [run 82](https://github.com/Tejas-lab-source/vouch/actions/runs/45061138745) ✅ | —                             |
-| 13    | In progress                     | —           | —                                                                               | Backend additions, chat hooks |
+| Phase | Status                          | Last commit     | CI run                                                                          | Next step                                     |
+| ----- | ------------------------------- | --------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
+| 9     | Complete — pending owner review | `f8519dd`       | [run 58](https://github.com/Tejas-lab-source/vouch/actions/runs/44996401012) ✅ | Phase 10 start plan                           |
+| 10    | Complete — pending owner review | `62e108d`       | [run 68](https://github.com/Tejas-lab-source/vouch/actions/runs/45017563607) ✅ | —                                             |
+| 11    | Complete — pending owner review | `d0c3b16`       | [run 74](https://github.com/Tejas-lab-source/vouch/actions/runs/45055946738) ✅ | —                                             |
+| 12    | Complete — pending owner review | `9875936`       | [run 82](https://github.com/Tejas-lab-source/vouch/actions/runs/45061138745) ✅ | —                                             |
+| 13    | Complete — pending owner review | (report commit) | see the PR                                                                      | Owner review; then "Approved: start Phase 14" |
 
 ## Notes for later phases
 
