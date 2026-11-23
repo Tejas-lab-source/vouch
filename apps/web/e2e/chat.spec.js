@@ -1,7 +1,7 @@
 // @ts-check
 import { expect, test } from '@playwright/test';
 import { io } from 'socket.io-client';
-import { seriousViolations } from './axe.js';
+import { seriousViolations, wcagViolations } from './axe.js';
 import { BASE, matchedPair, openChat, SHOTS } from './flows.js';
 import { codeAfter, codeCount } from './stack.js';
 
@@ -171,6 +171,8 @@ test('settings: notification preferences and quiet hours are saved; safety centr
   await page.getByRole('textbox', { name: 'Time zone' }).fill('Asia/Kolkata');
   await page.getByRole('button', { name: 'Save' }).first().click();
   await expect(page.getByText('Saved.')).toBeVisible();
+  // Phase 14 accessibility pass: Settings meets WCAG 2.2 AA at every impact level.
+  expect(await wcagViolations(page)).toEqual([]);
   await page.reload();
   await expect(page.getByRole('checkbox', { name: 'New messages' })).not.toBeChecked();
   await expect(page.getByLabel('From')).toHaveValue('22:30');
@@ -181,7 +183,7 @@ test('settings: notification preferences and quiet hours are saved; safety centr
   expect(await seriousViolations(page)).toEqual([]);
   await page.goto('/settings/privacy');
   await expect(page.getByRole('heading', { name: 'Grievance officer' })).toBeVisible();
-  expect(await seriousViolations(page)).toEqual([]);
+  expect(await wcagViolations(page)).toEqual([]);
   await tara.context.close();
 });
 

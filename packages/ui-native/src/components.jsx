@@ -302,6 +302,8 @@ export function ListItem({ title, subtitle, leading, trailing, onPress }) {
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
+      // One announcement for the row (Phase 14): the title, then the subtitle.
+      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
       disabled={!onPress}
       onPress={onPress}
       onPressIn={() => setPressed(true)}

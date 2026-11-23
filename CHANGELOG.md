@@ -567,3 +567,9 @@ All notable changes are recorded here, grouped by roadmap phase.
 - **Mobile swipe on the UI thread** (ADR 0027): the deck uses Gesture Handler 3.3 and
   Reanimated 4.7 (Expo SDK 58's versions). The drag, fling and spring back are worklets, so a
   busy JS thread cannot drop frames.
+- **Accessibility pass:**
+  - web: a strict WCAG 2.2 AA check (every impact level) on `/privacy` in both themes, on
+    Settings, and on keyboard-only sign-up with the notice dialog (Escape closes it, focus
+    returns)
+  - mobile: a static check that every `Pressable`, `Switch`, `TextInput` and `Image` has an
+    accessible name. This found `ListItem` without a label, now fixed.
