@@ -91,8 +91,11 @@ test('a reported user is banned from the admin console, with the audit entry sho
   await expect(page.getByRole('cell', { name: 'Harassment in chat.' })).toBeVisible();
 
   // Vikram is signed out (sessions revoked; the socket is closed) and cannot sign back in.
-  await vikram.page.reload();
-  await expect(vikram.page).toHaveURL(/\/sign-in$/, { timeout: 30_000 });
+  // Revocation reaches identity through the ban event, so reload until it has landed.
+  await expect(async () => {
+    await vikram.page.reload();
+    await expect(vikram.page).toHaveURL(/\/sign-in$/, { timeout: 3000 });
+  }).toPass({ timeout: 30_000 });
   // Priya's chat with him has ended.
   await expect(priya.page.getByRole('status').filter({ hasText: 'ended' })).toHaveText(
     'This conversation has ended.',
