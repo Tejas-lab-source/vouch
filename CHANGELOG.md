@@ -564,3 +564,6 @@ All notable changes are recorded here, grouped by roadmap phase.
   - the export now includes safety: your own blocks, reports filed and verification status,
     never reports about you
   - runbooks `docs/runbooks/{breach,incident,restore}.md`, with the 72-hour clock in breach
+- **Mobile swipe on the UI thread** (ADR 0027): the deck uses Gesture Handler 3.3 and
+  Reanimated 4.7 (Expo SDK 58's versions). The drag, fling and spring back are worklets, so a
+  busy JS thread cannot drop frames.

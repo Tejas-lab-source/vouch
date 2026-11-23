@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { UpdateRequired } from '../pages/update/UpdateRequired.jsx';
 import { APP_VERSION } from '../shared/config/index.js';
@@ -27,14 +28,17 @@ export function AppRoot({ children }) {
       .finally(() => setRestored(true));
   }, [services]);
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={services.queryClient}>
-        <AppServicesProvider services={services}>
-          <StatusBar style="auto" />
-          {restored ? <UpdateGate>{children}</UpdateGate> : null}
-        </AppServicesProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    // Gestures (the deck swipe) run on the UI thread: the root view hosts their handlers.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={services.queryClient}>
+          <AppServicesProvider services={services}>
+            <StatusBar style="auto" />
+            {restored ? <UpdateGate>{children}</UpdateGate> : null}
+          </AppServicesProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
