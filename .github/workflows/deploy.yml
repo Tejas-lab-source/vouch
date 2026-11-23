@@ -11,7 +11,7 @@ name: Deploy
 #   vars:    RENDER_SERVICE_ID, RENDER_BACKUP_SERVICE_ID, API_URL, WEB_URL, ADMIN_URL, CDN_URL,
 #            UPLOAD_ORIGIN, CLOUDFLARE_ACCOUNT_ID, PAGES_PROJECT_WEB, PAGES_PROJECT_ADMIN,
 #            SENTRY_ORG, SENTRY_INGEST, SENTRY_DSN_WEB, SENTRY_DSN_ADMIN, TURNSTILE_SITE_KEY,
-#            GRIEVANCE_EMAIL
+#            GRIEVANCE_EMAIL, and optionally PAGES_PROJECT_LANDING with SITE_URL (the landing page)
 
 on:
   push:
@@ -89,6 +89,9 @@ jobs:
           GRIEVANCE_EMAIL: ${{ vars.GRIEVANCE_EMAIL }}
           PAGES_PROJECT_WEB: ${{ vars.PAGES_PROJECT_WEB }}
           PAGES_PROJECT_ADMIN: ${{ vars.PAGES_PROJECT_ADMIN }}
+          PAGES_PROJECT_LANDING: ${{ vars.PAGES_PROJECT_LANDING }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          WEB_URL: ${{ vars.WEB_URL }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: scripts/deploy-pages.sh
@@ -165,6 +168,9 @@ jobs:
           GRIEVANCE_EMAIL: ${{ vars.GRIEVANCE_EMAIL }}
           PAGES_PROJECT_WEB: ${{ vars.PAGES_PROJECT_WEB }}
           PAGES_PROJECT_ADMIN: ${{ vars.PAGES_PROJECT_ADMIN }}
+          PAGES_PROJECT_LANDING: ${{ vars.PAGES_PROJECT_LANDING }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          WEB_URL: ${{ vars.WEB_URL }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: scripts/deploy-pages.sh

@@ -24,10 +24,12 @@ function origin(value, name) {
 }
 
 /**
- * @param {{ app: 'web' | 'admin', api: string, cdn?: string, upload?: string, sentry?: string }} options
+ * @param {{ app: 'web' | 'admin' | 'landing', api?: string, cdn?: string, upload?: string, sentry?: string }} options
  * @returns {string} the `_headers` file
  */
 export function pagesHeaders({ app, api, cdn, upload, sentry }) {
+  if (app === 'landing') return landingHeaders();
+  if (!api) throw new Error('--api is required');
   const apiOrigin = /** @type {string} */ (origin(api, '--api'));
   const socket = apiOrigin.replace(/^https:/, 'wss:');
   const cdnOrigin = origin(cdn, '--cdn');
@@ -71,6 +73,26 @@ export function pagesHeaders({ app, api, cdn, upload, sentry }) {
   return lines.join('\n');
 }
 
+/** The landing page: static HTML with an inline stylesheet and no scripts at all. */
+function landingHeaders() {
+  const csp = [
+    "default-src 'none'",
+    "img-src 'self' data:",
+    "style-src 'unsafe-inline'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+  return [
+    '/*',
+    `  Content-Security-Policy: ${csp}`,
+    '  Strict-Transport-Security: max-age=31536000; includeSubDomains',
+    '  X-Content-Type-Options: nosniff',
+    '  Referrer-Policy: strict-origin-when-cross-origin',
+    '',
+  ].join('\n');
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -83,16 +105,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     },
   });
   const [dist] = positionals;
-  if (!dist || (values.app !== 'web' && values.app !== 'admin') || !values.api) {
+  const app = values.app;
+  if (
+    !dist ||
+    (app !== 'web' && app !== 'admin' && app !== 'landing') ||
+    (app !== 'landing' && !values.api)
+  ) {
     process.stderr.write(
-      'usage: node scripts/pages-headers.js <dist> --app web|admin --api <https origin> ' +
+      'usage: node scripts/pages-headers.js <dist> --app web|admin|landing --api <https origin> ' +
         '[--cdn <origin>] [--upload <origin>] [--sentry <origin>]\n',
     );
     process.exitCode = 1;
   } else {
     const file = join(dist, '_headers');
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- the build folder given
-    await writeFile(file, pagesHeaders({ ...values, app: values.app, api: values.api }));
+    await writeFile(file, pagesHeaders({ ...values, app }));
     process.stdout.write(`wrote ${file}\n`);
   }
 }

@@ -1,0 +1,4 @@
+# Cloudflare Pages project for the landing page (Phase 15), on the apex domain.
+name = "vouch-landing"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-01"

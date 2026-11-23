@@ -1,6 +1,6 @@
 // @ts-check
 import { describe, expect, it, vi } from 'vitest';
-import { createMetrics, createOpsGauges } from '../../src/platform/metrics.js';
+import { createMetrics, createOpsGauges, redisMemoryRatio } from '../../src/platform/metrics.js';
 
 /** @param {{ failDb?: boolean }} [options] */
 function setup({ failDb = false } = {}) {
@@ -46,5 +46,11 @@ describe('ops gauges (Phase 15)', () => {
     await ops.collect();
     expect(logger.warn).toHaveBeenCalledTimes(1);
     expect(await metrics.registry.metrics()).toContain('vouch_dead_letter_jobs{queue="fast"} 3');
+  });
+
+  it('reads the Redis memory share from INFO memory', () => {
+    expect(redisMemoryRatio('# Memory\r\nused_memory:700\r\nmaxmemory:1000\r\n')).toBe(0.7);
+    expect(redisMemoryRatio('used_memory:700\r\nmaxmemory:0\r\n')).toBeNull();
+    expect(redisMemoryRatio('nothing')).toBeNull();
   });
 });

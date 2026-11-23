@@ -1,5 +1,7 @@
 // @ts-check
 import { describe, expect, it } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import { renderLanding } from '../../../../scripts/landing-build.js';
 import { pagesHeaders } from '../../../../scripts/pages-headers.js';
 
 /** @param {string} file */
@@ -52,5 +54,29 @@ describe('Cloudflare Pages headers (Phase 15)', () => {
 
   it('refuses a non-HTTPS origin', () => {
     expect(() => pagesHeaders({ app: 'web', api: 'http://api.example.app' })).toThrow(/https/);
+  });
+
+  it('landing: no scripts at all', () => {
+    const policy = csp(pagesHeaders({ app: 'landing' }));
+    expect(policy.get('default-src')).toEqual(["'none'"]);
+    expect(policy.has('script-src')).toBe(false);
+  });
+
+  it('landing page: every placeholder is filled with the deployed origins, or the build fails', async () => {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- a fixed file
+    const html = await readFile(
+      new URL('../../../../apps/landing/index.html', import.meta.url),
+      'utf8',
+    );
+    const out = renderLanding(html, {
+      SITE_URL: 'https://example.app/',
+      WEB_URL: 'https://app.example.app',
+      GRIEVANCE_EMAIL: 'grievance@example.app',
+    });
+    expect(out).not.toMatch(/\{\{/);
+    expect(out).toContain('href="https://app.example.app/privacy"');
+    expect(out).toContain('content="https://example.app/og.png"');
+    expect(out).not.toMatch(/<script/i);
+    expect(() => renderLanding(html, { SITE_URL: 'https://example.app' })).toThrow(/WEB_URL/);
   });
 });

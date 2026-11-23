@@ -111,6 +111,7 @@ const OPS_COLLECT_MIN_INTERVAL_MS = 10_000;
  * - `vouch_dead_letter_jobs{queue}`: jobs waiting in `dlq.<queue>` for inspection.
  * - `vouch_queue_oldest_waiting_seconds{queue}`: age of the oldest job waiting to start.
  * - `vouch_backup_age_seconds`: age of the newest recorded backup (absent until the first).
+ * - `vouch_redis_memory_ratio`: Redis `used_memory / maxmemory` (absent without a maxmemory).
  * A failed read is logged and leaves the previous values; it never fails the scrape.
  * @param {{
  *   metrics: Metrics,
@@ -118,10 +119,11 @@ const OPS_COLLECT_MIN_INTERVAL_MS = 10_000;
  *   jobs: import('./jobs.js').JobRunner,
  *   queueNames: readonly string[],
  *   logger: import('pino').Logger,
+ *   redis?: { info: (section: string) => Promise<string> },
  *   now?: () => number,
  * }} deps
  */
-export function createOpsGauges({ metrics, db, jobs, queueNames, logger, now = Date.now }) {
+export function createOpsGauges({ metrics, db, jobs, queueNames, logger, redis, now = Date.now }) {
   let lastAt = -Infinity;
   /** @type {Promise<void> | null} */
   let inFlight = null;
@@ -177,9 +179,23 @@ export function createOpsGauges({ metrics, db, jobs, queueNames, logger, now = D
     );
   };
 
+  const collectRedis = async () => {
+    if (!redis) return;
+    const ratio = redisMemoryRatio(await redis.info('memory'));
+    if (ratio !== null) {
+      metrics.setGauge(
+        'vouch_redis_memory_ratio',
+        'Redis used_memory as a share of maxmemory (BullMQ needs noeviction: alert at 0.7).',
+        {},
+        ratio,
+      );
+    }
+  };
+
   const collectOnce = async () => {
     const results = await Promise.allSettled([
       collectDatabase(),
+      collectRedis(),
       ...queueNames.map((queue) => collectQueue(queue)),
     ]);
     for (const result of results) {
@@ -204,3 +220,15 @@ export function createOpsGauges({ metrics, db, jobs, queueNames, logger, now = D
 }
 
 /** @typedef {ReturnType<typeof createOpsGauges>} OpsGauges */
+
+/**
+ * `used_memory / maxmemory` from `INFO memory`; null when maxmemory is 0 (no limit).
+ * @param {string} info
+ * @returns {number | null}
+ */
+export function redisMemoryRatio(info) {
+  const used = Number(/^used_memory:(\d+)/m.exec(info)?.[1] ?? Number.NaN);
+  const max = Number(/^maxmemory:(\d+)/m.exec(info)?.[1] ?? Number.NaN);
+  if (!Number.isFinite(used) || !Number.isFinite(max) || max <= 0) return null;
+  return used / max;
+}

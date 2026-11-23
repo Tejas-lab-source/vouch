@@ -1,0 +1,493 @@
+{
+  "title": "vouch-production",
+  "folderUid": "vouch",
+  "interval": 60,
+  "rules": [
+    {
+      "uid": "vouch-api-down",
+      "title": "API not scraped (down or unreachable)",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "3m",
+      "noDataState": "Alerting",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "critical",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "Grafana cannot scrape the production API for 3 minutes.",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-api-down"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "max(up{job=\"vouch-production\"})",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "lt",
+                  "params": [1]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-error-rate",
+      "title": "API 5xx above 2%",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "5m",
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "critical",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "More than 2% of API requests failed with 5xx for 5 minutes.",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-error-rate"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "sum(rate(http_requests_errors_total{job=\"vouch-production\",route!~\"/health|/ready|/internal/metrics\"}[5m])) / clamp_min(sum(rate(http_request_duration_seconds_count{job=\"vouch-production\",route!~\"/health|/ready|/internal/metrics\"}[5m])), 1e-9)",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [0.02]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-outbox-lag",
+      "title": "Outbox lag above 60 s",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "2m",
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "critical",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "Events are not being published: the oldest is over 60 s old.",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-outbox-lag"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "max(vouch_outbox_lag_seconds{job=\"vouch-production\"})",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [60]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-dead-letters",
+      "title": "Dead-letter queue not empty",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "5m",
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "warning",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "A job failed every retry and waits in a dlq.* queue.",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-dead-letters"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "sum(vouch_dead_letter_jobs{job=\"vouch-production\"})",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [0]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-queue-stuck",
+      "title": "A job has waited over 5 minutes",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "5m",
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "warning",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "A queue is not being worked (workers stalled or overloaded).",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-queue-stuck"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "max(vouch_queue_oldest_waiting_seconds{job=\"vouch-production\"})",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [300]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-redis-memory",
+      "title": "Redis memory above 70%",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "10m",
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "warning",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "Redis (noeviction) is filling up: writes fail when it is full.",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-redis-memory"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "max(vouch_redis_memory_ratio{job=\"vouch-production\"})",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [0.7]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-backup-age",
+      "title": "Backup older than 26 hours",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "30m",
+      "noDataState": "Alerting",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "critical",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "The nightly backup to R2 has not succeeded for over 26 hours.",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-backup-age"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "max(vouch_backup_age_seconds{job=\"vouch-production\"})",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [93600]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-sheds",
+      "title": "Overload sheds",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "0s",
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "warning",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "The API refused requests or sockets under overload (503).",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-sheds"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "sum(increase(vouch_shed_total{job=\"vouch-production\"}[5m]))",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [0]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "vouch-consistency",
+      "title": "Consistency violations",
+      "ruleGroup": "vouch-production",
+      "folderUID": "vouch",
+      "condition": "C",
+      "for": "0s",
+      "noDataState": "OK",
+      "execErrState": "Error",
+      "labels": {
+        "severity": "warning",
+        "service": "vouch"
+      },
+      "annotations": {
+        "summary": "The nightly cross-module check found violations.",
+        "runbook_url": "https://github.com/Tejas-lab-source/vouch/blob/main/docs/OPERATIONS.md#vouch-consistency"
+      },
+      "notification_settings": {
+        "receiver": "${CONTACT_POINT}"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "datasourceUid": "${PROMETHEUS_UID}",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "model": {
+            "refId": "A",
+            "expr": "sum(vouch_consistency_violations{job=\"vouch-production\"})",
+            "instant": true,
+            "range": false
+          }
+        },
+        {
+          "refId": "C",
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "type": "gt",
+                  "params": [0]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -234,6 +234,7 @@ export async function startRole({
     jobs: platform.jobs,
     queueNames,
     logger,
+    redis: platform.redis.command,
   });
   const http = await buildHttpServer({
     pressure,

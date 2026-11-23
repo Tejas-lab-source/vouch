@@ -5,6 +5,7 @@
 #   SENTRY_DSN_WEB, SENTRY_DSN_ADMIN, TURNSTILE_SITE_KEY, GRIEVANCE_EMAIL,
 #   PAGES_PROJECT_WEB, PAGES_PROJECT_ADMIN, CLOUDFLARE_ACCOUNT_ID, RELEASE (the commit)
 # and secrets CLOUDFLARE_API_TOKEN and SENTRY_AUTH_TOKEN (optional: no source-map upload).
+# With PAGES_PROJECT_LANDING, SITE_URL and WEB_URL set, the landing page is deployed too.
 set -euo pipefail
 
 : "${DEPLOY_ENV:?}" "${API_URL:?}" "${RELEASE:?}"
@@ -50,3 +51,11 @@ pnpm --filter @vouch/web size
 build_app admin "${SENTRY_DSN_ADMIN:-}"
 deploy_app web "$PAGES_PROJECT_WEB"
 deploy_app admin "$PAGES_PROJECT_ADMIN"
+
+if [ -n "${PAGES_PROJECT_LANDING:-}" ]; then
+  : "${SITE_URL:?}" "${WEB_URL:?}" "${GRIEVANCE_EMAIL:?}"
+  echo "== build landing"
+  SITE_URL="$SITE_URL" WEB_URL="$WEB_URL" GRIEVANCE_EMAIL="$GRIEVANCE_EMAIL" node scripts/landing-build.js
+  node scripts/pages-headers.js apps/landing/dist --app landing
+  deploy_app landing "$PAGES_PROJECT_LANDING"
+fi
