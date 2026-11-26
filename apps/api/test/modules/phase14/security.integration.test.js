@@ -70,6 +70,12 @@ describe('security (Phase 14)', () => {
     const allowed = await preflight(WEB);
     expect(allowed.headers['access-control-allow-origin']).toBe(WEB);
     expect(allowed.headers['access-control-allow-credentials']).toBe('true');
+    // Every method the routes use, or the browser refuses the real request (Phase 15).
+    const methods = String(allowed.headers['access-control-allow-methods']).split(/,\s*/);
+    for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+      expect(methods).toContain(method);
+    }
+    expect(String(allowed.headers['access-control-expose-headers'])).toContain('x-request-id');
     const evil = await preflight('https://evil.example.com');
     expect(evil.headers['access-control-allow-origin']).toBeUndefined();
   });

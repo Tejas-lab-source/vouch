@@ -12,9 +12,14 @@ export const NOW = new Date('2026-11-21T10:00:00Z');
 
 /**
  * In-memory identity dependencies for use-case tests. Everything is inspectable.
- * @param {{ codes?: string[], limiter?: 'ok' | 'down' | 'limited', otpDown?: boolean }} [options]
+ * @param {{ codes?: string[], limiter?: 'ok' | 'down' | 'limited', otpDown?: boolean, inviteOnly?: boolean }} [options]
  */
-export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false } = {}) {
+export function fakeDeps({
+  codes = ['123456'],
+  limiter = 'ok',
+  otpDown = false,
+  inviteOnly = false,
+} = {}) {
   let nowMs = NOW.getTime();
   /** A clock tests can move forward with `advance(ms)`. */
   const clock = { now: () => new Date(nowMs) };
@@ -30,6 +35,7 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
     devices: /** @type {Map<string, any>} */ (new Map()),
     consents: /** @type {any[]} */ ([]),
     bannedEmails: /** @type {Map<string, any>} */ (new Map()),
+    inviteCodes: /** @type {Map<string, any>} */ (new Map()),
     otp: /** @type {Map<string, { codeHash: string, attempts: number }>} */ (new Map()),
     sent: /** @type {{ to: string, code: string }[]} */ ([]),
     events: /** @type {{ name: string, payload: any }[]} */ ([]),
@@ -111,6 +117,25 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
           (b) => b.emailHmac.equals(emailHmac) && (!b.expiresAt || b.expiresAt > now),
         ),
     },
+    inviteCodes: {
+      insert: async (c) =>
+        void state.inviteCodes.set(c.codeHash.toString('hex'), { ...c, uses: 0, revokedAt: null }),
+      findUsable: async (h, collegeId, now) => {
+        const c = state.inviteCodes.get(h.toString('hex'));
+        const usable =
+          c &&
+          c.collegeId === collegeId &&
+          !c.revokedAt &&
+          (!c.expiresAt || c.expiresAt > now) &&
+          (c.maxUses === null || c.uses < c.maxUses);
+        return usable ? c.id : null;
+      },
+      redeem: async (h, collegeId, now) => {
+        const id = await stores.inviteCodes.findUsable(h, collegeId, now);
+        if (id) state.inviteCodes.get(h.toString('hex')).uses += 1;
+        return id;
+      },
+    },
     consents: {
       insert: async (c) => void state.consents.push(c),
       listForUser: async (userId) =>
@@ -172,6 +197,7 @@ export function fakeDeps({ codes = ['123456'], limiter = 'ok', otpDown = false }
       consume: async (key) => state.otp.delete(key),
     },
     colleges: { all: async () => [COLLEGE] },
+    inviteOnly: async (collegeId) => inviteOnly && collegeId === COLLEGE.id,
     crypto: { ...real, randomCode: () => codes[codeIndex++ % codes.length] ?? '000000' },
     tokens: {
       issueAccessToken: async ({ userId, sessionId }) => ({

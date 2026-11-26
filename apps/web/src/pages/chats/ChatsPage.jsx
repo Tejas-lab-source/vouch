@@ -2,7 +2,7 @@
 import { relativeTime } from '@vouch/domain';
 import { useConversations } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Avatar, Badge, Button, EmptyState, ListItem, Skeleton } from '@vouch/ui-web';
+import { Avatar, Badge, Button, EmptyState, Illustration, ListItem, Skeleton } from '@vouch/ui-web';
 import { useNavigate } from 'react-router';
 
 /** The conversation list: last message, unread count, newest activity first. */
@@ -26,7 +26,11 @@ export function ChatsPage() {
         />
       ) : null}
       {list.isSuccess && list.conversations.length === 0 ? (
-        <EmptyState title={t('chats.empty.title')} body={t('chats.empty.body')} />
+        <EmptyState
+          art={<Illustration name="campus" className="w-empty-art" />}
+          title={t('chats.empty.title')}
+          body={t('chats.empty.body')}
+        />
       ) : null}
       <ul className="w-list">
         {list.conversations.map((c) => {
@@ -47,7 +51,7 @@ export function ChatsPage() {
                     src={c.user.photos.at(0)?.w400 ?? null}
                     alt=""
                     name={c.user.name}
-                    size={48}
+                    size={52}
                   />
                 }
                 trailing={

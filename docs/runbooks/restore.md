@@ -8,7 +8,7 @@ the table at the end.
 
 | Data                          | Where                                                         | Backup                                                                              |
 | ----------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Postgres (everything durable) | Managed Postgres                                              | The host's daily backups, plus a nightly `pg_dump` to R2 (Phase 15)                 |
+| Postgres (everything durable) | Render Postgres                                               | Render's daily backups, plus a nightly `pg_dump` to R2 `backups/<env>/` (14 days)   |
 | Photos                        | R2 `photos/` (public variants), `uploads/` (raw, short-lived) | R2 durability; variants can be re-derived from nothing else, so treat R2 as primary |
 | ID-card images                | R2 private prefix, deleted within 30 days                     | Not backed up, by design (data minimisation)                                        |
 | Redis                         | Rate limits, presence, caches, queues                         | Not backed up: rebuilt; jobs are re-driven from the outbox                          |
@@ -19,13 +19,24 @@ the table at the end.
    by putting it in maintenance with the `maintenance` flag. This avoids a split history.
 2. **Choose the restore point:** the latest backup before the damage. Write down the time:
    everything after it is lost and must be told to users if personal data changed.
-3. **Restore into a new database** (never over the damaged one):
-   - **Host backup:** create a database from the backup or point in time in the host's
-     console.
-   - **`pg_dump`:**
-     `pg_restore --no-owner --role=vouch_migrator -d "$NEW_DATABASE_URL" dump.pgdump`
-4. **Migrate:** `node migrations/run.js up` from the current image. This is a no-op when the
-   dump is current, and applies newer migrations otherwise.
+3. **Restore into a new database** (never over the damaged one). In Render, create a new
+   Postgres (same plan and region), then either:
+   - **Render's backup:** Render → the database → Recovery → restore a point in time into a
+     new instance. Then run `node migrations/run.js up` against it from the API's shell
+     (`DATABASE_URL=<new> node migrations/run.js up`): it applies newer migrations and grants
+     the module roles to the new login.
+   - **The nightly dump** (tested by `apps/api/test/scripts/restore.integration.test.js`), in
+     the API's Render shell:
+
+         node scripts/backup.js fetch latest /tmp/restore.pgdump
+         RESTORE_DATABASE_URL=<new database URL> node scripts/backup.js restore /tmp/restore.pgdump
+         rm /tmp/restore.pgdump
+
+     `fetch` takes `latest` or a key (`backups/production/<time>.dump`). `restore` refuses
+     the live `DATABASE_URL`. It creates the module roles on the new instance, restores
+     everything except the dump's default privileges (they name the old owner), runs
+     `migrate up` and re-applies the default privileges as the new owner.
+4. **Write down the restore time** and the backup's age, for the log below.
 5. **Verify** before switching:
    - `/ready` passes against the new database (it checks migrations)
    - row counts per module are plausible
@@ -46,6 +57,7 @@ the table at the end.
 
 ## Restore drill log
 
-| Date | Backup age | Restore time | Verified by | Notes                                          |
-| ---- | ---------- | ------------ | ----------- | ---------------------------------------------- |
-|      |            |              |             | First drill due in Phase 15, on the real host. |
+| Date       | Backup age | Restore time | Verified by            | Notes                                                                                                  |
+| ---------- | ---------- | ------------ | ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| 2026-11-23 | minutes    | 2 s          | automated test (local) | Rehearsal of the procedure on Postgres 17 containers, as a non-superuser login. Not the real host yet. |
+|            |            |              |                        | First drill on Render: Phase 15, once staging exists (B2, B4).                                         |

@@ -237,6 +237,8 @@
           "VALIDATION_FAILED",
           "ACCOUNT_BANNED",
           "FORBIDDEN",
+          "INVITE_CODE_INVALID",
+          "INVITE_CODE_REQUIRED",
           "SIGNUP_DETAILS_REQUIRED",
           "UNDERAGE",
           "APP_VERSION_UNSUPPORTED",
@@ -359,6 +361,13 @@
                         "type": "string",
                         "format": "uuid",
                         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+                      },
+                      "inviteCode": {
+                        "description": "Phase 15. Required when the college is invite-only (INVITE_CODE_REQUIRED); checked before the code is used up, so the client retries with the same OTP. Case and hyphens do not matter.",
+                        "type": "string",
+                        "minLength": 16,
+                        "maxLength": 24,
+                        "pattern": "^[A-Za-z0-9 -]+$"
                       }
                     },
                     "required": [
@@ -484,7 +493,7 @@
             }
           },
           "422": {
-            "description": "Error codes: SIGNUP_DETAILS_REQUIRED, UNDERAGE.",
+            "description": "Error codes: INVITE_CODE_INVALID, INVITE_CODE_REQUIRED, SIGNUP_DETAILS_REQUIRED, UNDERAGE.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12022,6 +12031,8 @@
                   "REFRESH_TOKEN_REUSED",
                   "ACCOUNT_BANNED",
                   "ACCOUNT_PENDING_REVIEW",
+                  "INVITE_CODE_REQUIRED",
+                  "INVITE_CODE_INVALID",
                   "UNKNOWN_SECTION_TYPE",
                   "PROFILE_INCOMPLETE",
                   "UNSUPPORTED_MEDIA_TYPE",

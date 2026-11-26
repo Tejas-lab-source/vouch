@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { runner } from 'node-pg-migrate';
+import postgres from 'postgres';
 import { z } from 'zod';
 
 /** Table (in the `public` schema) recording which migrations have run. */
@@ -75,7 +76,37 @@ export async function migrate({ databaseUrl, direction, count, log = () => {} })
     singleTransaction: true,
     logger: { debug: () => {}, info: log, warn: log, error: log },
   });
+  if (direction === 'up') await grantModuleRoles(databaseUrl, log);
   return ran.map((migration) => migration.name);
+}
+
+/**
+ * Lets the migrating login switch into every module role (Phase 15). On a hosted database
+ * (Render) one login owns the database, creates the NOLOGIN module roles in migrations, and
+ * the app uses `SET ROLE vouch_<module>` per transaction. Since Postgres 16 the creator of a
+ * role holds only ADMIN on it, not SET, so this grants `SET TRUE, INHERIT FALSE`: the login
+ * can switch into each role but does not hold its privileges itself. Idempotent; a no-op for
+ * a superuser and for a login that already has the grants. Runs after every `up`, so a
+ * module role added later is covered too.
+ * @param {string} databaseUrl
+ * @param {(line: string) => void} [log]
+ */
+export async function grantModuleRoles(databaseUrl, log = () => {}) {
+  const sql = postgres(databaseUrl, { max: 1, onnotice: () => {}, connect_timeout: 10 });
+  try {
+    const missing = await sql`SELECT rolname FROM pg_roles
+      WHERE rolname LIKE 'vouch\_%' AND NOT rolcanlogin
+        AND NOT pg_has_role(current_user, oid, 'SET')
+      ORDER BY rolname`;
+    for (const { rolname } of missing) {
+      // Only our own role names reach the statement (GRANT takes no parameters).
+      if (!/^vouch_[a-z_]+$/.test(rolname)) continue;
+      await sql.unsafe(`GRANT "${rolname}" TO CURRENT_USER WITH SET TRUE, INHERIT FALSE`);
+      log(`granted ${rolname} (SET) to the migrating login`);
+    }
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
 }
 
 const cliSchema = z.object({

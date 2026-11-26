@@ -38,6 +38,11 @@ export const en = Object.freeze({
   'auth.signup.consent.required': 'Accept the privacy notice to continue.',
   'auth.signup.readNotice': 'Read the privacy notice',
   'auth.signup.submit': 'Create my account',
+  'auth.signup.invite': 'Invite code',
+  'auth.signup.invite.hint':
+    'Vouch is invite-only at some colleges for now. Leave blank if you have none.',
+  'auth.signup.invite.required': 'Your college is invite-only for now. Enter your invite code.',
+  'auth.signup.invite.invalid': 'That invite code is not valid, has expired or has been used up.',
   'auth.banned': 'This account has been suspended.',
   'auth.pendingReview': 'Your account is being reviewed. We will let you know soon.',
   'auth.rateLimited': 'Too many attempts. Wait a few minutes and try again.',
@@ -311,6 +316,15 @@ export const en = Object.freeze({
   'admin.flags.off': 'Off',
   'admin.flags.toggle': 'Turn {key} {state}',
 
+  // Brand and design (design update): copy only, no new data.
+  'brand.motto': 'Meet. Match. Belong.',
+  'brand.audience': 'Only for verified college students in India',
+  'auth.welcome.start': 'Get started',
+  'auth.welcome.signIn': 'I already have an account',
+  'auth.welcome.terms': 'By continuing you agree to our privacy notice.',
+  'photos.reviewNote': 'Every photo is reviewed for safety before others see it.',
+  'nav.main': 'Main',
+  'ui.kit.verified': 'Verified',
   // Components
   'ui.toast.dismiss': 'Dismiss notification',
   'ui.modal.close': 'Close dialog',

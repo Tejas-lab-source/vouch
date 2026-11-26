@@ -6,6 +6,7 @@ import { makeRequestOtp } from '../application/request-otp.js';
 import { makeUserQueries } from '../application/users.js';
 import { makeVerifyOtp } from '../application/verify-otp.js';
 import { createDevCaptchaVerifier, createTurnstileVerifier } from './captcha/turnstile.js';
+import { INVITE_ONLY_FLAG } from '../domain/invite.js';
 import { createIdentityCrypto } from './crypto/node-crypto.js';
 import { createConsoleEmailProvider } from './email/console.js';
 import { createResendEmailProvider } from './email/resend.js';
@@ -83,6 +84,7 @@ export async function buildIdentityDeps(ctx) {
     newId: ctx.newId,
     privacyNoticeVersion: config.PRIVACY_NOTICE_VERSION,
     idCardFallback: config.ID_CARD_FALLBACK,
+    inviteOnly: (collegeId) => ctx.flags.isEnabled(INVITE_ONLY_FLAG, { collegeId }),
     exporters: ctx.exporters,
   };
 }

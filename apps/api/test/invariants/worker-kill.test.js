@@ -74,12 +74,14 @@ describe('invariant: a worker dies mid-burst; no event is lost and each is proce
     }
     sender.disconnect();
 
-    // Every match gets its conversation, created by the surviving worker where needed.
+    // Every match gets its conversation, created by the surviving worker where needed. A job
+    // the killed worker held waits for BullMQ's stalled-job check (30 s lock + 30 s interval),
+    // so this allows the same 120 s as the recovery wait below (CI timed out once at 90 s).
     await eventually(async () => {
       const [{ n }] = await sql`SELECT count(*)::int AS n FROM chat.conversations
         WHERE id = ANY(${matchIds})`;
       return n === PAIRS;
-    }, 90_000);
+    }, 120_000);
     // Every event is published, and each consumer processed each event exactly once.
     await eventually(async () => {
       const [{ n }] = await sql`SELECT count(*)::int AS n FROM platform.outbox
@@ -120,5 +122,5 @@ describe('invariant: a worker dies mid-burst; no event is lost and each is proce
     for (const row of processed) expect([row.consumer, row.n]).toEqual([row.consumer, PAIRS]);
     expect(report.acked).toBe(MESSAGES);
     expect(report.ackedStored).toBe(MESSAGES);
-  }, 300_000);
+  }, 400_000);
 });

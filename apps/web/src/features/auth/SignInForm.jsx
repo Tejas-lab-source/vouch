@@ -3,7 +3,7 @@ import { isAdult, isEmail, isIsoDate, isOtp } from '@vouch/domain';
 import { errorKey, useConfig, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { privacyNotice } from '@vouch/i18n/privacy-notice';
-import { Button, Input, Modal, OtpInput } from '@vouch/ui-web';
+import { Button, Icon, Input, Lock, Mail, Modal, OtpInput, ShieldCheck } from '@vouch/ui-web';
 import { useState } from 'react';
 import { PrivacyNoticeText } from '../../entities/privacy-notice/PrivacyNoticeText.jsx';
 
@@ -19,6 +19,7 @@ export function SignInForm() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
@@ -51,6 +52,7 @@ export function SignInForm() {
           void run(() => auth.requestCode(email.trim()));
         }}
       >
+        <StepIcon icon={Mail} />
         <h2 className="w-title">{t('auth.title')}</h2>
         <Input
           label={t('auth.email.label')}
@@ -66,6 +68,7 @@ export function SignInForm() {
         <Button type="submit" block loading={busy}>
           {t('common.continue')}
         </Button>
+        <p className="w-fineprint">{t('auth.welcome.terms')}</p>
       </form>
     );
   }
@@ -80,8 +83,9 @@ export function SignInForm() {
           void run(() => auth.verify({ email: state.email, code }));
         }}
       >
+        <StepIcon icon={ShieldCheck} />
         <h2 className="w-title">{t('auth.code.title')}</h2>
-        <p>{t('auth.code.sent', { email: state.email })}</p>
+        <p className="w-muted">{t('auth.code.sent', { email: state.email })}</p>
         <OtpInput
           label={t('auth.code.label')}
           value={code}
@@ -114,11 +118,16 @@ export function SignInForm() {
             auth.verify({
               email: state.email,
               code: state.code,
-              signup: { birthDate, consent: { noticeVersion, purposes: ['matching'] } },
+              signup: {
+                birthDate,
+                consent: { noticeVersion, purposes: ['matching'] },
+                ...(inviteCode.trim() ? { inviteCode: inviteCode.trim() } : {}),
+              },
             }),
           );
         }}
       >
+        <StepIcon icon={Lock} />
         <h2 className="w-title">{t('auth.signup.title')}</h2>
         <Input
           label={t('auth.signup.birthDate')}
@@ -127,6 +136,16 @@ export function SignInForm() {
           value={birthDate}
           onChange={(event) => setBirthDate(event.target.value)}
           required
+        />
+        <Input
+          label={t('auth.signup.invite')}
+          hint={t('auth.signup.invite.hint')}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={24}
+          value={inviteCode}
+          onChange={(event) => setInviteCode(event.target.value)}
         />
         <label className="w-check">
           <input
@@ -158,4 +177,13 @@ export function SignInForm() {
     );
   }
   return null;
+}
+
+/** The round pink badge above each step's heading (decorative). @param {{ icon: import('react').ComponentType<any> }} props */
+function StepIcon({ icon }) {
+  return (
+    <span className="w-step-icon" aria-hidden="true">
+      <Icon icon={icon} size={26} />
+    </span>
+  );
 }

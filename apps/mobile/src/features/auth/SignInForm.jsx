@@ -3,9 +3,21 @@ import { isAdult, isEmail, isIsoDate, isOtp } from '@vouch/domain';
 import { errorKey, useConfig, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { privacyNotice } from '@vouch/i18n/privacy-notice';
-import { Button, Input, OtpInput, Sheet, useTheme } from '@vouch/ui-native';
+import {
+  Button,
+  Icon,
+  Input,
+  Lock,
+  Mail,
+  OtpInput,
+  Sheet,
+  ShieldCheck,
+  Text,
+  useTheme,
+} from '@vouch/ui-native';
 import { useState } from 'react';
-import { ScrollView, Switch, Text, View } from 'react-native';
+import { SWITCH_WEB } from '../../shared/ui/switch-colors.js';
+import { ScrollView, Switch, View } from 'react-native';
 import { PrivacyNoticeText } from '../../entities/privacy-notice/PrivacyNoticeText.jsx';
 
 /** Sign-in on mobile: the same steps and rules as the web (shared flow in features-core). */
@@ -13,10 +25,12 @@ export function SignInForm() {
   const { auth } = useServices();
   const config = useConfig();
   const { colors, space } = useTheme();
+
   const [state, setState] = useState(/** @type {any} */ ({ step: 'signedOut' }));
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
@@ -42,6 +56,7 @@ export function SignInForm() {
   if (state.step === 'signedOut') {
     return (
       <View>
+        <StepHead icon={Mail} title={t('auth.title')} />
         <Input
           label={t('auth.email.label')}
           placeholder={t('auth.email.placeholder')}
@@ -61,15 +76,20 @@ export function SignInForm() {
               : setError(t('auth.email.invalid'))
           }
         />
+        <Text variant="caption" muted style={{ textAlign: 'center', marginTop: space[3] }}>
+          {t('auth.welcome.terms')}
+        </Text>
       </View>
     );
   }
   if (state.step === 'codeSent') {
     return (
       <View>
-        <Text style={{ color: colors.text, marginBottom: space[3] }}>
-          {t('auth.code.sent', { email: state.email })}
-        </Text>
+        <StepHead
+          icon={ShieldCheck}
+          title={t('auth.code.title')}
+          body={t('auth.code.sent', { email: state.email })}
+        />
         <OtpInput label={t('auth.code.label')} value={code} onChange={setCode} error={error} />
         <Button
           title={t('common.continue')}
@@ -91,6 +111,7 @@ export function SignInForm() {
   if (state.step === 'needsDetails') {
     return (
       <View>
+        <StepHead icon={Lock} title={t('auth.signup.title')} />
         <Input
           label={t('auth.signup.birthDate')}
           hint={t('auth.signup.birthDate.hint')}
@@ -98,6 +119,15 @@ export function SignInForm() {
           value={birthDate}
           onChangeText={setBirthDate}
           error={error}
+        />
+        <Input
+          label={t('auth.signup.invite')}
+          hint={t('auth.signup.invite.hint')}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={24}
+          value={inviteCode}
+          onChangeText={setInviteCode}
         />
         <View
           style={{
@@ -110,9 +140,12 @@ export function SignInForm() {
           <Switch
             value={consent}
             onValueChange={setConsent}
+            trackColor={{ true: colors.primary, false: colors.border }}
+            thumbColor={colors.onPrimary}
+            {...SWITCH_WEB(colors)}
             accessibilityLabel={t('auth.signup.consent', { version: noticeVersion ?? '—' })}
           />
-          <Text style={{ color: colors.text, marginLeft: space[2], flex: 1 }}>
+          <Text style={{ marginLeft: space[3], flex: 1 }}>
             {t('auth.signup.consent', { version: noticeVersion ?? '—' })}
           </Text>
         </View>
@@ -142,7 +175,11 @@ export function SignInForm() {
               auth.verify({
                 email: state.email,
                 code: state.code,
-                signup: { birthDate, consent: { noticeVersion, purposes: ['matching'] } },
+                signup: {
+                  birthDate,
+                  consent: { noticeVersion, purposes: ['matching'] },
+                  ...(inviteCode.trim() ? { inviteCode: inviteCode.trim() } : {}),
+                },
               }),
             );
           }}
@@ -151,4 +188,33 @@ export function SignInForm() {
     );
   }
   return null;
+}
+
+/** The round pink badge and heading above each step. @param {{ icon: any, title: string, body?: string }} props */
+function StepHead({ icon, title, body }) {
+  const { colors, space } = useTheme();
+  return (
+    <View style={{ alignItems: 'center', gap: space[2], marginBottom: space[5] }}>
+      <View
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: colors.secondary,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon icon={icon} size={28} color={colors.primaryText} />
+      </View>
+      <Text variant="h2" style={{ textAlign: 'center' }}>
+        {title}
+      </Text>
+      {body ? (
+        <Text muted style={{ textAlign: 'center' }}>
+          {body}
+        </Text>
+      ) : null}
+    </View>
+  );
 }

@@ -3,6 +3,7 @@ import { notificationTarget, usePushRegistration } from '@vouch/features-core';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 /**
  * Signed-in only: registers the push token when permission was already granted, and opens the
@@ -12,6 +13,8 @@ export function NotificationTaps() {
   const router = useRouter();
   usePushRegistration();
   useEffect(() => {
+    // The design-screenshot web export has no notifications to open.
+    if (Platform.OS === 'web') return undefined;
     /** @param {Notifications.NotificationResponse | null} response */
     const open = (response) => {
       if (!response) return;

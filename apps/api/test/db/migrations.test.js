@@ -27,6 +27,9 @@ const EXPECTED_MIGRATIONS = [
   '20261123100000_chat_member_settings',
   '20261123100100_admin_sessions',
   '20261123100200_platform_user_data_grants',
+  '20261123100300_platform_backup_runs',
+  '20261123100400_platform_outbox_notify',
+  '20261123100500_identity_invite_codes',
 ];
 
 /** Every v1 table (excluding partitions), per roadmap Phase 2 Task 5 and the owner's decisions. */
@@ -42,12 +45,14 @@ const EXPECTED_TABLES = [
   'identity.banned_emails',
   'identity.consents',
   'identity.devices',
+  'identity.invite_codes',
   'identity.users',
   'matching.matches',
   'matching.swipes',
   'media.uploads',
   'notifications.deliveries',
   'notifications.prefs',
+  'platform.backup_runs',
   'platform.campus_clusters',
   'platform.colleges',
   'platform.deletion_tasks',

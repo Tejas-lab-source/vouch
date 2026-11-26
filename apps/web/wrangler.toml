@@ -1,0 +1,5 @@
+# Cloudflare Pages project for apps/web (Phase 15). Deployed by .github/workflows/deploy.yml with
+# `wrangler pages deploy`; the project is created once by the owner (checklist B5).
+name = "vouch-web"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-01"

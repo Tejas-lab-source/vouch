@@ -13,11 +13,11 @@ import { createPressureGauge } from './pressure.js';
 import { buildHttpServer } from './http.js';
 import { createIdGenerator } from './ids.js';
 import { createIdempotencyStore } from './idempotency.js';
-import { createJobs } from './jobs.js';
+import { createJobs, QUEUE_POLICIES } from './jobs.js';
 import { configRoute } from './config-route.js';
 import { createSemaphore } from './semaphore.js';
 import { CONSISTENCY_CRON, createConsistencyCheck } from './jobs/consistency.js';
-import { createMetrics, startMetricsServer } from './metrics.js';
+import { createMetrics, createOpsGauges, startMetricsServer } from './metrics.js';
 import { createPipelines } from './pipelines.js';
 import { createRateLimiter } from './rate-limit.js';
 import { createRedis } from './redis.js';
@@ -223,8 +223,22 @@ export async function startRole({
     maxEventLoopDelayMs: config.PRESSURE_MAX_EVENT_LOOP_DELAY_MS,
     maxHeapRatio: config.PRESSURE_MAX_HEAP_RATIO,
   });
+  // Every queue this deployment uses: the policy queues and one per consuming module.
+  const queueNames = [
+    ...Object.keys(QUEUE_POLICIES).filter((name) => name !== 'events'),
+    ...new Set(boot.consumers.map(({ module }) => eventQueueName(module))),
+  ];
+  const ops = createOpsGauges({
+    metrics: platform.metrics,
+    db: platform.db,
+    jobs: platform.jobs,
+    queueNames,
+    logger,
+    redis: platform.redis.command,
+  });
   const http = await buildHttpServer({
     pressure,
+    ops,
     config,
     logger,
     verifier: platform.verifier,
@@ -270,6 +284,7 @@ export async function startRole({
   if (listen) await http.listen({ port: config.PORT, host: config.HOST });
   const metricsServer = await startMetricsServer({
     metrics: platform.metrics,
+    ops,
     port: listen ? config.METRICS_PORT : 0,
     host: config.HOST,
   });

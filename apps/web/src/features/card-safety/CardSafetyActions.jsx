@@ -1,7 +1,7 @@
 // @ts-check
 import { useBlock, useReport } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Modal } from '@vouch/ui-web';
+import { Ban, Button, Flag, Modal } from '@vouch/ui-web';
 import { useId, useState } from 'react';
 
 /** Report reasons (contracts `ReportReason`) and their labels. */
@@ -34,10 +34,10 @@ export function CardSafetyActions({ user, context = 'profile', conversationId, o
   };
   return (
     <div className="w-row">
-      <Button variant="ghost" onClick={() => setDialog('report')}>
+      <Button variant="ghost" icon={Flag} onClick={() => setDialog('report')}>
         {t('safety.report')}
       </Button>
-      <Button variant="ghost" onClick={() => setDialog('block')}>
+      <Button variant="ghost" icon={Ban} onClick={() => setDialog('block')}>
         {t('safety.block')}
       </Button>
       <Modal

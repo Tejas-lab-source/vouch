@@ -15,6 +15,7 @@
  * @property {number | null} gradYear
  * @property {Date} createdAt
  * @property {Date | null} deletedAt
+ * @property {string | null} [inviteCodeId]  The invite code that admitted the account (Phase 15).
  */
 
 /**
@@ -47,7 +48,7 @@
  *   findById(id: string): Promise<UserRecord | null>,
  *   findManyByIds(ids: readonly string[]): Promise<UserRecord[]>,
  *   findManyByPublicIds(publicIds: readonly string[]): Promise<UserRecord[]>,
- *   insert(user: { id: string, publicId: string, collegeId: string, emailHmac: Buffer, status: 'active' | 'pending_review', birthDate: string, gradYear: number | null, createdAt: Date }): Promise<void>,
+ *   insert(user: { id: string, publicId: string, collegeId: string, emailHmac: Buffer, status: 'active' | 'pending_review', birthDate: string, gradYear: number | null, createdAt: Date, inviteCodeId?: string | null }): Promise<void>,
  *   deletedBefore(cutoff: Date, limit: number): Promise<UserRecord[]>,
  *   markDeleted(id: string, at: Date): Promise<void>,
  *   setStatus(id: string, status: UserRecord['status']): Promise<void>,
@@ -78,6 +79,11 @@
  *   removeByBan(banId: string): Promise<void>,
  *   isBanned(emailHmac: Buffer, now: Date): Promise<boolean>,
  * }} bannedEmails
+ * @property {{
+ *   insert(code: { id: string, codeHash: Buffer, collegeId: string, label: string, maxUses: number | null, expiresAt: Date | null, at: Date }): Promise<void>,
+ *   findUsable(codeHash: Buffer, collegeId: string, now: Date): Promise<string | null>,
+ *   redeem(codeHash: Buffer, collegeId: string, now: Date): Promise<string | null>,
+ * }} inviteCodes  Invite codes (Phase 15): `redeem` counts one use atomically, or returns null.
  * @property {{
  *   insert(consent: { id: string, userId: string, noticeVersion: string, purposes: string[], at: Date }): Promise<void>,
  *   listForUser(userId: string): Promise<{ noticeVersion: string, purposes: string[], grantedAt: Date, withdrawnAt: Date | null }[]>,
@@ -111,7 +117,7 @@
  * @typedef {object} IdentityCrypto
  * @property {(address: string) => Buffer} hmacEmail  HMAC-SHA256 with the server secret.
  * @property {(emailHmac: Buffer, code: string) => string} hashCode
- * @property {(token: string) => Buffer} hashToken  SHA-256 of a refresh token.
+ * @property {(token: string) => Buffer} hashToken  SHA-256 of a refresh token or a normalised invite code.
  * @property {(a: string, b: string) => boolean} safeEqual  Constant-time comparison.
  * @property {() => string} randomCode  6 digits from `crypto.randomInt`.
  * @property {() => string} randomToken  32 random bytes, base64url.
@@ -162,6 +168,7 @@
  * @property {() => string} newId
  * @property {string} privacyNoticeVersion
  * @property {boolean} idCardFallback  Sign-up with any email plus a reviewed student ID (Phase 10).
+ * @property {(collegeId: string) => Promise<boolean>} inviteOnly  Whether new sign-ups at this college need an invite code (the `beta.invite_only` flag, Phase 15).
  * @property {Map<string, (userId: string) => Promise<Record<string, unknown>>>} exporters
  */
 

@@ -1,0 +1,10 @@
+/*
+ * Self-hosted web fonts (design update): Poppins for headings, Inter for body text. Only the
+ * weights the design uses, Latin subset, WOFF2, `font-display: swap`. Vite copies the files
+ * into the build, so no request goes to Google.
+ */
+@import '@fontsource/poppins/latin-600.css';
+@import '@fontsource/poppins/latin-700.css';
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';

@@ -1,7 +1,7 @@
 // @ts-check
 import { Slot } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button } from '@vouch/ui-web';
+import { IconButton, Send } from '@vouch/ui-web';
 import { useId, useState } from 'react';
 
 const MAX = 2000;
@@ -50,9 +50,13 @@ export function Composer({ onSend, disabled = false, conversationId }) {
           }
         }}
       />
-      <Button type="submit" disabled={disabled || !text.trim()}>
-        {t('chat.send')}
-      </Button>
+      <IconButton
+        type="submit"
+        icon={Send}
+        label={t('chat.send')}
+        variant="primary"
+        disabled={disabled || !text.trim()}
+      />
     </form>
   );
 }

@@ -1,7 +1,7 @@
 // @ts-check
 import { adminListPanels } from '@vouch/api-client';
 import { t } from '@vouch/i18n';
-import { Button, EmptyState, ListItem, Skeleton } from '@vouch/ui-web';
+import { Button, EmptyState, ListItem, LogOut, Skeleton, Wordmark } from '@vouch/ui-web';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { UserLookup } from '../../features/user-lookup/UserLookup.jsx';
@@ -27,11 +27,14 @@ export function PanelsPage({ client, staff, onSignOut }) {
   return (
     <div className="a-shell">
       <header className="a-header">
-        <strong>{t('admin.title')}</strong>
-        <span>
+        <span className="a-brand">
+          <Wordmark height={24} />
+          <strong>{t('admin.title')}</strong>
+        </span>
+        <span className="a-muted">
           {staff.displayName} ({staff.role})
         </span>
-        <Button variant="ghost" onClick={onSignOut}>
+        <Button variant="ghost" icon={LogOut} onClick={onSignOut}>
           {t('common.signOut')}
         </Button>
       </header>

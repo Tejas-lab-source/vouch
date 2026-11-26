@@ -38,6 +38,17 @@ const SignupDetails = z.strictObject({
   collegeId: CollegeId.optional().describe(
     'Required for an ID-card sign-up (any email); ignored for a college email.',
   ),
+  inviteCode: z
+    .string()
+    .min(16)
+    .max(24)
+    .regex(/^[A-Za-z0-9 -]+$/)
+    .optional()
+    .describe(
+      'Phase 15. Required when the college is invite-only (INVITE_CODE_REQUIRED); checked ' +
+        'before the code is used up, so the client retries with the same OTP. Case and ' +
+        'hyphens do not matter.',
+    ),
 });
 
 /**
@@ -130,6 +141,8 @@ export const verifyOtp = defineEndpoint({
     'ACCOUNT_BANNED',
     'FORBIDDEN',
     'TEMPORARILY_UNAVAILABLE',
+    'INVITE_CODE_REQUIRED',
+    'INVITE_CODE_INVALID',
   ],
 });
 

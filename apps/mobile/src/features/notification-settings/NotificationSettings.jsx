@@ -7,9 +7,10 @@ import {
   useUpdateNotificationPrefs,
 } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Input, Skeleton, useTheme } from '@vouch/ui-native';
+import { Button, Input, Skeleton, Text, useTheme } from '@vouch/ui-native';
 import { useEffect, useState } from 'react';
-import { Switch, Text, View } from 'react-native';
+import { SWITCH_WEB } from '../../shared/ui/switch-colors.js';
+import { Switch, View } from 'react-native';
 
 /** @param {{ label: string, value: boolean, onChange: (v: boolean) => void }} props */
 function Row({ label, value, onChange }) {
@@ -23,8 +24,15 @@ function Row({ label, value, onChange }) {
         minHeight: minTouchTarget,
       }}
     >
-      <Text style={{ color: colors.text }}>{label}</Text>
-      <Switch accessibilityLabel={label} value={value} onValueChange={onChange} />
+      <Text style={{ flex: 1 }}>{label}</Text>
+      <Switch
+        accessibilityLabel={label}
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ true: colors.primary, false: colors.border }}
+        thumbColor={colors.onPrimary}
+        {...SWITCH_WEB(colors)}
+      />
     </View>
   );
 }
@@ -66,7 +74,7 @@ export function NotificationSettings() {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || draft.timezone;
   return (
     <View>
-      {denied ? <Text style={{ color: colors.danger }}>{t('settings.pushDenied')}</Text> : null}
+      {denied ? <Text color={colors.dangerText}>{t('settings.pushDenied')}</Text> : null}
       <Row
         label={t('settings.notifications.matches')}
         value={draft.pushMatches}
@@ -103,7 +111,11 @@ export function NotificationSettings() {
           />
         </>
       ) : null}
-      {save.isSuccess ? <Text accessibilityLiveRegion="polite">{t('settings.saved')}</Text> : null}
+      {save.isSuccess ? (
+        <Text accessibilityLiveRegion="polite" color={colors.successText}>
+          {t('settings.saved')}
+        </Text>
+      ) : null}
       <Button
         title={t('profile.save')}
         loading={save.isPending}

@@ -1,10 +1,22 @@
 // @ts-check
 import { Slot, useMyProfile } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Card, EmptyState, Skeleton, useTheme } from '@vouch/ui-native';
+import {
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  IconButton,
+  Settings,
+  Skeleton,
+  Text,
+  useTheme,
+} from '@vouch/ui-native';
 import { useRouter } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { PhotoManager } from '../../features/photo-manager/PhotoManager.jsx';
+import { ScreenHeader } from '../../shared/ui/ScreenHeader.jsx';
 import {
   AgeRangeForm,
   BasicsForm,
@@ -21,7 +33,7 @@ const STATUS = new Map([
 
 /** Your profile: status, photos, fields, and the `profile.sections` / `profile.editor` slots. */
 export function ProfileScreen() {
-  const { colors, space, type } = useTheme();
+  const { colors, space } = useTheme();
   const router = useRouter();
   const profile = useMyProfile();
   if (profile.isLoading) return <Skeleton height={200} />;
@@ -35,35 +47,51 @@ export function ProfileScreen() {
   }
   const me = profile.data;
   return (
-    <ScrollView
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: space[4], gap: space[4] }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text
-        accessibilityRole="header"
-        style={{ color: colors.text, fontSize: type.title.size, fontWeight: '700' }}
-      >
-        {t('profile.title')}
-      </Text>
-      <Text style={{ color: colors.textMuted }}>
-        {t(/** @type {import('@vouch/i18n').MessageKey} */ (STATUS.get(me.status)))}
-      </Text>
-      <Button
-        variant="secondary"
-        title={t('settings.open')}
-        onPress={() => router.push('/settings')}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHeader
+        title={t('profile.title')}
+        right={
+          <IconButton
+            icon={Settings}
+            label={t('settings.open')}
+            onPress={() => router.push('/settings')}
+          />
+        }
       />
-      <Slot name="profile.sections" render={(item) => <item.component profile={me} />} />
-      <PhotoManager profile={me} />
-      {[BasicsForm, BioForm, InterestedInForm, AgeRangeForm].map((Form, i) => (
-        <Card key={i}>
-          <View>
-            <Form profile={me} submitLabel={t('profile.save')} />
-          </View>
-        </Card>
-      ))}
-      <Slot name="profile.editor" render={(item) => <item.component profile={me} />} />
-    </ScrollView>
+      <ScrollView
+        style={{ backgroundColor: colors.background }}
+        contentContainerStyle={{ padding: space[4], paddingTop: space[2], gap: space[4] }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ alignItems: 'center', gap: space[2] }}>
+          <Avatar
+            uri={me.photos.find((p) => p.urls)?.urls?.w400 ?? null}
+            alt=""
+            name={me.name ?? ''}
+            size={104}
+          />
+          {me.name ? (
+            <Text variant="h2">{t('deck.card.label', { name: me.name, age: me.age })}</Text>
+          ) : null}
+          <Chip>{t(/** @type {import('@vouch/i18n').MessageKey} */ (STATUS.get(me.status)))}</Chip>
+        </View>
+        <Button
+          variant="secondary"
+          icon={Settings}
+          title={t('settings.open')}
+          onPress={() => router.push('/settings')}
+        />
+        <Slot name="profile.sections" render={(item) => <item.component profile={me} />} />
+        <PhotoManager profile={me} />
+        {[BasicsForm, BioForm, InterestedInForm, AgeRangeForm].map((Form, i) => (
+          <Card key={i}>
+            <View>
+              <Form profile={me} submitLabel={t('profile.save')} />
+            </View>
+          </Card>
+        ))}
+        <Slot name="profile.editor" render={(item) => <item.component profile={me} />} />
+      </ScrollView>
+    </View>
   );
 }

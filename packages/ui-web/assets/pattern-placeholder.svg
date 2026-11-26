@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- PLACEHOLDER PATTERN (design update): a light jaali-style motif for page corners, standing
+       in for the final Indian-inspired pattern. Replace this file; keep the name. It is only
+       ever drawn at low opacity, never behind text. -->
+  <g fill="none" stroke="#D62828" stroke-width="1.2" opacity=".5">
+    <circle cx="60" cy="60" r="44"/>
+    <circle cx="60" cy="60" r="28"/>
+    <path d="M60 16c10 16 10 28 0 44-10-16-10-28 0-44zM60 104c10-16 10-28 0-44-10 16-10 28 0 44zM16 60c16-10 28-10 44 0-16 10-28 10-44 0zM104 60c-16-10-28-10-44 0 16 10 28 10 44 0z"/>
+    <circle cx="60" cy="60" r="6"/>
+  </g>
+</svg>

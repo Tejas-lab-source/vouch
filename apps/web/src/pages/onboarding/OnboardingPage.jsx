@@ -1,7 +1,7 @@
 // @ts-check
 import { MIN_PHOTOS, ONBOARDING_STEPS, useOnboarding } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, EmptyState, Skeleton } from '@vouch/ui-web';
+import { Button, EmptyState, Illustration, Skeleton, Wordmark } from '@vouch/ui-web';
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { PhotoManager } from '../../features/photo-manager/PhotoManager.jsx';
@@ -46,6 +46,7 @@ export function OnboardingPage() {
     return (
       <main className="w-page w-page--narrow">
         <EmptyState
+          art={<Illustration name="campus" className="w-empty-art" />}
           title={t('onboarding.done.title')}
           body={profile.missing.length > 0 ? t('onboarding.done.body') : undefined}
           action={
@@ -61,7 +62,9 @@ export function OnboardingPage() {
   const usable = profile.photos.filter((p) => p.status !== 'rejected').length;
   return (
     <main className="w-page w-page--narrow">
-      <p className="w-brand w-brand--small">{t('app.name')}</p>
+      <div className="w-brand">
+        <Wordmark height={32} />
+      </div>
       <p className="v-field__hint">
         {t('onboarding.progress', { step: index + 1, total: ONBOARDING_STEPS.length })}
       </p>

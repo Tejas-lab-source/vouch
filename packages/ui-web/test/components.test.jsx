@@ -9,13 +9,19 @@ import {
   Badge,
   Button,
   Card,
+  Chip,
   EmptyState,
+  Heart,
+  IconButton,
+  Illustration,
   Input,
   ListItem,
   Modal,
   OtpInput,
   Skeleton,
+  StatusBadge,
   Toast,
+  Wordmark,
 } from '../src/index.js';
 
 describe('ui-web components', () => {
@@ -113,6 +119,45 @@ describe('ui-web components', () => {
     expect(container.querySelector('.v-skeleton')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('design components: status badges, chips, icon buttons, the wordmark and illustrations', () => {
+    const onLike = vi.fn();
+    const { container } = render(
+      <>
+        <StatusBadge status="verified">Verified</StatusBadge>
+        <StatusBadge status="pending">Pending review</StatusBadge>
+        <StatusBadge status="rejected">Rejected</StatusBadge>
+        <Chip>Northfield</Chip>
+        <IconButton icon={Heart} label="Like" variant="primary" onClick={onLike} />
+        <Wordmark height={40} />
+        <Illustration name="campus" />
+      </>,
+    );
+    // The text carries the meaning; the icons are hidden from screen readers.
+    expect(screen.getByText('Verified').className).toContain('v-status--verified');
+    expect(container.querySelectorAll('.v-status svg[aria-hidden="true"]')).toHaveLength(3);
+    expect(screen.getByText('Northfield').className).toBe('v-chip');
+    fireEvent.click(screen.getByRole('button', { name: 'Like' }));
+    expect(onLike).toHaveBeenCalledOnce();
+    expect(screen.getByRole('img', { name: 'Vouch' }).tagName.toLowerCase()).toBe('svg');
+    const art = /** @type {HTMLImageElement} */ (container.querySelector('.v-illustration'));
+    expect(art.getAttribute('alt')).toBe('');
+    expect(art.getAttribute('loading')).toBe('lazy');
+    // A file URL, or inlined as a data URL by the bundler (small SVGs).
+    expect(art.getAttribute('src')).toMatch(/campus-placeholder\.svg|^data:image\/svg/);
+  });
+
+  it('Toast: success and error tones show an icon; OtpInput shows six boxes', () => {
+    const { container } = render(
+      <>
+        <Toast message="Profile updated" tone="success" />
+        <OtpInput label="Six-digit code" value="12" onChange={() => {}} />
+      </>,
+    );
+    expect(container.querySelector('.v-toast__icon svg')).toBeTruthy();
+    expect(container.querySelectorAll('.v-otp__box')).toHaveLength(6);
+    expect(container.querySelector('.v-otp__box--active')?.textContent).toBe('');
+  });
+
   it('the shipped styles.css is up to date and has both themes, focus rings and 44 px targets', async () => {
     const root = process.cwd();
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- this package's own file
@@ -121,6 +166,7 @@ describe('ui-web components', () => {
     expect(shipped).toContain("[data-theme='dark']");
     expect(shipped).toContain('prefers-color-scheme: dark');
     expect(shipped).toContain(':focus-visible');
-    expect(shipped).toContain('min-height: var(--touch-target)');
+    expect(shipped).toContain('min-width: var(--touch-target)');
+    expect(shipped).toContain('--color-primary: #D62828;');
   });
 });

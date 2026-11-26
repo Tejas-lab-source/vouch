@@ -2,6 +2,7 @@
 import { ServiceError, userCreated } from '@vouch/contracts';
 import { isAdult } from '../domain/age.js';
 import { findCollegeForDomain, normaliseEmail } from '../domain/email.js';
+import { normaliseInviteCode } from '../domain/invite.js';
 import { judgeAttempt } from '../domain/otp.js';
 import { orUnavailable } from './errors.js';
 import { startSession, tokenPair } from './sessions.js';
@@ -13,8 +14,15 @@ const MINUTE = 60 * 1000;
  * @property {string} email
  * @property {string} code
  * @property {{ platform: 'ios' | 'android' | 'web', appVersion?: string }} device
- * @property {{ birthDate: string, gradYear?: number, collegeId?: string, consent: { noticeVersion: string, purposes: string[] } }} [signup]
+ * @property {{ birthDate: string, gradYear?: number, collegeId?: string, inviteCode?: string, consent: { noticeVersion: string, purposes: string[] } }} [signup]
  * @property {'college_email' | 'id_card'} [verification]
+ */
+
+/**
+ * @typedef {object} Admission
+ * @property {import('../ports.js').College} college
+ * @property {boolean} viaIdCard
+ * @property {Buffer | null} inviteHash  Set when the college is invite-only.
  */
 
 /**
@@ -26,6 +34,10 @@ const MINUTE = 60 * 1000;
  *   sign-up whose email belongs to an erased account that is still banned (Phase 10).
  * - ID-card sign-up (`verification: 'id_card'`, any email, `signup.collegeId`): the account is
  *   created `pending_review` until staff approve the student ID and selfie (Phase 10).
+ * - Invite-only college (Phase 15): a new sign-up needs a usable `signup.inviteCode`
+ *   (INVITE_CODE_REQUIRED / INVITE_CODE_INVALID). The college and the invite are checked before
+ *   the code is consumed, so the client can retry with the same code; the invite's use is
+ *   counted in the sign-up transaction.
  * Not replayed through the idempotency store: results hold refresh tokens.
  * @param {import('../ports.js').IdentityDeps} deps
  */
@@ -44,7 +56,39 @@ export function makeVerifyOtp(deps) {
     tokens,
     privacyNoticeVersion,
     idCardFallback,
+    inviteOnly,
   } = deps;
+  /**
+   * The college a new account joins, and the hashed invite when the college is invite-only.
+   * @param {string} domain
+   * @param {VerifyInput} input
+   * @returns {Promise<Admission>}
+   */
+  const admit = async (domain, input) => {
+    const signup = /** @type {NonNullable<VerifyInput['signup']>} */ (input.signup);
+    const all = await colleges.all();
+    const byDomain = findCollegeForDomain(domain, all);
+    const viaIdCard = !byDomain && input.verification === 'id_card';
+    if (viaIdCard && !idCardFallback) throw new ServiceError('FEATURE_DISABLED');
+    const college =
+      byDomain ?? (viaIdCard ? all.find((c) => c.id === signup.collegeId) : undefined);
+    if (!college) {
+      if (viaIdCard) {
+        throw new ServiceError('VALIDATION_FAILED', { message: 'Choose your college.' });
+      }
+      throw new ServiceError('EMAIL_DOMAIN_NOT_ALLOWED');
+    }
+    if (!(await inviteOnly(college.id))) return { college, viaIdCard, inviteHash: null };
+    if (!signup.inviteCode) throw new ServiceError('INVITE_CODE_REQUIRED');
+    const normalisedCode = normaliseInviteCode(signup.inviteCode);
+    const inviteHash = normalisedCode ? crypto.hashToken(normalisedCode) : null;
+    const usable =
+      inviteHash &&
+      (await read((stores) => stores.inviteCodes.findUsable(inviteHash, college.id, clock.now())));
+    if (!inviteHash || !usable) throw new ServiceError('INVITE_CODE_INVALID');
+    return { college, viaIdCard, inviteHash };
+  };
+
   return useCase(
     'identity.verifyOtp',
     /** @param {VerifyInput} input */
@@ -88,6 +132,9 @@ export function makeVerifyOtp(deps) {
         }
       }
       if (!existing && !input.signup) throw new ServiceError('SIGNUP_DETAILS_REQUIRED');
+      // A new account: its college and, if the college is invite-only, the invite, both
+      // checked before the code is used up.
+      const admission = existing ? null : await admit(normalised.domain, input);
       if (!(await orUnavailable(() => otpStore.consume(key))))
         throw new ServiceError('OTP_INVALID');
 
@@ -125,24 +172,18 @@ export function makeVerifyOtp(deps) {
       }
       const now = clock.now();
       if (!isAdult(signup.birthDate, now)) throw new ServiceError('UNDERAGE');
-      const all = await colleges.all();
-      const byDomain = findCollegeForDomain(normalised.domain, all);
-      const viaIdCard = !byDomain && input.verification === 'id_card';
-      if (viaIdCard && !idCardFallback) throw new ServiceError('FEATURE_DISABLED');
-      const college =
-        byDomain ?? (viaIdCard ? all.find((c) => c.id === signup.collegeId) : undefined);
-      if (!college) {
-        if (viaIdCard) {
-          throw new ServiceError('VALIDATION_FAILED', { message: 'Choose your college.' });
-        }
-        throw new ServiceError('EMAIL_DOMAIN_NOT_ALLOWED');
-      }
+      const { college, viaIdCard, inviteHash } = /** @type {Admission} */ (admission);
       /** @type {'active' | 'pending_review'} */
       const status = viaIdCard ? 'pending_review' : 'active';
 
       const userId = newId();
       const publicId = crypto.randomPublicId();
       const session = await uow.run(async ({ stores, emit }) => {
+        const inviteCodeId = inviteHash
+          ? await stores.inviteCodes.redeem(inviteHash, college.id, now)
+          : null;
+        // Used up or expired since the check above (a race for the last use).
+        if (inviteHash && !inviteCodeId) throw new ServiceError('INVITE_CODE_INVALID');
         await stores.users.insert({
           id: userId,
           publicId,
@@ -152,6 +193,7 @@ export function makeVerifyOtp(deps) {
           birthDate: signup.birthDate,
           gradYear: signup.gradYear ?? null,
           createdAt: now,
+          inviteCodeId,
         });
         await stores.consents.insert({
           id: newId(),

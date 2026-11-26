@@ -1,7 +1,17 @@
 // @ts-check
 import { Slot, useDeck, useSwipe } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, EmptyState, Skeleton, useTheme } from '@vouch/ui-native';
+import {
+  Button,
+  EmptyState,
+  Heart,
+  IconButton,
+  Settings,
+  Skeleton,
+  useTheme,
+  X,
+} from '@vouch/ui-native';
+import { useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
@@ -16,6 +26,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { ProfileCard } from '../../entities/profile-card/ProfileCard.jsx';
 import { CardSafetyActions } from '../../features/card-safety/CardSafetyActions.jsx';
 import { useShowMatch } from '../../features/match-moment/MatchMoment.jsx';
+import { CampusIllustration } from '../../shared/ui/Illustration.jsx';
+import { ScreenHeader } from '../../shared/ui/ScreenHeader.jsx';
 
 /** A swipe counts past this share of the screen width. */
 const THRESHOLD = 0.3;
@@ -28,7 +40,20 @@ const THRESHOLD = 0.3;
  * users. Cards leave at once; a failed swipe brings the card back.
  */
 export function DeckWidget() {
-  const { space } = useTheme();
+  const { space, colors } = useTheme();
+  const router = useRouter();
+  const header = (
+    <ScreenHeader
+      brand
+      right={
+        <IconButton
+          icon={Settings}
+          label={t('settings.open')}
+          onPress={() => router.push('/settings')}
+        />
+      }
+    />
+  );
   const { width } = useWindowDimensions();
   const deck = useDeck();
   const showMatch = useShowMatch();
@@ -96,56 +121,86 @@ export function DeckWidget() {
     ],
   }));
 
-  if (deck.isLoading) return <Skeleton height={420} />;
+  if (deck.isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {header}
+        <View style={{ padding: space[4] }}>
+          <Skeleton height={420} />
+        </View>
+      </View>
+    );
+  }
   if (deck.isError || !current) {
     const incomplete = /** @type {any} */ (deck.error)?.code === 'PROFILE_INCOMPLETE';
     return (
-      <EmptyState
-        title={
-          deck.isError
-            ? incomplete
-              ? t('deck.incomplete')
-              : t('common.error')
-            : t('deck.empty.title')
-        }
-        body={deck.isError ? undefined : t('deck.empty.body')}
-        action={
-          <Button
-            variant="secondary"
-            title={t('deck.empty.refresh')}
-            onPress={() => void deck.refetch()}
-          />
-        }
-      />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {header}
+        <EmptyState
+          art={<CampusIllustration width={280} />}
+          title={
+            deck.isError
+              ? incomplete
+                ? t('deck.incomplete')
+                : t('common.error')
+              : t('deck.empty.title')
+          }
+          body={deck.isError ? undefined : t('deck.empty.body')}
+          action={
+            <Button
+              variant="secondary"
+              title={t('deck.empty.refresh')}
+              onPress={() => void deck.refetch()}
+            />
+          }
+        />
+      </View>
     );
   }
   return (
-    <ScrollView contentContainerStyle={{ padding: space[4], gap: space[3] }}>
-      <GestureDetector gesture={pan}>
-        <Animated.View
-          key={current.userId}
-          accessibilityActions={[
-            { name: 'like', label: t('deck.like') },
-            { name: 'pass', label: t('deck.pass') },
-          ]}
-          onAccessibilityAction={(/** @type {any} */ event) =>
-            fling(event.nativeEvent.actionName === 'like' ? 'like' : 'pass')
-          }
-          style={cardStyle}
-        >
-          <ProfileCard
-            card={current}
-            badges={
-              <Slot name="deck.cardBadges" render={(item) => <item.component card={current} />} />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {header}
+      <ScrollView
+        contentContainerStyle={{ padding: space[4], paddingTop: space[1], gap: space[4] }}
+      >
+        <GestureDetector gesture={pan}>
+          <Animated.View
+            key={current.userId}
+            accessibilityActions={[
+              { name: 'like', label: t('deck.like') },
+              { name: 'pass', label: t('deck.pass') },
+            ]}
+            onAccessibilityAction={(/** @type {any} */ event) =>
+              fling(event.nativeEvent.actionName === 'like' ? 'like' : 'pass')
             }
-            actions={<CardSafetyActions user={current} />}
+            style={cardStyle}
+          >
+            <ProfileCard
+              card={current}
+              badges={
+                <Slot name="deck.cardBadges" render={(item) => <item.component card={current} />} />
+              }
+              actions={<CardSafetyActions user={current} />}
+            />
+          </Animated.View>
+        </GestureDetector>
+        <View style={{ flexDirection: 'row', gap: space[8], justifyContent: 'center' }}>
+          <IconButton
+            icon={X}
+            label={t('deck.pass')}
+            variant="secondary"
+            size="lg"
+            onPress={() => fling('pass')}
           />
-        </Animated.View>
-      </GestureDetector>
-      <View style={{ flexDirection: 'row', gap: space[3], justifyContent: 'center' }}>
-        <Button variant="secondary" title={t('deck.pass')} onPress={() => fling('pass')} />
-        <Button title={t('deck.like')} onPress={() => fling('like')} />
-      </View>
-    </ScrollView>
+          <IconButton
+            icon={Heart}
+            label={t('deck.like')}
+            variant="primary"
+            size="lg"
+            onPress={() => fling('like')}
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }

@@ -1,18 +1,19 @@
 // @ts-check
 import { moveItem, useDeletePhoto, usePhotoUploads, useReorderPhotos } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Badge, Button } from '@vouch/ui-web';
+import {
+  Button,
+  ChevronLeft,
+  ChevronRight,
+  IconButton,
+  ImagePlus,
+  StatusBadge,
+  Trash2,
+} from '@vouch/ui-web';
 import { useRef } from 'react';
 import { ACCEPT_ATTRIBUTE } from '../../shared/lib/photo-io.js';
 
 const MAX_PHOTOS = 6;
-
-/** @type {Map<string, 'neutral' | 'accent' | 'danger'>} */
-const TONE = new Map([
-  ['approved', 'accent'],
-  ['pending', 'neutral'],
-  ['rejected', 'danger'],
-]);
 
 /** @param {import('@vouch/features-core').UploadState} upload */
 function uploadLabel(upload) {
@@ -57,6 +58,7 @@ export function PhotoManager({ profile }) {
         {t('photos.title')}
       </h2>
       <p className="v-field__hint">{t('photos.hint')}</p>
+      <p className="v-field__hint">{t('photos.reviewNote')}</p>
       <ol className="w-photo-grid">
         {photos.map((photo, i) => (
           <li key={photo.id} className="w-photo">
@@ -75,33 +77,27 @@ export function PhotoManager({ profile }) {
                 aria-label={t('photos.alt', { n: i + 1 })}
               />
             )}
-            <Badge tone={TONE.get(photo.status) ?? 'neutral'}>
+            <StatusBadge status={photo.status}>
               {t(/** @type {any} */ (`photos.status.${photo.status}`))}
-            </Badge>
+            </StatusBadge>
             <div className="w-photo__actions">
-              <Button
-                variant="ghost"
-                aria-label={t('photos.moveEarlier', { n: i + 1 })}
+              <IconButton
+                icon={ChevronLeft}
+                label={t('photos.moveEarlier', { n: i + 1 })}
                 disabled={i === 0 || reorder.isPending}
                 onClick={() => reorder.mutate(moveItem(ids, i, i - 1))}
-              >
-                ←
-              </Button>
-              <Button
-                variant="ghost"
-                aria-label={t('photos.moveLater', { n: i + 1 })}
+              />
+              <IconButton
+                icon={ChevronRight}
+                label={t('photos.moveLater', { n: i + 1 })}
                 disabled={i === photos.length - 1 || reorder.isPending}
                 onClick={() => reorder.mutate(moveItem(ids, i, i + 1))}
-              >
-                →
-              </Button>
-              <Button
-                variant="ghost"
-                aria-label={t('photos.delete', { n: i + 1 })}
+              />
+              <IconButton
+                icon={Trash2}
+                label={t('photos.delete', { n: i + 1 })}
                 onClick={() => remove.mutate(photo.id)}
-              >
-                ×
-              </Button>
+              />
             </div>
           </li>
         ))}
@@ -141,7 +137,7 @@ export function PhotoManager({ profile }) {
         }}
       />
       {room > 0 ? (
-        <Button variant="secondary" onClick={() => input.current?.click()}>
+        <Button variant="secondary" icon={ImagePlus} onClick={() => input.current?.click()}>
           {t('photos.add')}
         </Button>
       ) : (

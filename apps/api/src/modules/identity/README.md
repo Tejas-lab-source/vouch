@@ -57,7 +57,8 @@ after its session is revoked. So these routes also check the session itself (`se
 
 ## Tables owned (schema `identity`)
 
-`users`, `devices`, `auth_sessions`, `consents`. View: `identity.active_users_v`.
+`users`, `devices`, `auth_sessions`, `consents`, `banned_emails`, `invite_codes`. View:
+`identity.active_users_v`.
 No plaintext email is stored: `email_hmac` is HMAC-SHA256 of the normalised address.
 
 ## Redis keys
@@ -85,6 +86,19 @@ No plaintext email is stored: `email_hmac` is HMAC-SHA256 of the normalised addr
 - After approval, the next refresh issues a token without the claim.
 - A new sign-up whose email belongs to an erased account still under an active ban gets
   `ACCOUNT_BANNED`, and the code is consumed.
+
+## Invite-only colleges (Phase 15)
+
+- A college is invite-only while the `beta.invite_only` flag is on and its campus rule lists
+  the college. `scripts/college-add.js --invite-only` adds the college to the rule.
+- A new account at such a college needs `signup.inviteCode`: `INVITE_CODE_REQUIRED` when it
+  is missing, `INVITE_CODE_INVALID` when it is unknown, revoked, expired, used up or for
+  another college. Both are checked before the OTP is consumed, so the client retries with
+  the same code. Existing accounts sign in without one.
+- `identity.invite_codes` stores SHA-256 hashes of the normalised code (80 random bits, Crockford
+  base32, `XXXX-XXXX-XXXX-XXXX`). The use is counted in the sign-up transaction
+  (`UPDATE … WHERE uses < max_uses`), and `users.invite_code_id` records which code admitted
+  the account. `scripts/invite-create.js` prints new codes once.
 
 ## Adapters
 

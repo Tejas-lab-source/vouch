@@ -1,7 +1,7 @@
 // @ts-check
 import { useMarkRead, useMessages, useSendMessage, useSlotItems } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Avatar, Button, EmptyState, Skeleton } from '@vouch/ui-web';
+import { ArrowLeft, Avatar, Button, EmptyState, Icon, Lock, Skeleton } from '@vouch/ui-web';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -135,7 +135,7 @@ export function ConversationView({ conversationId, user, closed = false }) {
     <section className="w-chat" aria-label={t('chat.messages', { name })}>
       <header className="w-chat__header">
         <Link to="/chats" className="w-chat__back" aria-label={t('chat.back')}>
-          ←
+          <Icon icon={ArrowLeft} />
         </Link>
         {user ? (
           <Avatar src={user.photos.at(0)?.w400 ?? null} alt="" name={name} size={40} />
@@ -221,6 +221,7 @@ export function ConversationView({ conversationId, user, closed = false }) {
       </div>
       {closedKey ? (
         <p className="w-chat__closed" role="status">
+          <Icon icon={Lock} size={18} />
           {t(closedKey)}
         </p>
       ) : (

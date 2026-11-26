@@ -21,3 +21,4 @@ test-results/
 playwright-report/
 .expo/
 *.tsbuildinfo
+apps/web/test-results-design/

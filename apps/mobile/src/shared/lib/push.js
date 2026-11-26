@@ -5,14 +5,17 @@ import { Platform } from 'react-native';
 import { APP_VERSION } from '../config/index.js';
 
 // Show pushes while the app is open too (the server never puts message text in them).
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// The design-screenshot web export has no pushes (see secure-storage.js).
+const web = Platform.OS === 'web';
+if (!web)
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
 
 /** @param {string} status @returns {'granted' | 'denied' | 'undetermined'} */
 const normalise = (status) =>
@@ -26,11 +29,12 @@ const normalise = (status) =>
 export const expoPush = {
   platform: Platform.OS === 'ios' ? 'ios' : 'android',
   appVersion: APP_VERSION,
-  status: async () => normalise((await Notifications.getPermissionsAsync()).status),
+  status: async () =>
+    web ? 'undetermined' : normalise((await Notifications.getPermissionsAsync()).status),
   request: async () =>
     (await Notifications.requestPermissionsAsync()).status === 'granted' ? 'granted' : 'denied',
   token: async () => {
-    if (!Device.isDevice) return null;
+    if (web || !Device.isDevice) return null;
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Vouch',
@@ -47,6 +51,7 @@ export const expoPush = {
 
 /** Removes delivered notifications about one conversation (when it is opened). @param {string} conversationId */
 export async function clearConversationNotifications(conversationId) {
+  if (web) return;
   const shown = await Notifications.getPresentedNotificationsAsync().catch(() => []);
   for (const n of shown) {
     const data = /** @type {any} */ (n.request.content.data);

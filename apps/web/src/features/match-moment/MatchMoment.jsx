@@ -1,7 +1,7 @@
 // @ts-check
-import { useRealtimeEvent, useServices } from '@vouch/features-core';
+import { useMyProfile, useRealtimeEvent, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Avatar, Button, Modal } from '@vouch/ui-web';
+import { Avatar, Button, Heart, Icon, Modal } from '@vouch/ui-web';
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -26,6 +26,8 @@ export function MatchMomentProvider({ children }) {
   const { analytics } = useServices();
   const navigate = useNavigate();
   const [match, setMatch] = useState(/** @type {MatchMomentData | null} */ (null));
+  const me = useMyProfile();
+  const myPhoto = me.data?.photos.find((p) => p.urls)?.urls?.w400 ?? null;
   // The swiper gets both the swipe answer and `match.new`: show (and count) each match once.
   const shown = useRef(new Set());
   const show = useCallback((/** @type {MatchMomentData} */ next) => {
@@ -41,16 +43,27 @@ export function MatchMomentProvider({ children }) {
   return (
     <MatchContext.Provider value={value}>
       {children}
-      <Modal open={match !== null} onClose={() => setMatch(null)} title={t('match.title')}>
+      <Modal
+        open={match !== null}
+        onClose={() => setMatch(null)}
+        title={t('match.title')}
+        className="v-modal--celebrate"
+      >
         {match ? (
           <div className="w-match">
-            <Avatar
-              src={match.user.photos.at(0)?.w400 ?? null}
-              alt=""
-              name={match.user.name}
-              size={96}
-            />
-            <p>{t('match.body', { name: match.user.name })}</p>
+            <div className="w-match__pair" aria-hidden="true">
+              <Avatar src={myPhoto} alt="" name={me.data?.name ?? ''} size={104} />
+              <span className="w-match__heart">
+                <Icon icon={Heart} size={28} />
+              </span>
+              <Avatar
+                src={match.user.photos.at(0)?.w400 ?? null}
+                alt=""
+                name={match.user.name}
+                size={104}
+              />
+            </div>
+            <p className="w-match__body">{t('match.body', { name: match.user.name })}</p>
             <Button
               block
               onClick={() => {

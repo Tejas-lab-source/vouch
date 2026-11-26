@@ -18,8 +18,77 @@ See `docs/ROADMAP.md` Part A for the approval protocol.
 | 11  | Frontend foundation                                                     | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-11.md |
 | 12  | Frontend features I (onboarding, profile, discovery, matching)          | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-12.md |
 | 13  | Frontend features II (chat, notifications, safety, settings, admin app) | Approved    | 2026-11-22 (batch)       | 2026-11-23         | phases/PHASE-13.md |
-| 14  | End-to-end testing, security, privacy and performance                   | Report sent | 2026-11-23 (batch rules) | —                  | phases/PHASE-14.md |
-| 15  | Deployment, observability and closed beta launch                        | Not started | —                        | —                  | —                  |
+| 14  | End-to-end testing, security, privacy and performance                   | Approved    | 2026-11-23 (batch rules) | 2026-11-23         | phases/PHASE-14.md |
+| 15  | Deployment, observability and closed beta launch                        | In progress | 2026-11-23               | —                  | phases/PHASE-15.md |
+
+## Phase 15 run (owner, 2026-11-23)
+
+**Approval:** "Approved: start Phase 15". Normal per-phase rules apply. When the phase is
+complete (the launch checklist fully ticked), send the Completion Report and stop.
+
+**Dependencies approved** (exact versions, at least two weeks old): `wrangler`, `eas-cli`,
+`@sentry/react`, `@sentry/react-native`, `@sentry/vite-plugin`.
+
+**Owner decisions:**
+
+1. **Domain:** bought on Cloudflare Registrar; the name is not sent yet. Build with a
+   placeholder (`example.app`) and wait for the real name only at the deploy step.
+2. **Staging:** the smallest plans (about $13 a month), synthetic data only.
+3. **Email:** Resend.
+4. **Monitoring:** Sentry and Grafana Cloud free tiers.
+5. **First campus:** JIIT Noida, invite-only with invite codes. The exact student email
+   domain is not sent yet (a placeholder until then).
+
+**Rules for this run:**
+
+- Build everything that does not need owner items first.
+- When blocked, name the exact checklist item and stop.
+- **Never ask for a secret in chat:** the owner enters secrets into Render or GitHub.
+
+The owner is working through items A1–A3 now.
+
+### Status (2026-11-23): everything buildable is done; blocked on owner items
+
+Built, tested and pushed (commits bb966cd … 3185621; CI green): steps 1–4 and 7–12 of the
+Start Plan as far as they need no account, plus three launch blockers found on the way:
+
+- CORS refused PATCH, PUT and DELETE from another origin (fixed; the browser suite now runs
+  in the deployed shape in CI).
+- A hosted, non-superuser login could not `SET ROLE` into the module roles it creates
+  (fixed in `migrate up`; tested).
+- A restore into a new Render instance would have failed on missing roles and the old
+  owner's default privileges (fixed in `scripts/backup.js restore`; tested end to end).
+
+Corrections to the Start Plan's checklist are listed in `docs/infrastructure.md` ("Changes
+from the Start Plan"): B3 is a Render API key plus service ids, B8's secret is
+`MODERATION_API_KEY`, and the Cloudflare and Sentry tokens are environment secrets.
+
+**Blocked on (in this order):** A1 (the domain name, sent in chat), then B1 and B2 (GitHub
+environments; the Render Blueprint with its secrets) for the first staging deploy. C5's
+exact JIIT student email domain is needed before `college-add.js` runs. Owner decision
+needed: `expo-updates` as a new dependency (the roadmap's over-the-air channels need it).
+
+## Phase 14 approval and the beta plan (owner, 2026-11-23)
+
+**Approval:** "Approved: Phase 14 complete." PR #10 was merged by the owner. Phase 15 follows
+the normal per-phase rules again: send the Start Plan and wait for "Approved: start Phase 15".
+
+**Beta hosting decision (ADR 0028):**
+
+| Component | Plan                         | Resources       |
+| --------- | ---------------------------- | --------------- |
+| API       | Render web service, Standard | 1 CPU, 2 GB     |
+| Postgres  | Render Postgres, Basic-1gb   | 0.5 CPU, 1 GB   |
+| Redis     | Render Key Value, Starter    | persistence off |
+
+- **Measured at the beta peak on this plan:**
+  - no errors
+  - HTTP p95 26–37 ms, deck p95 45 ms, message delivery p95 69 ms
+  - API CPU 21% of a core on average, Postgres 9%
+- **The assumed plan** (Starter API, Postgres Basic-256mb) failed 37% of requests at the same
+  load.
+- **Stepping the API down to Starter later** is allowed if production metrics show headroom
+  (criteria in ADR 0028).
 
 ## Phase 14 run (owner, 2026-11-23)
 
@@ -59,7 +128,7 @@ anything needing the owner's decision) and stop.
 
 | Step                                      | Status                                   | Last commit                     | CI run                                             | Next step                                     |
 | ----------------------------------------- | ---------------------------------------- | ------------------------------- | -------------------------------------------------- | --------------------------------------------- |
-| Phase 14                                  | Report sent                              | —                               | —                                                  | Stop                                          |
+| Phase 14                                  | Approved (2026-11-23), PR #10 merged     | —                               | —                                                  | Phase 15 Start Plan sent                      |
 | 1 Read receipts                           | Done                                     | `50498ca`                       | —                                                  | Audit integrity                               |
 | 2 Audit integrity                         | Done                                     | `39a75e4`                       | —                                                  | Admin sessions                                |
 | 3 Admin sessions and sensitive routes     | Done                                     | `c092dbe`                       | green                                              | Security review                               |
@@ -280,6 +349,11 @@ Owner instructions recorded here so the phase that owns them picks them up.
     socket address is used. The mechanism ships in Phase 8.
   - Chat (from the Phase 9 report): re-measure gateway memory per socket on Render (about
     0.8 MB per socket under load locally).
+- **Post-launch — socket load under overload (owner, 2026-11-23, approved follow-up from the
+  Phase 14 report):** shed or limit socket message load under overload, the way HTTP returns a
+  quick 503. At 10x on the assumed beta plan, chat acks took 35–42 s because `message.send` is
+  not shed. Use the same pressure signal (`platform/pressure.js`), and answer
+  `TEMPORARILY_UNAVAILABLE` so clients retry with backoff.
 - **Phases 11–13 — chat clients (from the Phase 9 report):** live delivery is best effort.
   After every (re)connect, a client must send `sync` with its last seq per conversation,
   merge messages by `(conversationId, seq)`, and send `auth.refresh` before the access token

@@ -263,6 +263,12 @@ export const EnvSchema = z
     SENTRY_DSN: z.url().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     METRICS_ENABLED: z.stringbool().default(true),
+    METRICS_SCRAPE_TOKEN: secret
+      .optional()
+      .describe(
+        'Bearer token for GET /internal/metrics on the public port (Grafana Cloud scrape, ' +
+          'Phase 15). Unset: the route does not exist; /metrics on METRICS_PORT always does.',
+      ),
   })
   .superRefine((env, ctx) => {
     /** @param {string} path @param {string} message */

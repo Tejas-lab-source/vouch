@@ -6,6 +6,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Component, lazy, Suspense, useEffect, useState } from 'react';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router';
 import { HomeTab } from './HomeTab.jsx';
+import { reportError } from './monitoring.js';
 import { ChatPage } from '../pages/chat/ChatPage.jsx';
 import { PrivacyPage } from '../pages/settings/PrivacyPage.jsx';
 import { SafetyCentrePage } from '../pages/settings/SafetyCentrePage.jsx';
@@ -26,6 +27,10 @@ export class ErrorBoundary extends Component {
   }
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+  /** @param {unknown} error @param {{ componentStack?: string | null }} info */
+  componentDidCatch(error, info) {
+    reportError(error, info);
   }
   render() {
     if (this.state.failed) {

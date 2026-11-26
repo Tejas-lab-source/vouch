@@ -17,6 +17,7 @@ export {
 } from './chat/index.js';
 export { mergePage, PREFETCH_AT, removeCard, restoreCard, useDeck } from './deck/index.js';
 export { createEventHub } from './events/index.js';
+export { monitoringOptions, scrubBreadcrumb, scrubEvent } from './monitoring/index.js';
 export { useLikesCount, useMatches, useUnmatch } from './matches/index.js';
 export {
   memoryPrefs,

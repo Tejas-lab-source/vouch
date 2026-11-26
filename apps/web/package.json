@@ -14,9 +14,12 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "size": "node scripts/bundle-size.js",
-    "e2e": "playwright test --trace off"
+    "e2e": "playwright test --trace off",
+    "e2e:remote": "playwright test --config playwright.remote.config.js --trace off",
+    "design:shots": "playwright test --config playwright.design.config.js --trace off"
   },
   "dependencies": {
+    "@sentry/react": "11.11.0",
     "@tanstack/react-query": "5.107.1",
     "@tanstack/react-virtual": "3.14.26",
     "@vouch/api-client": "workspace:*",
@@ -33,6 +36,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.63.0",
+    "@sentry/vite-plugin": "11.11.0",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/react": "19.3.0",

@@ -1,9 +1,9 @@
 // @ts-check
 import { useMarkRead, useMessages, useSendMessage, useSlotItems } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, EmptyState, Skeleton, useTheme } from '@vouch/ui-native';
+import { Button, EmptyState, Icon, Lock, Skeleton, Text, useTheme } from '@vouch/ui-native';
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, FlatList, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { AppState, FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { TextMessage } from '../../entities/message/TextMessage.jsx';
 import { Composer } from '../../features/composer/Composer.jsx';
 
@@ -32,7 +32,7 @@ function useForeground() {
  * @param {{ conversationId: string, closed?: boolean }} props
  */
 export function ConversationView({ conversationId, closed = false }) {
-  const { colors, space, radius } = useTheme();
+  const { colors, space, radius, shadow } = useTheme();
   const chat = useMessages(conversationId);
   const { send, retry } = useSendMessage(conversationId);
   useMarkRead(conversationId, chat.messages, useForeground());
@@ -77,12 +77,20 @@ export function ConversationView({ conversationId, closed = false }) {
   const renderItem = ({ item }) => {
     if (item.type === 'day') {
       return (
-        <Text
-          accessibilityRole="header"
-          style={{ textAlign: 'center', color: colors.textMuted, marginVertical: space[2] }}
+        <View
+          style={{
+            alignSelf: 'center',
+            marginVertical: space[2],
+            paddingHorizontal: space[3],
+            paddingVertical: 2,
+            borderRadius: radius.pill,
+            backgroundColor: colors.surface,
+          }}
         >
-          {item.label}
-        </Text>
+          <Text variant="caption" muted accessibilityRole="header">
+            {item.label}
+          </Text>
+        </View>
       );
     }
     const mine = item.type === 'outgoing' || item.mine;
@@ -95,21 +103,21 @@ export function ConversationView({ conversationId, closed = false }) {
           alignSelf: mine ? 'flex-end' : 'flex-start',
           maxWidth: '78%',
           marginVertical: space[1],
-          padding: space[2],
-          borderRadius: radius.lg,
-          backgroundColor: mine ? colors.accent : colors.surface,
-          borderWidth: 1,
-          borderColor: mine ? colors.accent : colors.border,
+          paddingVertical: space[2],
+          paddingHorizontal: space[3],
+          borderRadius: radius.bubble,
+          borderBottomRightRadius: mine ? 6 : radius.bubble,
+          borderBottomLeftRadius: mine ? radius.bubble : 6,
+          backgroundColor: mine ? colors.primary : colors.surface,
+          ...shadow.button,
         }}
       >
         <Renderer message={item.type === 'outgoing' ? item.outgoing : item.message} mine={mine} />
         {state ? (
           <Text
-            style={{
-              color: mine ? colors.onAccent : colors.textMuted,
-              fontSize: 12,
-              alignSelf: 'flex-end',
-            }}
+            variant="caption"
+            color={mine ? colors.onPrimary : colors.textMuted}
+            style={{ alignSelf: 'flex-end', fontSize: 11 }}
           >
             {t(/** @type {import('@vouch/i18n').MessageKey} */ (STATE.get(state)))}
           </Text>
@@ -143,12 +151,24 @@ export function ConversationView({ conversationId, closed = false }) {
         accessibilityLabel={t('chat.messages', { name: '' })}
       />
       {ended ? (
-        <Text
+        <View
           accessibilityLiveRegion="polite"
-          style={{ textAlign: 'center', color: colors.textMuted, padding: space[3] }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: space[2],
+            margin: space[3],
+            padding: space[3],
+            borderRadius: radius.card,
+            backgroundColor: colors.warningSoft,
+          }}
         >
-          {t(ended === 'deleted' ? 'chat.closed.deleted' : 'chat.closed.unmatched')}
-        </Text>
+          <Icon icon={Lock} size={18} color={colors.warningText} />
+          <Text variant="label" color={colors.warningText} style={{ flexShrink: 1 }}>
+            {t(ended === 'deleted' ? 'chat.closed.deleted' : 'chat.closed.unmatched')}
+          </Text>
+        </View>
       ) : (
         <Composer onSend={send} />
       )}

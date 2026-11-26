@@ -20,6 +20,8 @@ const DEFAULT_MESSAGES = /** @type {const} */ ({
   CAPTCHA_FAILED: 'The security check failed. Try again.',
   EMAIL_DOMAIN_NOT_ALLOWED: 'Use the email address your college gave you.',
   OTP_INVALID: 'That code is not right.',
+  INVITE_CODE_REQUIRED: 'Your college is invite-only for now. Enter your invite code.',
+  INVITE_CODE_INVALID: 'That invite code is not valid, has expired or has been used up.',
   OTP_EXPIRED: 'The code has expired. Request a new one.',
   OTP_ATTEMPTS_EXHAUSTED: 'Too many wrong codes. Request a new one.',
   SIGNUP_DETAILS_REQUIRED:

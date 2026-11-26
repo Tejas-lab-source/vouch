@@ -4,9 +4,10 @@ import { useState, useSyncExternalStore } from 'react';
 import { createStaffSession } from '../features/admin-auth/staff-session.js';
 import { LoginPage } from '../pages/login/LoginPage.jsx';
 import { PanelsPage } from '../pages/panels/PanelsPage.jsx';
+import { API_BASE } from '../shared/config/index.js';
 
 /** @param {{ baseUrl?: string, fetch?: typeof fetch }} props */
-export function App({ baseUrl = globalThis.location.origin, fetch }) {
+export function App({ baseUrl = API_BASE || globalThis.location.origin, fetch }) {
   const [session] = useState(() => createStaffSession({ baseUrl, fetch }));
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),

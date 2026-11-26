@@ -1,0 +1,56 @@
+{
+  "web-01-landing-light": [],
+  "web-01-landing-dark": [],
+  "web-02-sign-in-light": [],
+  "web-02-sign-in-dark": [],
+  "web-04-chat-light": [],
+  "web-04-chat-dark": [],
+  "web-03-swipe-deck-light": [],
+  "web-03-swipe-deck-dark": [],
+  "admin-01-sign-in-light": [],
+  "admin-01-sign-in-dark": [],
+  "admin-02-reports-light": [],
+  "admin-02-reports-dark": [],
+  "mobile-01-welcome-light": [],
+  "mobile-01-welcome-dark": [],
+  "mobile-02-sign-in-light": [],
+  "mobile-02-sign-in-dark": [],
+  "mobile-03-enter-code-light": [],
+  "mobile-03-enter-code-dark": [],
+  "mobile-03b-sign-up-details-light": [],
+  "mobile-03b-sign-up-details-dark": [],
+  "mobile-04-onboarding-light": [],
+  "mobile-04-onboarding-dark": [],
+  "mobile-04b-onboarding-who-light": [],
+  "mobile-04c-onboarding-ages-light": [],
+  "mobile-05-add-photos-light": [],
+  "mobile-05-add-photos-dark": [],
+  "mobile-06-swipe-deck-light": [],
+  "mobile-06-swipe-deck-dark": [],
+  "mobile-14-bottom-nav-light": [],
+  "mobile-14-bottom-nav-dark": [],
+  "mobile-07-full-profile-light": [],
+  "mobile-07-full-profile-dark": [],
+  "mobile-08-its-a-match-light": [],
+  "mobile-08-its-a-match-dark": [],
+  "mobile-09-matches-light": [
+    "label-content-name-mismatch: .css-g5y9jx:nth-child(2) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button, .css-g5y9jx:nth-child(3) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button"
+  ],
+  "mobile-09-matches-dark": [
+    "label-content-name-mismatch: .css-g5y9jx:nth-child(2) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button, .css-g5y9jx:nth-child(3) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button"
+  ],
+  "mobile-10-chats-light": [
+    "label-content-name-mismatch: button[aria-label=\"Rohan, Say hello 👋\"], .css-g5y9jx:nth-child(2) > button"
+  ],
+  "mobile-10-chats-dark": [
+    "label-content-name-mismatch: button[aria-label=\"Rohan, Say hello 👋\"], .css-g5y9jx:nth-child(2) > button"
+  ],
+  "mobile-11-chat-light": [],
+  "mobile-11-chat-dark": [],
+  "mobile-12-my-profile-light": [],
+  "mobile-12-my-profile-dark": [],
+  "mobile-12b-my-profile-full-light": [],
+  "mobile-13-settings-light": [],
+  "mobile-13-settings-dark": [],
+  "mobile-13b-settings-full-light": []
+}

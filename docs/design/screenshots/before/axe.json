@@ -1,0 +1,62 @@
+{
+  "mobile-01-welcome-light": [],
+  "mobile-01-welcome-dark": [],
+  "mobile-02-sign-in-light": [],
+  "mobile-02-sign-in-dark": [],
+  "mobile-03-enter-code-light": [],
+  "mobile-03-enter-code-dark": ["color-contrast: input"],
+  "mobile-03b-sign-up-details-light": [],
+  "mobile-03b-sign-up-details-dark": [],
+  "mobile-04-onboarding-light": [
+    "aria-required-attr: div[aria-label=\"Woman\"], div[aria-label=\"Man\"], div[aria-label=\"Non-binary\"]"
+  ],
+  "mobile-04-onboarding-dark": [
+    "aria-required-attr: div[aria-label=\"Woman\"], div[aria-label=\"Man\"], div[aria-label=\"Non-binary\"]"
+  ],
+  "mobile-04b-onboarding-who-light": [
+    "aria-required-attr: div[aria-label=\"Woman\"], div[aria-label=\"Man\"], div[aria-label=\"Non-binary\"]"
+  ],
+  "mobile-04c-onboarding-ages-light": [],
+  "mobile-05-add-photos-light": [],
+  "mobile-05-add-photos-dark": [],
+  "mobile-06-swipe-deck-light": [],
+  "mobile-06-swipe-deck-dark": [],
+  "mobile-14-bottom-nav-light": [],
+  "mobile-14-bottom-nav-dark": [],
+  "mobile-07-full-profile-light": [
+    "scrollable-region-focusable: .css-g5y9jx:nth-child(2) > .r-150rngu.r-16y2uox.r-1wbh5a2"
+  ],
+  "mobile-07-full-profile-dark": [
+    "scrollable-region-focusable: .css-g5y9jx:nth-child(2) > .r-150rngu.r-16y2uox.r-1wbh5a2"
+  ],
+  "mobile-08-its-a-match-light": ["aria-dialog-name: div[aria-modal=\"true\"]"],
+  "mobile-08-its-a-match-dark": ["aria-dialog-name: div[aria-modal=\"true\"]"],
+  "mobile-09-matches-light": [
+    "label-content-name-mismatch: .css-g5y9jx:nth-child(2) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button, .css-g5y9jx:nth-child(3) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button"
+  ],
+  "mobile-09-matches-dark": [
+    "label-content-name-mismatch: .css-g5y9jx:nth-child(2) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button, .css-g5y9jx:nth-child(3) > .css-g5y9jx > .css-g5y9jx:nth-child(1) > button"
+  ],
+  "mobile-10-chats-light": [
+    "label-content-name-mismatch: button[aria-label=\"Rohan, Say hello \ud83d\udc4b\"], .css-g5y9jx:nth-child(2) > button"
+  ],
+  "mobile-10-chats-dark": [
+    "label-content-name-mismatch: button[aria-label=\"Rohan, Say hello \ud83d\udc4b\"], .css-g5y9jx:nth-child(2) > button"
+  ],
+  "mobile-11-chat-light": [],
+  "mobile-11-chat-dark": [
+    "color-contrast: button[aria-label=\"Report\"] > .css-146c3p1[dir=\"auto\"], button[aria-label=\"Block\"] > .css-146c3p1[dir=\"auto\"]"
+  ],
+  "mobile-12-my-profile-light": [
+    "aria-required-attr: .r-1loqt21[aria-label=\"Woman\"][role=\"radio\"], .r-1loqt21[aria-label=\"Man\"][role=\"radio\"], .r-1loqt21[aria-label=\"Non-binary\"][role=\"radio\"], .r-1loqt21[aria-label=\"Woman\"][role=\"checkbox\"], .r-1loqt21[aria-label=\"Man\"][role=\"checkbox\"], .r-1loqt21[aria-label=\"Non-binary\"][role=\"checkbox\"]"
+  ],
+  "mobile-12-my-profile-dark": [
+    "aria-required-attr: .r-1loqt21[aria-label=\"Woman\"][role=\"radio\"], .r-1loqt21[aria-label=\"Man\"][role=\"radio\"], .r-1loqt21[aria-label=\"Non-binary\"][role=\"radio\"], .r-1loqt21[aria-label=\"Woman\"][role=\"checkbox\"], .r-1loqt21[aria-label=\"Man\"][role=\"checkbox\"], .r-1loqt21[aria-label=\"Non-binary\"][role=\"checkbox\"]"
+  ],
+  "mobile-12b-my-profile-full-light": [
+    "aria-required-attr: .r-1loqt21[aria-label=\"Woman\"][role=\"radio\"], .r-1loqt21[aria-label=\"Man\"][role=\"radio\"], .r-1loqt21[aria-label=\"Non-binary\"][role=\"radio\"], .r-1loqt21[aria-label=\"Woman\"][role=\"checkbox\"], .r-1loqt21[aria-label=\"Man\"][role=\"checkbox\"], .r-1loqt21[aria-label=\"Non-binary\"][role=\"checkbox\"]"
+  ],
+  "mobile-13-settings-light": [],
+  "mobile-13-settings-dark": [],
+  "mobile-13b-settings-full-light": []
+}
