@@ -1,7 +1,7 @@
 // @ts-check
 import { Slot, useDeck, useSwipe } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, EmptyState, Skeleton } from '@vouch/ui-web';
+import { Button, EmptyState, Heart, IconButton, Illustration, Skeleton, X } from '@vouch/ui-web';
 import { useEffect } from 'react';
 import { ProfileCard } from '../../entities/profile-card/ProfileCard.jsx';
 import { CardSafetyActions } from '../../features/card-safety/CardSafetyActions.jsx';
@@ -51,6 +51,7 @@ export function DeckWidget() {
   if (!current) {
     return (
       <EmptyState
+        art={<Illustration name="campus" className="w-empty-art" />}
         title={t('deck.empty.title')}
         body={t('deck.empty.body')}
         action={
@@ -72,10 +73,20 @@ export function DeckWidget() {
         actions={<CardSafetyActions user={current} />}
       />
       <div className="w-deck__buttons">
-        <Button variant="secondary" onClick={() => void swipe.pass(current)}>
-          {t('deck.pass')}
-        </Button>
-        <Button onClick={() => void swipe.like(current)}>{t('deck.like')}</Button>
+        <IconButton
+          icon={X}
+          label={t('deck.pass')}
+          variant="secondary"
+          size="lg"
+          onClick={() => void swipe.pass(current)}
+        />
+        <IconButton
+          icon={Heart}
+          label={t('deck.like')}
+          variant="primary"
+          size="lg"
+          onClick={() => void swipe.like(current)}
+        />
       </div>
       <p className="v-field__hint">{t('deck.keyboardHint')}</p>
       {swipe.error ? (

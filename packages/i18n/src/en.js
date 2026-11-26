@@ -316,6 +316,15 @@ export const en = Object.freeze({
   'admin.flags.off': 'Off',
   'admin.flags.toggle': 'Turn {key} {state}',
 
+  // Brand and design (design update): copy only, no new data.
+  'brand.motto': 'Meet. Match. Belong.',
+  'brand.audience': 'Only for verified college students in India',
+  'auth.welcome.start': 'Get started',
+  'auth.welcome.signIn': 'I already have an account',
+  'auth.welcome.terms': 'By continuing you agree to our privacy notice.',
+  'photos.reviewNote': 'Every photo is reviewed for safety before others see it.',
+  'nav.main': 'Main',
+  'ui.kit.verified': 'Verified',
   // Components
   'ui.toast.dismiss': 'Dismiss notification',
   'ui.modal.close': 'Close dialog',

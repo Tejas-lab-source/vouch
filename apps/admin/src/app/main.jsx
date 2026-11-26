@@ -1,4 +1,5 @@
 // @ts-check
+import '@vouch/ui-web/fonts.css';
 import '@vouch/ui-web/styles.css';
 import './admin.css';
 import { createRoot } from 'react-dom/client';

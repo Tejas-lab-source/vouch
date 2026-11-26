@@ -1,9 +1,9 @@
 // @ts-check
 import { useBlock, useReport } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Input, Sheet, useTheme } from '@vouch/ui-native';
+import { Ban, Button, Flag, IconButton, Input, Sheet, Text, useTheme } from '@vouch/ui-native';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Choice } from '../../shared/ui/Choice.jsx';
 
 const REASONS = /** @type {const} */ ([
@@ -18,10 +18,11 @@ const REASONS = /** @type {const} */ ([
 /**
  * Report and Block for someone's card (Phase 10 APIs). Blocking is confirmed first and never
  * revealed to the other person.
- * @param {{ user: { userId: string, name: string }, onBlocked?: () => void }} props
+ * `compact` shows icon buttons (the chat header); they keep the names "Report" and "Block".
+ * @param {{ user: { userId: string, name: string }, onBlocked?: () => void, compact?: boolean }} props
  */
-export function CardSafetyActions({ user, onBlocked }) {
-  const { colors } = useTheme();
+export function CardSafetyActions({ user, onBlocked, compact = false }) {
+  const { colors, space } = useTheme();
   const [dialog, setDialog] = useState(/** @type {null | 'report' | 'block'} */ (null));
   const [reason, setReason] = useState(/** @type {(typeof REASONS)[number][0] | null} */ (null));
   const [note, setNote] = useState('');
@@ -33,26 +34,48 @@ export function CardSafetyActions({ user, onBlocked }) {
     setNote('');
   };
   return (
-    <View style={{ flexDirection: 'row' }}>
-      <Button variant="ghost" title={t('safety.report')} onPress={() => setDialog('report')} />
-      <Button variant="ghost" title={t('safety.block')} onPress={() => setDialog('block')} />
+    <View style={{ flexDirection: 'row', gap: space[1] }}>
+      {compact ? (
+        <>
+          <IconButton icon={Flag} label={t('safety.report')} onPress={() => setDialog('report')} />
+          <IconButton icon={Ban} label={t('safety.block')} onPress={() => setDialog('block')} />
+        </>
+      ) : (
+        <>
+          <Button
+            variant="ghost"
+            compact
+            icon={Flag}
+            title={t('safety.report')}
+            onPress={() => setDialog('report')}
+          />
+          <Button
+            variant="ghost"
+            compact
+            icon={Ban}
+            title={t('safety.block')}
+            onPress={() => setDialog('block')}
+          />
+        </>
+      )}
       <Sheet
         open={dialog === 'report'}
         onClose={close}
         title={t('safety.report.title', { name: user.name })}
       >
         {report.isSuccess ? (
-          <Text accessibilityLiveRegion="polite" style={{ color: colors.text }}>
+          <Text accessibilityLiveRegion="polite" color={colors.successText}>
             {t('safety.report.sent')}
           </Text>
         ) : (
           <View>
-            <Text style={{ color: colors.text, fontWeight: '600' }}>
+            <Text variant="label" style={{ marginBottom: space[2] }}>
               {t('safety.report.reason')}
             </Text>
             {REASONS.map(([code, key]) => (
               <Choice
                 key={code}
+                wide
                 label={t(key)}
                 selected={reason === code}
                 onPress={() => setReason(code)}
@@ -87,7 +110,7 @@ export function CardSafetyActions({ user, onBlocked }) {
         onClose={close}
         title={t('safety.block.title', { name: user.name })}
       >
-        <Text style={{ color: colors.text }}>{t('safety.block.body')}</Text>
+        <Text>{t('safety.block.body')}</Text>
         <Button
           variant="danger"
           title={t('safety.block.confirm')}

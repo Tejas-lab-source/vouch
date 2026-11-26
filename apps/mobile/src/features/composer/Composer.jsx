@@ -1,12 +1,12 @@
 // @ts-check
 import { t } from '@vouch/i18n';
-import { Button, useTheme } from '@vouch/ui-native';
+import { IconButton, Send, useTheme } from '@vouch/ui-native';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 /** The message composer. @param {{ onSend: (text: string) => void }} props */
 export function Composer({ onSend }) {
-  const { colors, space, radius, minTouchTarget } = useTheme();
+  const { colors, space, radius, font } = useTheme();
   const [text, setText] = useState('');
   const send = () => {
     if (!text.trim()) return;
@@ -15,7 +15,15 @@ export function Composer({ onSend }) {
   };
   return (
     <View
-      style={{ flexDirection: 'row', gap: space[2], padding: space[2], alignItems: 'flex-end' }}
+      style={{
+        flexDirection: 'row',
+        gap: space[2],
+        padding: space[3],
+        alignItems: 'flex-end',
+        backgroundColor: colors.surface,
+        borderTopWidth: 1,
+        borderTopColor: colors.borderSubtle,
+      }}
     >
       <TextInput
         accessibilityLabel={t('chat.composer.label')}
@@ -26,17 +34,26 @@ export function Composer({ onSend }) {
         multiline
         maxLength={2000}
         style={{
+          ...font('body'),
           flex: 1,
-          minHeight: minTouchTarget,
+          minHeight: 48,
           maxHeight: 140,
           borderWidth: 1,
           borderColor: colors.border,
-          borderRadius: radius.md,
-          paddingHorizontal: space[3],
+          borderRadius: radius.button,
+          paddingHorizontal: space[4],
+          paddingVertical: space[3],
           color: colors.text,
+          backgroundColor: colors.background,
         }}
       />
-      <Button title={t('chat.send')} disabled={!text.trim()} onPress={send} />
+      <IconButton
+        icon={Send}
+        label={t('chat.send')}
+        variant="primary"
+        disabled={!text.trim()}
+        onPress={send}
+      />
     </View>
   );
 }

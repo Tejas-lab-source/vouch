@@ -1,6 +1,6 @@
 // @ts-check
 import { useConversations } from '@vouch/features-core';
-import { useTheme } from '@vouch/ui-native';
+import { Avatar, Text, useTheme } from '@vouch/ui-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { View } from 'react-native';
@@ -27,9 +27,25 @@ export function ChatScreen() {
         options={{
           headerShown: true,
           title: summary?.user.name ?? '',
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitle: () =>
+            summary ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Avatar
+                  uri={summary.user.photos.at(0)?.w400 ?? null}
+                  alt=""
+                  name={summary.user.name}
+                  size={36}
+                />
+                <Text variant="label" accessibilityRole="header">
+                  {summary.user.name}
+                </Text>
+              </View>
+            ) : null,
           headerRight: () =>
             summary ? (
               <CardSafetyActions
+                compact
                 user={summary.user}
                 onBlocked={() => router.replace('/(tabs)/chats')}
               />

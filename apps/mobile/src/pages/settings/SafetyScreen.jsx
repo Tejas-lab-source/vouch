@@ -1,18 +1,18 @@
 // @ts-check
 import { t } from '@vouch/i18n';
-import { useTheme } from '@vouch/ui-native';
-import { ScrollView, Text } from 'react-native';
+import { Text, useTheme } from '@vouch/ui-native';
+import { ScrollView } from 'react-native';
 
 /** Safety tips and how to report. */
 export function SafetyScreen() {
   const { colors, space } = useTheme();
-  const body = { color: colors.text, marginBottom: space[2] };
+  const body = { marginBottom: space[3] };
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={{ padding: space[4] }}
     >
-      <Text accessibilityRole="header" style={{ ...body, fontSize: 20, fontWeight: '700' }}>
+      <Text variant="h2" style={body}>
         {t('safety.tips.title')}
       </Text>
       {['safety.tips.one', 'safety.tips.two', 'safety.tips.three', 'safety.tips.four'].map(
@@ -22,7 +22,7 @@ export function SafetyScreen() {
           </Text>
         ),
       )}
-      <Text accessibilityRole="header" style={{ ...body, fontWeight: '700' }}>
+      <Text variant="h2" style={{ ...body, fontSize: 18 }}>
         {t('safety.howToReport.title')}
       </Text>
       <Text style={body}>{t('safety.howToReport.body')}</Text>

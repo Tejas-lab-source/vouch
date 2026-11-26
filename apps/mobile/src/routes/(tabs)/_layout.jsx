@@ -1,7 +1,7 @@
 // @ts-check
 import { useOnboarding, useSession, useSlotItems } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Skeleton, useTheme } from '@vouch/ui-native';
+import { font, Heart, MessageCircle, Skeleton, UserRound, Users, useTheme } from '@vouch/ui-native';
 import { Redirect, Tabs } from 'expo-router';
 import { NotificationTaps } from '../../app/NotificationTaps.jsx';
 import { MatchMomentProvider } from '../../features/match-moment/MatchMoment.jsx';
@@ -16,10 +16,18 @@ export default function TabsLayout() {
   return <OnboardedTabs />;
 }
 
+/** Tab icons (Lucide, 1.8 stroke): Discover, Matches, Chats, Profile. */
+const TAB_ICONS = new Map([
+  ['index', Heart],
+  ['matches', Users],
+  ['chats', MessageCircle],
+  ['profile', UserRound],
+]);
+
 function OnboardedTabs() {
   const onboarding = useOnboarding();
   const tabs = useSlotItems('home.tabs');
-  const { colors } = useTheme();
+  const { colors, icon, shadow } = useTheme();
   if (onboarding.isLoading || (!onboarding.step && !onboarding.isError))
     return <Skeleton height={32} />;
   if (onboarding.step && onboarding.step !== 'done') return <Redirect href="/onboarding" />;
@@ -29,14 +37,22 @@ function OnboardedTabs() {
       <NotificationTaps />
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: colors.accent,
+          tabBarActiveTintColor: colors.primaryText,
           tabBarInactiveTintColor: colors.textMuted,
-          tabBarStyle: { backgroundColor: colors.surface },
+          tabBarStyle: {
+            backgroundColor: colors.surface,
+            borderTopColor: colors.borderSubtle,
+            height: 64,
+            paddingTop: 6,
+            ...shadow.card,
+          },
+          tabBarLabelStyle: { fontFamily: font('caption').fontFamily, fontSize: 12 },
           headerShown: false,
         }}
       >
         {['index', 'matches', 'chats', 'profile'].map((name) => {
           const tab = tabs.find((item) => item.id === name);
+          const Glyph = TAB_ICONS.get(name) ?? Heart;
           return (
             <Tabs.Screen
               key={name}
@@ -44,6 +60,9 @@ function OnboardedTabs() {
               options={{
                 title: tab ? t(/** @type {any} */ (tab.props?.labelKey)) : name,
                 href: visible.has(name) ? undefined : null,
+                tabBarIcon: ({ color }) => (
+                  <Glyph size={24} color={color} strokeWidth={icon.strokeWidth} />
+                ),
               }}
             />
           );

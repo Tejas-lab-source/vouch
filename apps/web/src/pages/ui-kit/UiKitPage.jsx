@@ -5,12 +5,18 @@ import {
   Badge,
   Button,
   Card,
+  Chip,
   EmptyState,
+  Heart,
+  IconButton,
   Input,
   ListItem,
   OtpInput,
   Skeleton,
+  StatusBadge,
   Toast,
+  Wordmark,
+  X,
 } from '@vouch/ui-web';
 import { useState } from 'react';
 
@@ -23,6 +29,7 @@ export default function UiKitPage() {
   return (
     <main className="w-page">
       <h1 className="w-title">UI kit</h1>
+      <Wordmark height={48} />
       <Card as="section" aria-label="Buttons">
         <div className="w-row">
           <Button>{t('common.continue')}</Button>
@@ -30,6 +37,9 @@ export default function UiKitPage() {
           <Button variant="danger">{t('common.signOut')}</Button>
           <Button variant="ghost">{t('common.retry')}</Button>
           <Button loading>{t('common.loading')}</Button>
+          <Button disabled>{t('common.continue')}</Button>
+          <IconButton icon={X} label={t('deck.pass')} variant="secondary" size="lg" />
+          <IconButton icon={Heart} label={t('deck.like')} variant="primary" size="lg" />
         </div>
       </Card>
       <Card as="section" aria-label="Fields">
@@ -59,7 +69,14 @@ export default function UiKitPage() {
           leading={<Avatar alt="Kabir" name="Kabir" />}
           trailing={<Badge>new</Badge>}
         />
+        <div className="w-row">
+          <StatusBadge status="verified">{t('ui.kit.verified')}</StatusBadge>
+          <StatusBadge status="pending">{t('photos.status.pending')}</StatusBadge>
+          <StatusBadge status="rejected">{t('photos.status.rejected')}</StatusBadge>
+          <Chip>Northfield</Chip>
+        </div>
         <Skeleton height={20} />
+        <Toast message={t('profile.saved')} tone="success" />
         <Toast message={t('common.offline')} />
         <Toast message={t('common.error')} tone="error" onDismiss={() => {}} />
         <EmptyState title={t('home.empty.title')} body={t('home.empty.body')} />

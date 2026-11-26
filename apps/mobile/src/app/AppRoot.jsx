@@ -1,6 +1,9 @@
 // @ts-check
 import { compareVersions } from '@vouch/domain';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { AppServicesProvider, useConfig } from '@vouch/features-core';
+import { useFonts } from 'expo-font';
 import { QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -16,13 +19,22 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 startMonitoring();
 
 /**
- * The app root: services, the query cache, the session restore from secure storage (behind
- * the splash screen), and the forced-update gate (`minSupportedVersion` from `/v1/config`).
+ * The app root: services, the query cache, the session restore from secure storage and the
+ * fonts (behind the splash screen), and the forced-update gate (`minSupportedVersion` from `/v1/config`).
  * @param {{ children: import('react').ReactNode }} props
  */
 export function AppRoot({ children }) {
   const [services] = useState(createServices);
   const [restored, setRestored] = useState(false);
+  // The design's fonts, bundled with the app (no network): Poppins for headings, Inter for text.
+  const [fontsLoaded, fontsFailed] = useFonts({
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+  });
+  const fontsReady = fontsLoaded || Boolean(fontsFailed);
   useEffect(() => {
     services.session
       .refresh()
@@ -36,7 +48,7 @@ export function AppRoot({ children }) {
         <QueryClientProvider client={services.queryClient}>
           <AppServicesProvider services={services}>
             <StatusBar style="auto" />
-            {restored ? <UpdateGate>{children}</UpdateGate> : null}
+            {restored && fontsReady ? <UpdateGate>{children}</UpdateGate> : null}
           </AppServicesProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

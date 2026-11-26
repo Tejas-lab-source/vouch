@@ -1,13 +1,13 @@
 // @ts-check
 import { useAccountActions, useExportData } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Input, Sheet, useTheme } from '@vouch/ui-native';
+import { Button, Input, LogOut, Sheet, Text, Trash2, useTheme } from '@vouch/ui-native';
 import { useState } from 'react';
-import { Share, Text, View } from 'react-native';
+import { Share, View } from 'react-native';
 
 /** Export (shared through the system share sheet), log out, log out everywhere, delete. */
 export function AccountActions() {
-  const { colors, space } = useTheme();
+  const { space } = useTheme();
   const exporter = useExportData();
   const { signOut, signOutEverywhere, deleteAccount } = useAccountActions();
   const [dialog, setDialog] = useState(/** @type {null | 'all' | 'delete'} */ (null));
@@ -30,6 +30,7 @@ export function AccountActions() {
       />
       <Button
         variant="secondary"
+        icon={LogOut}
         title={t('settings.signOut')}
         loading={signOut.isPending}
         onPress={() => signOut.mutate()}
@@ -39,9 +40,14 @@ export function AccountActions() {
         title={t('settings.signOutAll')}
         onPress={() => setDialog('all')}
       />
-      <Button variant="danger" title={t('settings.delete')} onPress={() => setDialog('delete')} />
+      <Button
+        variant="danger"
+        icon={Trash2}
+        title={t('settings.delete')}
+        onPress={() => setDialog('delete')}
+      />
       <Sheet open={dialog === 'all'} onClose={close} title={t('settings.signOutAll')}>
-        <Text style={{ color: colors.text }}>{t('settings.signOutAll.body')}</Text>
+        <Text>{t('settings.signOutAll.body')}</Text>
         <Button
           variant="danger"
           title={t('settings.signOutAll')}
@@ -50,7 +56,7 @@ export function AccountActions() {
         />
       </Sheet>
       <Sheet open={dialog === 'delete'} onClose={close} title={t('settings.delete.title')}>
-        <Text style={{ color: colors.text }}>{t('settings.delete.body')}</Text>
+        <Text>{t('settings.delete.body')}</Text>
         <Input
           label={t('settings.delete.confirmLabel')}
           value={typed}

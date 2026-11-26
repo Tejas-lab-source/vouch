@@ -3,7 +3,7 @@ import { isAdult, isEmail, isIsoDate, isOtp } from '@vouch/domain';
 import { errorKey, useConfig, useServices } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
 import { privacyNotice } from '@vouch/i18n/privacy-notice';
-import { Button, Input, Modal, OtpInput } from '@vouch/ui-web';
+import { Button, Icon, Input, Lock, Mail, Modal, OtpInput, ShieldCheck } from '@vouch/ui-web';
 import { useState } from 'react';
 import { PrivacyNoticeText } from '../../entities/privacy-notice/PrivacyNoticeText.jsx';
 
@@ -52,6 +52,7 @@ export function SignInForm() {
           void run(() => auth.requestCode(email.trim()));
         }}
       >
+        <StepIcon icon={Mail} />
         <h2 className="w-title">{t('auth.title')}</h2>
         <Input
           label={t('auth.email.label')}
@@ -67,6 +68,7 @@ export function SignInForm() {
         <Button type="submit" block loading={busy}>
           {t('common.continue')}
         </Button>
+        <p className="w-fineprint">{t('auth.welcome.terms')}</p>
       </form>
     );
   }
@@ -81,8 +83,9 @@ export function SignInForm() {
           void run(() => auth.verify({ email: state.email, code }));
         }}
       >
+        <StepIcon icon={ShieldCheck} />
         <h2 className="w-title">{t('auth.code.title')}</h2>
-        <p>{t('auth.code.sent', { email: state.email })}</p>
+        <p className="w-muted">{t('auth.code.sent', { email: state.email })}</p>
         <OtpInput
           label={t('auth.code.label')}
           value={code}
@@ -124,6 +127,7 @@ export function SignInForm() {
           );
         }}
       >
+        <StepIcon icon={Lock} />
         <h2 className="w-title">{t('auth.signup.title')}</h2>
         <Input
           label={t('auth.signup.birthDate')}
@@ -173,4 +177,13 @@ export function SignInForm() {
     );
   }
   return null;
+}
+
+/** The round pink badge above each step's heading (decorative). @param {{ icon: import('react').ComponentType<any> }} props */
+function StepIcon({ icon }) {
+  return (
+    <span className="w-step-icon" aria-hidden="true">
+      <Icon icon={icon} size={26} />
+    </span>
+  );
 }

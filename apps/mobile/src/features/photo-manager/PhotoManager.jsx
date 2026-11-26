@@ -1,10 +1,20 @@
 // @ts-check
 import { moveItem, useDeletePhoto, usePhotoUploads, useReorderPhotos } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Badge, Button, useTheme } from '@vouch/ui-native';
+import {
+  Button,
+  ChevronLeft,
+  ChevronRight,
+  IconButton,
+  ImagePlus,
+  StatusBadge,
+  Text,
+  Trash2,
+  useTheme,
+} from '@vouch/ui-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Text, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 const MAX_PHOTOS = 6;
 
@@ -27,6 +37,10 @@ function uploadLabel(upload) {
  */
 export function PhotoManager({ profile }) {
   const { colors, space, radius } = useTheme();
+  // Two tiles per row on a phone (each wide enough for its three controls).
+  const { width: screen } = useWindowDimensions();
+  const tile = Math.max(140, Math.floor((Math.min(screen, 520) - space[5] * 2 - space[3]) / 2));
+  const tileHeight = Math.round((tile * 5) / 4);
   const { uploads, add, retry, dismiss } = usePhotoUploads();
   const remove = useDeletePhoto();
   const reorder = useReorderPhotos();
@@ -48,65 +62,54 @@ export function PhotoManager({ profile }) {
 
   return (
     <View style={{ marginBottom: space[5] }}>
-      <Text
-        accessibilityRole="header"
-        style={{ color: colors.text, fontWeight: '700', fontSize: 20 }}
-      >
-        {t('photos.title')}
+      <Text variant="h2">{t('photos.title')}</Text>
+      <Text muted style={{ marginTop: space[1] }}>
+        {t('photos.hint')}
       </Text>
-      <Text style={{ color: colors.textMuted, marginBottom: space[3] }}>{t('photos.hint')}</Text>
+      <Text variant="caption" muted style={{ marginBottom: space[3], marginTop: space[1] }}>
+        {t('photos.reviewNote')}
+      </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[3] }}>
         {photos.map((photo, i) => (
-          <View key={photo.id} style={{ width: 150, gap: space[1] }}>
+          <View key={photo.id} style={{ width: tile, gap: space[1] }}>
             {photo.urls ? (
               <Image
                 source={{ uri: photo.urls.w400 }}
                 accessibilityLabel={t('photos.alt', { n: i + 1 })}
                 cachePolicy="memory-disk"
-                style={{ width: 150, height: 188, borderRadius: radius.md }}
+                style={{ width: tile, height: tileHeight, borderRadius: radius.card }}
               />
             ) : (
               <View
                 accessibilityRole="image"
                 accessibilityLabel={t('photos.alt', { n: i + 1 })}
                 style={{
-                  width: 150,
-                  height: 188,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.border,
+                  width: tile,
+                  height: tileHeight,
+                  borderRadius: radius.card,
+                  backgroundColor: colors.surfaceMuted,
                 }}
               />
             )}
-            <Badge
-              tone={
-                photo.status === 'approved'
-                  ? 'accent'
-                  : photo.status === 'rejected'
-                    ? 'danger'
-                    : 'neutral'
-              }
-            >
+            <StatusBadge status={photo.status}>
               {t(/** @type {any} */ (`photos.status.${photo.status}`))}
-            </Badge>
+            </StatusBadge>
             <View style={{ flexDirection: 'row' }}>
-              <Button
-                variant="ghost"
-                title="←"
-                accessibilityLabel={t('photos.moveEarlier', { n: i + 1 })}
+              <IconButton
+                icon={ChevronLeft}
+                label={t('photos.moveEarlier', { n: i + 1 })}
                 disabled={i === 0 || reorder.isPending}
                 onPress={() => reorder.mutate(moveItem(ids, i, i - 1))}
               />
-              <Button
-                variant="ghost"
-                title="→"
-                accessibilityLabel={t('photos.moveLater', { n: i + 1 })}
+              <IconButton
+                icon={ChevronRight}
+                label={t('photos.moveLater', { n: i + 1 })}
                 disabled={i === photos.length - 1 || reorder.isPending}
                 onPress={() => reorder.mutate(moveItem(ids, i, i + 1))}
               />
-              <Button
-                variant="ghost"
-                title="×"
-                accessibilityLabel={t('photos.delete', { n: i + 1 })}
+              <IconButton
+                icon={Trash2}
+                label={t('photos.delete', { n: i + 1 })}
                 onPress={() => remove.mutate(photo.id)}
               />
             </View>
@@ -115,18 +118,21 @@ export function PhotoManager({ profile }) {
         {inFlight.map((upload) => (
           <View
             key={upload.localId}
-            style={{ width: 150, gap: space[1] }}
+            style={{ width: tile, gap: space[1] }}
             accessibilityLiveRegion="polite"
           >
             <View
               style={{
-                width: 150,
-                height: 188,
-                borderRadius: radius.md,
-                backgroundColor: colors.border,
+                width: tile,
+                height: tileHeight,
+                borderRadius: radius.card,
+                borderWidth: 1.5,
+                borderStyle: 'dashed',
+                borderColor: colors.border,
+                backgroundColor: colors.surfaceMuted,
               }}
             />
-            <Text style={{ color: colors.text }}>{uploadLabel(upload)}</Text>
+            <Text variant="caption">{uploadLabel(upload)}</Text>
             {upload.phase === 'failed' ? (
               <View style={{ flexDirection: 'row' }}>
                 <Button
@@ -145,9 +151,18 @@ export function PhotoManager({ profile }) {
         ))}
       </View>
       {room > 0 ? (
-        <Button variant="secondary" title={t('photos.add')} onPress={() => void pick()} />
+        <View style={{ marginTop: space[3] }}>
+          <Button
+            variant="secondary"
+            icon={ImagePlus}
+            title={t('photos.add')}
+            onPress={() => void pick()}
+          />
+        </View>
       ) : (
-        <Text style={{ color: colors.textMuted }}>{t('photos.limit')}</Text>
+        <Text muted style={{ marginTop: space[3] }}>
+          {t('photos.limit')}
+        </Text>
       )}
     </View>
   );

@@ -1,8 +1,8 @@
 // @ts-check
 import { useConfig } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { useTheme } from '@vouch/ui-native';
-import { ScrollView, Text } from 'react-native';
+import { Text, useTheme } from '@vouch/ui-native';
+import { ScrollView } from 'react-native';
 import { PrivacyNoticeText } from '../../entities/privacy-notice/PrivacyNoticeText.jsx';
 import { GRIEVANCE_EMAIL } from '../../shared/config/index.js';
 
@@ -10,7 +10,7 @@ import { GRIEVANCE_EMAIL } from '../../shared/config/index.js';
 export function PrivacyScreen() {
   const { colors, space } = useTheme();
   const config = useConfig();
-  const body = { color: colors.text, marginBottom: space[2] };
+  const body = { marginBottom: space[3] };
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
@@ -18,7 +18,7 @@ export function PrivacyScreen() {
     >
       <Text style={body}>{t('privacy.summary')}</Text>
       <PrivacyNoticeText version={config.data?.privacyNoticeVersion} />
-      <Text accessibilityRole="header" style={{ ...body, fontWeight: '700' }}>
+      <Text variant="h2" style={{ ...body, fontSize: 18 }}>
         {t('privacy.grievance.title')}
       </Text>
       <Text style={body}>{t('privacy.grievance.body', { email: GRIEVANCE_EMAIL })}</Text>

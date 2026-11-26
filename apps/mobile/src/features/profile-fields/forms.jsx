@@ -1,9 +1,9 @@
 // @ts-check
 import { useUpdateProfile } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Input, useTheme } from '@vouch/ui-native';
+import { Button, Input, Text, useTheme } from '@vouch/ui-native';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Choice } from '../../shared/ui/Choice.jsx';
 
 /** Gender codes (contracts `GENDER`) and their labels. */
@@ -17,9 +17,11 @@ export const GENDERS = /** @type {const} */ ([
 
 /** @param {{ text: string }} props */
 function Label({ text }) {
-  const { colors, space } = useTheme();
+  const { space } = useTheme();
   return (
-    <Text style={{ color: colors.text, fontWeight: '600', marginBottom: space[2] }}>{text}</Text>
+    <Text variant="label" style={{ marginBottom: space[2] }}>
+      {text}
+    </Text>
   );
 }
 
@@ -27,7 +29,7 @@ function Label({ text }) {
 function Failed({ error }) {
   const { colors } = useTheme();
   return error ? (
-    <Text accessibilityRole="alert" style={{ color: colors.danger }}>
+    <Text accessibilityRole="alert" color={colors.dangerText}>
       {t('common.error')}
     </Text>
   ) : null;
@@ -49,7 +51,7 @@ export function BasicsForm({ profile, onSaved, submitLabel = t('common.continue'
         onChangeText={setName}
       />
       <Label text={t('profile.gender.label')} />
-      <View accessibilityRole="radiogroup">
+      <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {GENDERS.map(([code, key]) => (
           <Choice
             key={code}
@@ -80,20 +82,22 @@ export function InterestedInForm({ profile, onSaved, submitLabel = t('common.con
   return (
     <View>
       <Label text={t('profile.interestedIn.label')} />
-      {GENDERS.map(([code, key]) => (
-        <Choice
-          key={code}
-          kind="checkbox"
-          label={t(key)}
-          selected={chosen.has(code)}
-          onPress={() => {
-            const next = new Set(chosen);
-            if (next.has(code)) next.delete(code);
-            else next.add(code);
-            setChosen(next);
-          }}
-        />
-      ))}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        {GENDERS.map(([code, key]) => (
+          <Choice
+            key={code}
+            kind="checkbox"
+            label={t(key)}
+            selected={chosen.has(code)}
+            onPress={() => {
+              const next = new Set(chosen);
+              if (next.has(code)) next.delete(code);
+              else next.add(code);
+              setChosen(next);
+            }}
+          />
+        ))}
+      </View>
       <Failed error={update.error} />
       <Button
         title={submitLabel}
@@ -146,6 +150,7 @@ export function AgeRangeForm({ profile, onSaved, submitLabel = t('common.continu
 
 /** The bio (optional). @param {FormProps} props */
 export function BioForm({ profile, onSaved, submitLabel = t('profile.save') }) {
+  const { colors } = useTheme();
   const update = useUpdateProfile();
   const [bio, setBio] = useState(profile.bio ?? '');
   return (
@@ -159,7 +164,11 @@ export function BioForm({ profile, onSaved, submitLabel = t('profile.save') }) {
         onChangeText={setBio}
       />
       <Failed error={update.error} />
-      {update.isSuccess ? <Text accessibilityLiveRegion="polite">{t('profile.saved')}</Text> : null}
+      {update.isSuccess ? (
+        <Text accessibilityLiveRegion="polite" color={colors.successText}>
+          {t('profile.saved')}
+        </Text>
+      ) : null}
       <Button
         title={submitLabel}
         loading={update.isPending}

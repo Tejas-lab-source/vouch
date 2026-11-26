@@ -1,7 +1,7 @@
 // @ts-check
 import { Slot, useMyProfile } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Button, Card, EmptyState, Skeleton } from '@vouch/ui-web';
+import { Avatar, Button, Card, Chip, EmptyState, Skeleton } from '@vouch/ui-web';
 import { PhotoManager } from '../../features/photo-manager/PhotoManager.jsx';
 import {
   AgeRangeForm,
@@ -39,9 +39,24 @@ export function ProfilePage() {
   return (
     <div className="w-page">
       <h1 className="w-title">{t('profile.title')}</h1>
-      <p role="status">
-        {t(/** @type {import('@vouch/i18n').MessageKey} */ (STATUS.get(me.status)))}
-      </p>
+      <Card as="section" className="w-me" aria-label={me.name ?? t('profile.title')}>
+        <Avatar
+          src={me.photos.find((p) => p.urls)?.urls?.w400 ?? null}
+          alt=""
+          name={me.name ?? ''}
+          size={96}
+        />
+        <div className="w-me__text">
+          <p className="w-me__name">
+            {me.name ? t('deck.card.label', { name: me.name, age: me.age }) : null}
+          </p>
+          <p role="status">
+            <Chip>
+              {t(/** @type {import('@vouch/i18n').MessageKey} */ (STATUS.get(me.status)))}
+            </Chip>
+          </p>
+        </div>
+      </Card>
       <Slot name="profile.sections" render={(item) => <item.component profile={me} />} />
       <PhotoManager profile={me} />
       <Card as="section" aria-label={t('onboarding.basics.title')}>

@@ -1,7 +1,17 @@
 // @ts-check
 import { useConversations, useLikesCount, useMatches } from '@vouch/features-core';
 import { t } from '@vouch/i18n';
-import { Avatar, Button, EmptyState, ListItem, Skeleton } from '@vouch/ui-web';
+import {
+  Avatar,
+  Button,
+  ChevronRight,
+  EmptyState,
+  Heart,
+  Icon,
+  Illustration,
+  ListItem,
+  Skeleton,
+} from '@vouch/ui-web';
 import { useNavigate } from 'react-router';
 import { UnmatchButton } from '../../features/unmatch/UnmatchButton.jsx';
 
@@ -25,7 +35,12 @@ export function MatchesPage() {
   return (
     <div className="w-page">
       <h1 className="w-title">{t('matches.title')}</h1>
-      {likes.data ? <p className="w-likes">{likesLine(likes.data)}</p> : null}
+      {likes.data ? (
+        <p className="w-likes">
+          <Icon icon={Heart} size={20} />
+          {likesLine(likes.data)}
+        </p>
+      ) : null}
       {list.isLoading ? (
         <div aria-busy="true" aria-label={t('common.loading')}>
           <Skeleton height={64} />
@@ -39,7 +54,11 @@ export function MatchesPage() {
         />
       ) : null}
       {list.isSuccess && list.matches.length === 0 ? (
-        <EmptyState title={t('matches.empty.title')} body={t('matches.empty.body')} />
+        <EmptyState
+          art={<Illustration name="campus" className="w-empty-art" />}
+          title={t('matches.empty.title')}
+          body={t('matches.empty.body')}
+        />
       ) : null}
       {fresh.length > 0 ? (
         <section aria-labelledby="new-matches">
@@ -87,6 +106,7 @@ export function MatchesPage() {
                       size={48}
                     />
                   }
+                  trailing={<Icon icon={ChevronRight} size={20} />}
                   onClick={() => open(m)}
                 />
                 <UnmatchButton match={m} />

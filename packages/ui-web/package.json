@@ -9,7 +9,8 @@
   },
   "exports": {
     ".": "./src/index.js",
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./fonts.css": "./fonts.css"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
@@ -17,23 +18,26 @@
     "build:css": "node scripts/build-css.js"
   },
   "dependencies": {
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/poppins": "5.3.0",
+    "@vouch/i18n": "workspace:*",
     "@vouch/ui-tokens": "workspace:*",
-    "@vouch/i18n": "workspace:*"
+    "lucide-react": "1.72.0"
   },
   "peerDependencies": {
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@vouch/config": "workspace:*",
-    "eslint": "9.39.5",
-    "vitest": "5.1.1",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@testing-library/react": "16.3.3",
-    "@testing-library/dom": "10.4.2",
-    "jsdom": "31.0.0"
+    "@vouch/config": "workspace:*",
+    "eslint": "9.39.5",
+    "jsdom": "31.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "vitest": "5.1.1"
   }
 }

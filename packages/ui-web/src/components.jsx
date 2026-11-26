@@ -1,5 +1,7 @@
 // @ts-check
 import { t } from '@vouch/i18n';
+import { icon as iconToken, wordmark } from '@vouch/ui-tokens';
+import { CircleAlert, CircleCheck, Clock, ShieldCheck, X as XIcon, XCircle } from 'lucide-react';
 import { useEffect, useId, useRef } from 'react';
 
 /** @param {...(string | false | null | undefined)} names */
@@ -8,12 +10,14 @@ const cx = (...names) => names.filter(Boolean).join(' ');
 /**
  * A button. At least 44 px tall; a visible focus ring; `loading` keeps the width and announces
  * the busy state.
- * @param {import('react').ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost', loading?: boolean, block?: boolean }} props
+ * `icon` is a Lucide icon shown before the label (decorative: the label names the button).
+ * @param {import('react').ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost', loading?: boolean, block?: boolean, icon?: import('react').ComponentType<any> }} props
  */
 export function Button({
   variant = 'primary',
   loading = false,
   block = false,
+  icon,
   className,
   children,
   disabled,
@@ -28,7 +32,11 @@ export function Button({
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <span className="v-spinner" aria-hidden="true" /> : null}
+      {loading ? (
+        <span className="v-spinner" aria-hidden="true" />
+      ) : icon ? (
+        <Icon icon={icon} size={20} />
+      ) : null}
       <span className="v-button__label">{children}</span>
     </button>
   );
@@ -148,9 +156,9 @@ export function Card({ as: Tag = 'div', className, ...rest }) {
 /**
  * A modal dialog (a bottom sheet on narrow screens). Native `<dialog>`: focus moves in, Escape
  * closes, the page behind is inert.
- * @param {{ open: boolean, onClose: () => void, title: string, children: import('react').ReactNode }} props
+ * @param {{ open: boolean, onClose: () => void, title: string, children: import('react').ReactNode, className?: string }} props
  */
-export function Modal({ open, onClose, title, children }) {
+export function Modal({ open, onClose, title, children, className }) {
   const ref = useRef(/** @type {HTMLDialogElement | null} */ (null));
   const titleId = useId();
   useEffect(() => {
@@ -168,7 +176,7 @@ export function Modal({ open, onClose, title, children }) {
   return (
     <dialog
       ref={ref}
-      className="v-modal"
+      className={cx('v-modal', className)}
       aria-labelledby={titleId}
       onCancel={onClose}
       onClose={onClose}
@@ -183,7 +191,7 @@ export function Modal({ open, onClose, title, children }) {
           aria-label={t('ui.modal.close')}
           onClick={onClose}
         >
-          ×
+          <Icon icon={XIcon} />
         </button>
       </div>
       <div className="v-modal__body">{children}</div>
@@ -198,7 +206,12 @@ export function Modal({ open, onClose, title, children }) {
 export function Toast({ message, tone = 'info', onDismiss }) {
   return (
     <div className={cx('v-toast', `v-toast--${tone}`)} role={tone === 'error' ? 'alert' : 'status'}>
-      <span>{message}</span>
+      {tone === 'info' ? null : (
+        <span className="v-toast__icon">
+          <Icon icon={tone === 'error' ? CircleAlert : CircleCheck} size={22} />
+        </span>
+      )}
+      <span className="v-toast__message">{message}</span>
       {onDismiss ? (
         <button
           type="button"
@@ -206,17 +219,18 @@ export function Toast({ message, tone = 'info', onDismiss }) {
           aria-label={t('ui.toast.dismiss')}
           onClick={onDismiss}
         >
-          ×
+          <Icon icon={XIcon} />
         </button>
       ) : null}
     </div>
   );
 }
 
-/** @param {{ title: string, body?: string, action?: import('react').ReactNode }} props */
-export function EmptyState({ title, body, action }) {
+/** @param {{ title: string, body?: string, action?: import('react').ReactNode, art?: import('react').ReactNode }} props */
+export function EmptyState({ title, body, action, art }) {
   return (
     <div className="v-empty">
+      {art ?? null}
       <h2 className="v-empty__title">{title}</h2>
       {body ? <p className="v-empty__body">{body}</p> : null}
       {action ?? null}
@@ -259,11 +273,109 @@ export function ListItem({ title, subtitle, leading, trailing, onClick }) {
   );
 }
 
-/** @param {{ children: import('react').ReactNode, tone?: 'neutral' | 'accent' | 'danger', label?: string }} props */
+/** A count or short tag. @param {{ children: import('react').ReactNode, tone?: 'neutral' | 'accent' | 'danger', label?: string }} props */
 export function Badge({ children, tone = 'neutral', label }) {
   return (
     <span className={cx('v-badge', `v-badge--${tone}`)} aria-label={label}>
       {children}
     </span>
+  );
+}
+
+/** @type {Map<string, import('react').ComponentType<any>>} */
+const STATUS_ICONS = new Map([
+  ['verified', ShieldCheck],
+  ['approved', CircleCheck],
+  ['pending', Clock],
+  ['rejected', XCircle],
+]);
+
+/**
+ * A status pill: verified and approved are green, pending review amber, rejected red. The text
+ * carries the meaning; the icon repeats it.
+ * @param {{ status: 'verified' | 'approved' | 'pending' | 'rejected', children: import('react').ReactNode }} props
+ */
+export function StatusBadge({ status, children }) {
+  return (
+    <span className={cx('v-status', `v-status--${status}`)}>
+      <Icon
+        icon={/** @type {import('react').ComponentType<any>} */ (STATUS_ICONS.get(status))}
+        size={14}
+      />
+      {children}
+    </span>
+  );
+}
+
+/** A pale pink, rounded chip (a college, a tag). @param {{ children: import('react').ReactNode }} props */
+export function Chip({ children }) {
+  return <span className="v-chip">{children}</span>;
+}
+
+/**
+ * A Lucide icon at the design stroke (1.8), hidden from screen readers unless it has a label.
+ * @param {{ icon: import('react').ComponentType<any>, size?: number, label?: string, className?: string }} props
+ */
+export function Icon({ icon: Glyph, size = iconToken.size, label, className }) {
+  return (
+    <Glyph
+      size={size}
+      strokeWidth={iconToken.strokeWidth}
+      absoluteStrokeWidth={false}
+      className={cx('v-icon', className)}
+      aria-hidden={label ? undefined : true}
+      aria-label={label}
+      role={label ? 'img' : undefined}
+      focusable="false"
+    />
+  );
+}
+
+/**
+ * A round icon-only button (the deck's Pass and Like). The label names it for screen readers
+ * and is shown as a tooltip.
+ * @param {import('react').ButtonHTMLAttributes<HTMLButtonElement> & { icon: import('react').ComponentType<any>, label: string, variant?: 'primary' | 'secondary' | 'ghost', size?: 'md' | 'lg' }} props
+ */
+export function IconButton({
+  icon,
+  label,
+  variant = 'ghost',
+  size = 'md',
+  className,
+  type = 'button',
+  ...rest
+}) {
+  return (
+    <button
+      type={type}
+      className={cx('v-round', `v-round--${variant}`, `v-round--${size}`, className)}
+      aria-label={label}
+      title={label}
+      {...rest}
+    >
+      <Icon icon={icon} size={size === 'lg' ? 30 : 22} />
+    </button>
+  );
+}
+
+/**
+ * The "Vouch" wordmark with its heart (SVG paths from the tokens; no font needed). The letters
+ * use the brand text colour of the theme; the heart is always primary red.
+ * @param {{ height?: number, className?: string }} props
+ */
+export function Wordmark({ height = 32, className }) {
+  const [, , w, h] = wordmark.viewBox.split(' ').map(Number);
+  return (
+    <svg
+      className={cx('v-wordmark', className)}
+      viewBox={wordmark.viewBox}
+      height={height}
+      width={Math.round((height * (w ?? 1)) / (h ?? 1))}
+      role="img"
+      aria-label={t('app.name')}
+    >
+      <path className="v-wordmark__letters" d={wordmark.letters} />
+      <path className="v-wordmark__heart" d={wordmark.heart} />
+    </svg>
   );
 }
