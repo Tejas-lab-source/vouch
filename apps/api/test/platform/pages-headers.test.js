@@ -1,7 +1,12 @@
 // @ts-check
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { renderLanding } from '../../../../scripts/landing-build.js';
+import {
+  ART_FILES,
+  buildLanding,
+  FONT_FILES,
+  renderLanding,
+} from '../../../../scripts/landing-build.js';
 import { pagesHeaders } from '../../../../scripts/pages-headers.js';
 
 /** @param {string} file */
@@ -60,6 +65,8 @@ describe('Cloudflare Pages headers (Phase 15)', () => {
     const policy = csp(pagesHeaders({ app: 'landing' }));
     expect(policy.get('default-src')).toEqual(["'none'"]);
     expect(policy.has('script-src')).toBe(false);
+    // The self-hosted fonts (design update); nothing from another origin.
+    expect(policy.get('font-src')).toEqual(["'self'"]);
   });
 
   it('landing page: every placeholder is filled with the deployed origins, or the build fails', async () => {
@@ -80,6 +87,31 @@ describe('Cloudflare Pages headers (Phase 15)', () => {
     expect(out).toContain('href="https://app.example.app/settings"');
     expect(out).toContain('content="https://example.app/og.png"');
     expect(out).not.toMatch(/<script/i);
+    // The brand comes from @vouch/ui-tokens: colours, self-hosted fonts and the wordmark.
+    expect(out).toContain('--color-primary: #D62828;');
+    expect(out).toContain('src: url(/fonts/poppins-latin-700-normal.woff2)');
+    expect(out).toContain('aria-label="Vouch"');
+    expect(out).not.toMatch(/fonts\.googleapis|fonts\.gstatic/);
     expect(() => renderLanding(html, { SITE_URL: 'https://example.app' })).toThrow(/WEB_URL/);
+  });
+
+  it('landing build: copies the fonts and the art next to the page', async () => {
+    const { mkdtemp, readdir, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dist = await mkdtemp(join(tmpdir(), 'landing-'));
+    try {
+      await buildLanding(dist, {
+        SITE_URL: 'https://example.app',
+        WEB_URL: 'https://app.example.app',
+        GRIEVANCE_EMAIL: 'grievance@example.app',
+      });
+      expect((await readdir(join(dist, 'fonts'))).sort()).toEqual(
+        FONT_FILES.map((f) => f.slice(f.lastIndexOf('/') + 1)).sort(),
+      );
+      expect((await readdir(join(dist, 'art'))).sort()).toEqual([...ART_FILES].sort());
+    } finally {
+      await rm(dist, { recursive: true, force: true });
+    }
   });
 });

@@ -78,6 +78,7 @@ function landingHeaders() {
   const csp = [
     "default-src 'none'",
     "img-src 'self' data:",
+    "font-src 'self'",
     "style-src 'unsafe-inline'",
     "base-uri 'none'",
     "form-action 'none'",

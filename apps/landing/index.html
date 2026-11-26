@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vouch — dating for verified college students</title>
+    <title>Vouch — Meet. Match. Belong.</title>
     <!-- Final wording and brand: owner items C3 (terms) and C4 (brand). -->
     <meta
       name="description"
@@ -20,98 +20,148 @@
     <meta property="og:url" content="{{SITE_URL}}/" />
     <meta property="og:image" content="{{SITE_URL}}/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#4338ca" />
+    <meta name="theme-color" content="#D62828" />
     <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #ffffff;
-        --surface: #f4f4f8;
-        --text: #16161a;
-        --muted: #55555f;
-        --accent: #4338ca;
-        --on-accent: #ffffff;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #121216;
-          --surface: #1c1c22;
-          --text: #f4f4f6;
-          --muted: #b4b4bd;
-          --accent: #a5b4fc;
-          --on-accent: #121216;
-        }
-      }
+      /* Tokens and self-hosted fonts from @vouch/ui-tokens (scripts/landing-build.js). */
+      {{TOKENS_CSS}}
       * {
         box-sizing: border-box;
       }
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family:
-          system-ui,
-          -apple-system,
-          'Segoe UI',
-          Roboto,
-          sans-serif;
-        line-height: 1.55;
+        background: var(--color-background);
+        color: var(--color-text);
+        font-family: var(--font-body);
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--font-heading);
+        color: var(--color-text);
       }
       .wrap {
-        max-width: 60rem;
+        max-width: 68rem;
         margin: 0 auto;
         padding: 0 1rem;
       }
       header {
-        padding: 1.25rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 0;
       }
-      .brand {
-        font-weight: 700;
-        font-size: 1.25rem;
-        color: var(--accent);
-        text-decoration: none;
+      .wordmark {
+        display: block;
+        height: 36px;
+        width: auto;
       }
-      .hero {
-        padding: 3rem 0 2.5rem;
+      .wordmark__letters {
+        fill: var(--color-primary-text);
       }
-      h1 {
-        font-size: clamp(2rem, 6vw, 3.25rem);
-        line-height: 1.1;
-        margin: 0 0 1rem;
+      .wordmark__heart {
+        fill: var(--color-primary);
       }
-      h2 {
-        font-size: 1.5rem;
-        margin: 0 0 1rem;
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
       }
-      h3 {
-        margin: 0 0 0.25rem;
-        font-size: 1.05rem;
-      }
-      p,
-      li {
-        color: var(--muted);
-      }
-      .lead {
-        font-size: 1.15rem;
-        max-width: 36rem;
-      }
-      .cta {
-        display: inline-block;
-        margin-top: 1rem;
-        padding: 0.8rem 1.4rem;
-        min-height: 44px;
-        border-radius: 999px;
-        background: var(--accent);
-        color: var(--on-accent);
+      .nav a:not(.cta) {
+        color: var(--color-text);
         font-weight: 600;
         text-decoration: none;
       }
-      .cta:focus-visible,
+      .hero {
+        position: relative;
+        display: grid;
+        gap: 2rem;
+        align-items: center;
+        padding: 2.5rem 1rem 3rem;
+      }
+      .hero__pattern {
+        position: absolute;
+        top: -30px;
+        right: -40px;
+        width: 220px;
+        opacity: 0.3;
+        pointer-events: none;
+      }
+      .hero__art {
+        width: 100%;
+        max-width: 560px;
+        height: auto;
+        justify-self: center;
+      }
+      @media (min-width: 860px) {
+        .hero {
+          grid-template-columns: 1.05fr 1fr;
+          padding-top: 4rem;
+        }
+      }
+      h1 {
+        font-size: clamp(2.25rem, 6vw, 3.75rem);
+        line-height: 1.08;
+        margin: 0 0 1rem;
+        font-weight: 700;
+      }
+      h2 {
+        font-size: 1.75rem;
+        margin: 0 0 1.25rem;
+        font-weight: 600;
+      }
+      h3 {
+        margin: 0.75rem 0 0.25rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+      p,
+      li {
+        color: var(--color-text-muted);
+      }
+      .lead {
+        font-size: 1.15rem;
+        max-width: 34rem;
+      }
+      .note {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 1.25rem 0 0;
+        padding: 0.35rem 0.85rem;
+        border-radius: var(--radius-chip);
+        background: var(--color-secondary);
+        color: var(--color-on-secondary);
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        min-height: 48px;
+        padding: 0 1.5rem;
+        border-radius: var(--radius-button);
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        font-weight: 600;
+        text-decoration: none;
+        box-shadow: var(--shadow-button);
+      }
+      .cta--small {
+        min-height: 44px;
+        padding: 0 1.1rem;
+      }
+      a {
+        color: var(--color-primary-text);
+      }
       a:focus-visible {
-        outline: 3px solid var(--accent);
+        outline: 3px solid var(--color-focus);
         outline-offset: 3px;
       }
       section {
-        padding: 2rem 0;
+        padding: 3rem 1rem;
       }
       .grid {
         display: grid;
@@ -122,12 +172,36 @@
         list-style: none;
       }
       .card {
-        background: var(--surface);
-        border-radius: 1rem;
-        padding: 1.25rem;
+        padding: 1.5rem;
+        border: 1px solid var(--color-border-subtle);
+        border-radius: var(--radius-card);
+        background: var(--color-surface);
+        box-shadow: var(--shadow-card);
+      }
+      .card p {
+        margin: 0;
+      }
+      .icon {
+        width: 44px;
+        height: 44px;
+        padding: 10px;
+        border-radius: 50%;
+        background: var(--color-secondary);
+        fill: none;
+        stroke: var(--color-primary-text);
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .note .icon {
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        background: none;
       }
       footer {
-        padding: 2rem 0 3rem;
+        padding: 2rem 1rem 3rem;
+        border-top: 1px solid var(--color-border-subtle);
         font-size: 0.95rem;
       }
       footer nav {
@@ -136,37 +210,85 @@
         gap: 0.5rem 1.5rem;
       }
       footer a {
-        color: var(--text);
+        color: var(--color-text);
       }
     </style>
   </head>
   <body>
     <header class="wrap">
-      <a class="brand" href="/">Vouch</a>
+      <a href="/" aria-label="Vouch home">{{WORDMARK}}</a>
+      <nav class="nav" aria-label="Main">
+        <a href="#how">How it works</a>
+        <a href="#safety">Safety</a>
+        <a class="cta cta--small" href="{{WEB_URL}}/sign-in">Open Vouch</a>
+      </nav>
     </header>
     <main>
       <div class="wrap hero">
-        <h1>Dating for verified college students.</h1>
-        <p class="lead">
-          Everyone on Vouch has signed in with their college email. Meet students from your campus,
-          match when you both like each other, and chat when you are ready.
-        </p>
-        <a class="cta" href="{{WEB_URL}}/sign-in">Open Vouch</a>
-        <p>Invite-only beta at JIIT Noida. Android and iOS apps are in testing.</p>
+        <img
+          class="hero__pattern"
+          src="/art/pattern-placeholder.svg"
+          alt=""
+          width="120"
+          height="120"
+        />
+        <div>
+          <h1>Meet. Match. Belong.</h1>
+          <p class="lead">
+            A dating app only for verified college students. Everyone on Vouch has signed in with
+            their college email. Meet students from your campus, match when you both like each
+            other, and chat when you are ready.
+          </p>
+          <a class="cta" href="{{WEB_URL}}/sign-in">Open Vouch</a>
+          <p class="note">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"
+              />
+              <path d="M22 10v6" />
+              <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></svg
+            >Invite-only beta at JIIT Noida. Android and iOS apps are in testing.
+          </p>
+        </div>
+        <!-- Placeholder art (design update): replace art/campus-placeholder.svg, keep the name. -->
+        <img
+          class="hero__art"
+          src="/art/campus-placeholder.svg"
+          alt=""
+          width="640"
+          height="260"
+          fetchpriority="high"
+        />
       </div>
 
       <section class="wrap" aria-labelledby="how">
         <h2 id="how">How it works</h2>
         <ol class="grid">
           <li class="card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+              />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
             <h3>Verify</h3>
             <p>Sign in with your college email and a one-time code. You must be 18 or older.</p>
           </li>
           <li class="card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"
+              />
+            </svg>
             <h3>Meet</h3>
             <p>See profiles from your campus. Like or pass; a match needs both of you.</p>
           </li>
           <li class="card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"
+              />
+            </svg>
             <h3>Chat</h3>
             <p>Only matches can message each other. You can unmatch at any time.</p>
           </li>
@@ -177,14 +299,29 @@
         <h2 id="safety">Safety first</h2>
         <ul class="grid">
           <li class="card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+              />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
             <h3>Real students only</h3>
             <p>College email verification, and every photo is checked before it is shown.</p>
           </li>
           <li class="card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"
+              />
+            </svg>
             <h3>Block and report</h3>
             <p>Blocking hides you from each other everywhere. Reports reach our moderators.</p>
           </li>
           <li class="card">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
             <h3>Your data</h3>
             <p>
               We never store your email address in plain text. You can download your data or delete
@@ -193,7 +330,6 @@
           </li>
         </ul>
       </section>
-
       <section class="wrap" id="delete-account" aria-labelledby="delete">
         <h2 id="delete">Delete your account</h2>
         <p>
