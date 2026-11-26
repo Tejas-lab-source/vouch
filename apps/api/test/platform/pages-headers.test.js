@@ -75,6 +75,9 @@ describe('Cloudflare Pages headers (Phase 15)', () => {
     });
     expect(out).not.toMatch(/\{\{/);
     expect(out).toContain('href="https://app.example.app/privacy"');
+    // Google Play's account-deletion link points here.
+    expect(out).toContain('id="delete-account"');
+    expect(out).toContain('href="https://app.example.app/settings"');
     expect(out).toContain('content="https://example.app/og.png"');
     expect(out).not.toMatch(/<script/i);
     expect(() => renderLanding(html, { SITE_URL: 'https://example.app' })).toThrow(/WEB_URL/);

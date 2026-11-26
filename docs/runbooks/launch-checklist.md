@@ -45,15 +45,16 @@ Owner checklist items (A1, B2, …) are in `docs/phases/PHASE-15.md`; resources 
 
 ## 4. The first campus
 
-| ✓   | Check                                                                                                    | Evidence |
-| --- | -------------------------------------------------------------------------------------------------------- | -------- |
-| ☐   | `college-add.js` run in production for JIIT Noida with its exact student email domain, `--invite-only`   |          |
-| ☐   | A sign-up without an invite code is refused (`INVITE_CODE_REQUIRED`); with one it succeeds               |          |
-| ☐   | Invite codes created (`invite-create.js`) and handed to testers                                          |          |
-| ☐   | Moderator accounts created with `admin-create.js`; each signed in with TOTP from an allowed IP           |          |
-| ☐   | Privacy notice: the legally reviewed version is published and `PRIVACY_NOTICE_VERSION` points at it (C2) |          |
-| ☐   | Terms of use published and linked from the landing page (C3)                                             |          |
-| ☐   | Grievance officer and company details on the landing page and privacy notice (C1)                        |          |
+| ✓   | Check                                                                                                                                            | Evidence |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| ☐   | `college-add.js` run in production for JIIT Noida with its exact student email domain, `--invite-only`                                           |          |
+| ☐   | A sign-up without an invite code is refused (`INVITE_CODE_REQUIRED`); with one it succeeds                                                       |          |
+| ☐   | Invite codes created (`invite-create.js`) and handed to testers                                                                                  |          |
+| ☐   | Moderator accounts created with `admin-create.js`; each signed in with TOTP from an allowed IP                                                   |          |
+| ☐   | Privacy notice: the legally reviewed version is published and `PRIVACY_NOTICE_VERSION` points at it (C2)                                         |          |
+| ☐   | Terms of use published and linked from the landing page (C3)                                                                                     |          |
+| ☐   | Grievance officer and company details on the landing page and privacy notice (C1)                                                                |          |
+| ☐   | Store privacy answers reviewed and submitted (`docs/store/privacy-labels.md`): App Store App Privacy, Play Data safety, the account-deletion URL |          |
 
 ## 5. Real use, on production
 

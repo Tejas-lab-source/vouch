@@ -58,6 +58,8 @@ export function makeAccountUseCases({ useCase, uow, read, clock, exporters }) {
             birthDate: user.birthDate,
             gradYear: user.gradYear,
             createdAt: user.createdAt.toISOString(),
+            // The invite-only beta (Phase 15): whether an invite code admitted the account.
+            admittedWithInviteCode: Boolean(user.inviteCodeId),
           },
           email: 'Not stored: only a keyed hash of your college email is kept.',
           devices: devices.map((d) => ({

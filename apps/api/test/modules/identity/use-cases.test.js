@@ -525,6 +525,16 @@ describe('invite-only colleges (Phase 15)', () => {
     const [user] = [...t.state.users.values()];
     expect(user.inviteCodeId).toBe('01936f3e-8a4b-7c2d-9e1f-0a1b2c3d4e99');
     expect([...t.state.inviteCodes.values()][0].uses).toBe(1);
+    // The data export says so (the privacy notice lists it).
+    const session = [...t.state.sessions.values()][0];
+    const actor = {
+      userId: user.id,
+      audience: /** @type {const} */ ('vouch:user'),
+      mfa: false,
+      sessionId: session.id,
+    };
+    const exported = /** @type {any} */ (await t.h.exportData({}, { actor }));
+    expect(exported.data.identity.account.admittedWithInviteCode).toBe(true);
   });
 
   it('refuses a used-up, expired or other-college code; existing users never need one', async () => {

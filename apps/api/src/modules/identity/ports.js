@@ -15,6 +15,7 @@
  * @property {number | null} gradYear
  * @property {Date} createdAt
  * @property {Date | null} deletedAt
+ * @property {string | null} [inviteCodeId]  The invite code that admitted the account (Phase 15).
  */
 
 /**

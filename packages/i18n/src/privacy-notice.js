@@ -53,7 +53,9 @@ const V2026_11_DRAFT = {
         'Your profile: name, gender, who you are interested in, bio, profile sections you choose to fill in, and photos. Photos are re-encoded and their location and camera data removed.',
         'Your activity: likes and passes, matches, messages you send, blocks and reports you make, and device push tokens.',
         'If you verify with a student ID card: the ID image and a selfie, kept only until a moderator decides and then deleted within 30 days.',
+        'During the invite-only beta: which invite code admitted your account.',
         'Technical data needed to run the service securely: device type, app version, IP address in security logs, and request identifiers. Logs never contain your messages or contact details.',
+        'Error reports when the app or the service fails: the error, where it happened, the app version and the page or screen. We remove email addresses, sign-in tokens and message text from them before they are sent.',
       ],
     },
     {
@@ -73,7 +75,7 @@ const V2026_11_DRAFT = {
     {
       heading: 'Who processes it for us',
       paragraphs: [
-        'We use service providers that process data only on our instructions: hosting and database (Render), photo storage and delivery (Cloudflare), email delivery (Resend), push notifications (Expo, Apple and Google), photo moderation (Amazon Web Services) and bot protection (Cloudflare Turnstile). Some of them may process data outside India, with safeguards required by law.',
+        'We use service providers that process data only on our instructions: hosting and database (Render), photo storage and delivery (Cloudflare), email delivery (Resend), push notifications (Expo, Apple and Google), photo moderation (Amazon Web Services), bot protection (Cloudflare Turnstile), error reports (Sentry) and service monitoring (Grafana Labs). Some of them may process data outside India, with safeguards required by law.',
       ],
     },
     {
@@ -81,6 +83,7 @@ const V2026_11_DRAFT = {
       paragraphs: [
         'While your account is active. When you delete your account, your profile, photos, messages you sent, likes, blocks and settings are erased within 30 days. A match is anonymised, and the other person keeps their own messages.',
         'Kept longer, only where needed: records of your consent (as proof), reports about you and bans (for safety, report evidence deleted one year after the report closes), and security logs (up to 90 days).',
+        'Error reports are kept for up to 30 days. Nightly database backups are kept for 14 days, so data you erase also leaves the backups within that time.',
       ],
     },
     {
