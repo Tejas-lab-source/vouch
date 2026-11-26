@@ -640,3 +640,21 @@ All notable changes are recorded here, grouped by roadmap phase.
   role to the migrating login (`SET TRUE, INHERIT FALSE`).
 - Two tests that depended on timing (the deck block test and the worker-kill invariant's
   wait).
+
+## Design update — Direction E (owner-approved, outside the phase plan)
+
+### Changed
+
+- **Brand and design system** (`docs/design/design-system.md`): red, pink and cream palette
+  with a true dark mode, Poppins and Inter (self-hosted), Lucide icons, new radii and shadows,
+  and the "Vouch" wordmark with a heart. All values live in `@vouch/ui-tokens`.
+- Web, admin, landing and mobile restyled to the mockups; no behaviour, API or contract
+  changes. Mobile gains a welcome step before the college-email form. Details, accessibility
+  adjustments and what was deliberately not built: `docs/design/DESIGN-UPDATE.md`.
+
+### Added
+
+- `StatusBadge`, `Chip`, `IconButton`, `Icon`, `Wordmark` (both kits), `Illustration` (web)
+  and `Text` (native); placeholder campus and pattern art.
+- `pnpm --filter @vouch/web design:shots`: before/after screenshots on the e2e stack,
+  including the mobile app's Expo web export at 390×844.

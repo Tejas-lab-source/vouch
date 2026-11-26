@@ -2,13 +2,17 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:net';
+import { createServer as createHttpServer, request as httpRequest } from 'node:http';
+import { connect, createServer } from 'node:net';
+import { tmpdir } from 'node:os';
+import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startTestContainers, startTestStorage, TEST_STORAGE } from '@vouch/config/test/containers';
 
 const ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const WEB = fileURLToPath(new URL('..', import.meta.url));
 const ADMIN = fileURLToPath(new URL('../../admin', import.meta.url));
+const MOBILE = fileURLToPath(new URL('../../mobile', import.meta.url));
 const ADMIN_PASSWORD = 'e2e-admin-password-0123';
 export const API_LOG = fileURLToPath(new URL('../test-results/api.log', import.meta.url));
 
@@ -63,6 +67,8 @@ export async function startStack() {
     await freePort(),
     await freePort(),
   ];
+  // A fixed port lets a prebuilt mobile export (which has its API origin built in) be reused.
+  const mobilePort = Number(process.env.E2E_MOBILE_PORT ?? (await freePort()));
   const env = {
     ...process.env,
     NODE_ENV: 'development',
@@ -83,7 +89,7 @@ export async function startStack() {
     R2_SECRET_ACCESS_KEY: TEST_STORAGE.secretAccessKey,
     R2_BUCKET: TEST_STORAGE.bucket,
     CDN_BASE_URL: storage.publicBaseUrl,
-    CORS_ORIGINS: `http://127.0.0.1:${webPort},http://127.0.0.1:${adminPort}`,
+    CORS_ORIGINS: `http://127.0.0.1:${webPort},http://127.0.0.1:${adminPort},http://127.0.0.1:${mobilePort}`,
     MODERATION_PROVIDER: 'dev',
     // The 1,000-message chat test sends quickly from one user.
     RATE_LIMIT_MESSAGES_MINUTE: '5000',
@@ -182,19 +188,106 @@ export async function startStack() {
   );
   await waitFor(`http://127.0.0.1:${adminPort}/`, 30_000);
 
+  // The mobile app's Expo web export (design screenshots only, `E2E_MOBILE_WEB=1`).
+  const mobile =
+    process.env.E2E_MOBILE_WEB === '1' ? await serveMobileWeb(apiPort, mobilePort) : null;
+
   return {
     baseURL: `http://127.0.0.1:${webPort}`,
+    mobileURL: mobile ? `http://127.0.0.1:${mobilePort}` : null,
     adminURL: `http://127.0.0.1:${adminPort}`,
     apiURL: apiOrigin,
     admin: { email: 'e2e-admin@vouch.example', password: ADMIN_PASSWORD, totpSecret },
     stop: async () => {
       web.kill('SIGTERM');
       admin.kill('SIGTERM');
+      mobile?.close();
       api.kill('SIGTERM');
       await new Promise((resolve) => api.once('exit', resolve));
       await Promise.all([containers.stop(), storage.stop()]);
     },
   };
+}
+
+/**
+ * Exports the mobile app for the web (react-native-web) and serves it as a single-page app,
+ * with `/v1` and `/socket.io` proxied to the API: the export's API origin is the server's own
+ * origin, so an export built earlier (`E2E_MOBILE_WEB_DIR`, with `E2E_MOBILE_PORT`) works with
+ * a new stack. Used only for phone-sized design screenshots: the web product is apps/web.
+ * @param {number} apiPort @param {number} port
+ */
+async function serveMobileWeb(apiPort, port) {
+  const origin = `http://127.0.0.1:${port}`;
+  // A prebuilt export (for example of an earlier commit, for "before" screenshots) is served as is.
+  const prebuilt = process.env.E2E_MOBILE_WEB_DIR;
+  const out = prebuilt ?? join(tmpdir(), 'vouch-mobile-web');
+  const exported = prebuilt
+    ? { status: 0, stderr: '' }
+    : spawnSync(
+        'pnpm',
+        ['exec', 'expo', 'export', '--platform', 'web', '--clear', '--output-dir', out],
+        { cwd: MOBILE, env: { ...process.env, VOUCH_API_URL: origin }, encoding: 'utf8' },
+      );
+  if (exported.status !== 0) throw new Error(`expo export failed: ${exported.stderr}`);
+  const types = new Map([
+    ['.html', 'text/html'],
+    ['.js', 'text/javascript'],
+    ['.css', 'text/css'],
+    ['.json', 'application/json'],
+    ['.png', 'image/png'],
+    ['.ttf', 'font/ttf'],
+    ['.svg', 'image/svg+xml'],
+  ]);
+  const server = createHttpServer(async (request, response) => {
+    if (/^\/(v1|socket\.io)\//.test(request.url ?? '')) {
+      const upstream = httpRequest(
+        {
+          host: '127.0.0.1',
+          port: apiPort,
+          path: request.url,
+          method: request.method,
+          headers: request.headers,
+        },
+        (reply) => {
+          response.writeHead(reply.statusCode ?? 502, reply.headers);
+          reply.pipe(response);
+        },
+      );
+      upstream.on('error', () => response.destroy());
+      request.pipe(upstream);
+      return;
+    }
+    const path = normalize(decodeURIComponent(new URL(request.url ?? '/', 'http://x').pathname));
+    const file = join(out, path);
+    try {
+      if (!file.startsWith(out) || !extname(file)) throw new Error('route');
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- inside the export
+      const body = await readFile(file);
+      response.writeHead(200, {
+        'content-type': types.get(extname(file)) ?? 'application/octet-stream',
+      });
+      response.end(body);
+    } catch {
+      response.writeHead(200, { 'content-type': 'text/html' });
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- inside the export
+      response.end(await readFile(join(out, 'index.html')));
+    }
+  }).listen(port, '127.0.0.1');
+  // WebSocket upgrades (socket.io) go straight through to the API.
+  server.on('upgrade', (request, socket, head) => {
+    const upstream = connect(apiPort, '127.0.0.1', () => {
+      const lines = [`${request.method} ${request.url} HTTP/1.1`];
+      const raw = request.rawHeaders;
+      for (let i = 0; i < raw.length; i += 2) lines.push(`${raw.at(i)}: ${raw.at(i + 1)}`);
+      upstream.write(`${lines.join('\r\n')}\r\n\r\n`);
+      upstream.write(head);
+      socket.pipe(upstream).pipe(socket);
+    });
+    upstream.on('error', () => socket.destroy());
+    socket.on('error', () => upstream.destroy());
+  });
+  await waitFor(`${origin}/`, 10_000);
+  return server;
 }
 
 /** Every development sign-in code the API logged, oldest first (the log has no emails). */

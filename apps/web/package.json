@@ -15,7 +15,8 @@
     "test": "vitest run",
     "size": "node scripts/bundle-size.js",
     "e2e": "playwright test --trace off",
-    "e2e:remote": "playwright test --config playwright.remote.config.js --trace off"
+    "e2e:remote": "playwright test --config playwright.remote.config.js --trace off",
+    "design:shots": "playwright test --config playwright.design.config.js --trace off"
   },
   "dependencies": {
     "@sentry/react": "11.11.0",
